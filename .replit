@@ -1,0 +1,6 @@
+run = "cd discord.py; python3 -m pip install -U .[voice]; cd ..; python3 main.py"
+language = "python3"
+onBoot = "echo Booting up!"
+
+[packager]
+ignoredPackages = ["orjson"]
