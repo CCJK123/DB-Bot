@@ -3,6 +3,7 @@ from __future__ import annotations
 # Import external python modules
 import aiohttp
 import asyncio
+import logging
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from time import time
@@ -17,6 +18,9 @@ import discordutils
 import pnwutils
 if TYPE_CHECKING:
     from ..main import DBBot
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -593,6 +597,7 @@ class FinanceCog(commands.Cog):
             await auth.send('You took too long to respond! Exiting...')
             return
         if confirmed:
+            logger.info(f'request sent: {req_data}')
             await auth.send(
                 'Your request has been sent. Thank you for using the DB Finance Request Interface.'
             )
@@ -615,9 +620,11 @@ class FinanceCog(commands.Cog):
             'Exiting the DB Finance Request Interface. Please run the command again and redo your request.'
         )
 
-    async def on_processed(self, status: Literal['Accepted', 'Rejected', 'Sent'],
+    async def on_processed(self, status: Literal['Accepted', 'Rejected',
+                                                 'Sent'],
                            req_data: RequestData, user: discord.abc.User,
                            message: discord.Message):
+        logger.info(f'processing {status} request: {req_data}')
         if status == 'Accepted':
             await req_data.requester.send(
                 f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} has been accepted! The resources will be sent to you soon.'
@@ -632,9 +639,13 @@ class FinanceCog(commands.Cog):
             def msg_chk(m: discord.Message) -> bool:
                 return m.author == user and m.guild is None
 
-            reject_reason: str = (await self.bot.wait_for(
-                'message', check=msg_chk,
-                timeout=discordutils.Config.timeout)).content
+            try:
+                reject_reason: str = (await self.bot.wait_for(
+                    'message', check=msg_chk,
+                    timeout=discordutils.Config.timeout)).content
+            except asyncio.TimeoutError():
+                await user.send('You took too long to respond! Default rejection reason set.')
+                reject_reason = 'not given'
             await req_data.requester.send(
                 f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} has been rejected!\n'
                 f'Reason: {reject_reason}')

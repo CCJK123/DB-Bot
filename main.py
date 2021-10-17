@@ -18,18 +18,19 @@ from discord.ext import commands, tasks
 import discordutils
 import cogs.finance
 
-
+cog_logger = logging.getLogger('cogs')
+cog_logger.addHandler(logging.FileHandler('logs.txt'))
 
 # Setup bot
 class DBBot(commands.Bot):
     def __init__(self, db_url):
         super().__init__(command_prefix=os.environ['command_prefix'])
-        self.session = aiohttp.ClientSession()
+        
         self.db = AsyncDatabase(db_url)
         self.prepped = False
 
     async def prep(self):
-        self.session = await self.session.__aenter__()
+        self.session = await aiohttp.ClientSession().__aenter__()
         self.db = await self.db.__aenter__()
 
     async def cleanup(self):
@@ -88,12 +89,12 @@ if __name__ == '__main__':
         server = Thread(target=run)
         server.start()    
 
-
+    
 
     # Reload cogs
     @commands.guild_only()
     @commands.check(discordutils.gov_check)
-    @bot.command()
+    @bot.command(aliases=('reload',))
     async def reload_ext(ctx: commands.Context, extension: str) -> None:
         try:
             bot.reload_extension(f'cogs.{extension}')
