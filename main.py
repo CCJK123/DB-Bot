@@ -71,7 +71,7 @@ if __name__ == '__main__':
     bot = DBBot(db.db_url)
 
     # Load cogs
-    for ext in ('finance', 'util', 'war'):
+    for ext in ('finance', 'util', 'war', 'applications'):
         bot.load_extension(f'cogs.{ext}')
 
     # Flask server setup (for 24/7 functionality)
