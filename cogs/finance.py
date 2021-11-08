@@ -3,18 +3,17 @@ from __future__ import annotations
 import aiohttp
 import asyncio
 import logging
-from dataclasses import dataclass, field
+import operator
 from datetime import date, timedelta
 from time import time
-from typing import Optional, Callable, Awaitable, Literal, TYPE_CHECKING
+from typing import Literal
 
 import discord
 from discord.ext import commands
 
 import discordutils
 import pnwutils
-if TYPE_CHECKING:
-    from ..main import DBBot
+from financeutils import RequestData, RequestChoices, ResourceSelectView
 
 
 
@@ -22,115 +21,22 @@ logger = logging.getLogger(__name__)
 
 
 
-@dataclass
-class RequestData:
-    requester: discord.abc.User
-    kind: str
-    reason: str
-    nation_name: str
-    nation_link: str
-    resources: pnwutils.Resources
-    note: str
-    additional_info: Optional[dict[str, str]] = field(default_factory=dict)
-
-
-
-class RequestChoice(discord.ui.Button['RequestChoices']):
-    def __init__(self, label: str):
-        super().__init__(row=0, custom_id=label)
-        self.label = label
-
-
-    async def callback(self, interaction: discord.Interaction) -> None:
-        self.style = discord.ButtonStyle.success
-        
-        for child in self.view.children:
-            if self.label != 'Accepted' or child.label != 'Sent':
-                # If self.label == Accepted and child.label is Sent, dont disable
-                child.disabled = True
-        if self.label != 'Accepted':
-            self.view.stop()
-        
-        await interaction.response.edit_message(view=self.view)
-        await self.view.callback(self.label, self.view.data, interaction.user,
-                                 interaction.message)
-
-
-
-class RequestChoices(discord.ui.View):
-    def __init__(self, callback: Callable[[
-        Literal['Accepted', 'Rejected',
-                'Sent'], RequestData, discord.abc.User, discord.Message
-    ], Awaitable[None]], req_data: RequestData):
-        # Callback would be called with 'Accepted', 'Rejected', or 'Sent'
-        super().__init__(timeout=None)
-        self.data = req_data
-        self.callback = callback
-        for c in ('Accepted', 'Rejected', 'Sent'):
-            self.add_item(RequestChoice(c))
-
-
-
-class ResourceSelector(discord.ui.Select['ResourceSelectView']):
-    def __init__(self):
-        options = [
-            discord.SelectOption(label=s) for s in pnwutils.Constants.all_res
-        ]
-        super().__init__(placeholder='Choose the resources you want',
-                         min_values=1,
-                         max_values=len(options),
-                         options=options)
-
-    
-    async def callback(self, interaction: discord.Interaction):
-        self.view.set_result(self.values)
-
-
-
-class ResourceSelectView(discord.ui.View):
-    def __init__(self):
-        super().__init__(timeout=discordutils.Config.timeout)
-        self._fut = asyncio.get_event_loop().create_future()
-        self.add_item(ResourceSelector())
-
-    
-    def set_result(self, r: list[str]) -> None:
-        self._fut.set_result(r)
-
-    
-    def result(self) -> Awaitable[list[str]]:
-        return self._fut
-    
-    
-    async def on_timeout(self):
-        self._fut.set_exception(asyncio.TimeoutError())
-
-
-
 # Create Finance Cog to group finance related commands
-class FinanceCog(commands.Cog):
-    def __init__(self, bot: DBBot):
-        self.bot = bot
-        self.prepped = False
+class FinanceCog(discordutils.CogBase):
+    def __init__(self, bot: discordutils.DBBot):
+        super().__init__(bot, __name__)
+        self.has_war_aid = discordutils.SavedProperty[bool](self, 'has_war_aid')
+        self.infra_rebuild_cap = discordutils.SavedProperty[int](self, 'infra_rebuild_cap')
+        self.channel = discordutils.ChannelProperty(self, 'channel')
 
-    
-    async def prep(self):
-        if not self.prepped:
-            self.prepped = True
-            self.has_war_aid = await self.bot.db_get('finance', 'has_war_aid')
-            self.infra_rebuild_cap = await self.bot.db_get('finance', 'infra_rebuild_cap')
-            self.channel: Optional[
-                discord.TextChannel] = self.bot.get_channel(await self.bot.db_get('finance', 'channel_id'))
 
-    
     # Main request command
     @commands.group(invoke_without_command=True, aliases=('req', ))
     @commands.max_concurrency(1, commands.BucketType.user)
     async def request(self, ctx: commands.Context) -> None:
-        await self.prep()
         ## Command Run Validity Check
         # Check if output channel has been set
-        if self.channel is None:
+        if await self.channel.get() is None:
             await ctx.send('Output channel has not been set! Aborting.')
             return None
         
@@ -139,7 +45,8 @@ class FinanceCog(commands.Cog):
         
         auth = ctx.author
         await auth.send(
-            'Welcome to the DB Finance Request Interface. Enter your nation id to continue.'
+            'Welcome to the DB Finance Request Interface. '
+            'Enter your nation id to continue.'
         )
 
         # Check that reply was sent from same author in DMs
@@ -270,7 +177,7 @@ class FinanceCog(commands.Cog):
 
         ## Get Request Type
         req_types = ['Grant', 'Loan']
-        if self.has_war_aid:
+        if await self.has_war_aid.get():
             req_types.append('War Aid')
 
         req_type_choice = discordutils.Choices(*req_types)
@@ -412,7 +319,7 @@ class FinanceCog(commands.Cog):
                 return None
 
             req_res = {}
-            res_select_view = ResourceSelectView()
+            res_select_view = ResourceSelectView(discordutils.Config.timeout)
             await auth.send('What resources are you requesting?', view=res_select_view)
             try:
                 selected_res = await res_select_view.result()
@@ -542,20 +449,22 @@ class FinanceCog(commands.Cog):
                 return None
 
             elif war_aid_type == 'Rebuild Infrastructure':
+                irc = await self.infra_rebuild_cap.get()
                 await auth.send(
-                    f'The current infrastructure rebuild cap is set at {self.infra_rebuild_cap}. This means that money will only be provided to rebuild infrastructure below {self.infra_rebuild_cap} up to that amount. The amount calculated assumes that domestic policy is set to Urbanisation.'
+                    f'The current infrastructure rebuild cap is set at {irc}. '
+                    f'This means that money will only be provided to rebuild infrastructure below {irc} up to that amount. '
+                    'The amount calculated assumes that domestic policy is set to Urbanisation.'
                 )
                 # Calculate infra cost for each city
                 req_res = pnwutils.Resources()
                 for city in data['cities']:
-                    if city['infrastructure'] < self.infra_rebuild_cap:
-                        for infra_lvl in range(city['infrastructure'],
-                                               self.infra_rebuild_cap + 1):
+                    if city['infrastructure'] < irc:
+                        for infra_lvl in range(city['infrastructure'], irc + 1):
                             if infra_lvl < 10:
                                 req_res.money += 300
                             else:
                                 req_res.money += 300 + (infra_lvl -
-                                                        10)**2.2 / 710
+                                                        10) ** 2.2 / 710
                 # Account for Urbanisation and cost reducing projects (CCE and AEC)
                 req_res.money *= 0.95 - 0.05 * (data['cfce'] +
                                                 data['adv_engineering_corps'])
@@ -563,11 +472,13 @@ class FinanceCog(commands.Cog):
                 # Check if infrastucture in any city under cap
                 if req_res.money == 0:
                     await auth.send(
-                        f'Since all your cities have an infrasructure level above the current infrastructure rebuild cap ({self.infra_rebuild_cap}), you are not eligible for war aid to rebuild infrastructure.'
+                        'Since all your cities have an infrastructure level above '
+                        f'the current infrastructure rebuild cap ({irc}), you are '
+                        'not eligible for war aid to rebuild infrastructure.'
                     )
                     return None
                 
-                aid_req = f'Rebuild Infrastructure up to {self.infra_rebuild_cap}'
+                aid_req = f'Rebuild Infrastructure up to {irc}'
                 await self.on_request_fixed(
                     RequestData(
                         auth, req_type, aid_req, data['nation_name'],
@@ -576,7 +487,7 @@ class FinanceCog(commands.Cog):
                         additional_info))
                 return None
 
-   
+
     async def on_request_fixed(self, req_data: RequestData) -> None:
         auth = req_data.requester
         agree_terms = discordutils.Choices('Yes', 'No')
@@ -622,7 +533,7 @@ class FinanceCog(commands.Cog):
                 f'[Link]({req_data.resources.create_link("w", recipient=req_data.nation_name, note=req_data.note)})'
             )
             process_view = RequestChoices(self.on_processed, req_data)
-            await self.channel.send(
+            await (await self.channel.get()).send(
                 f'New Request from {auth.mention}',
                 embed=embed,
                 allowed_mentions=discord.AllowedMentions.none(),
@@ -634,7 +545,7 @@ class FinanceCog(commands.Cog):
             'Exiting the DB Finance Request Interface. Please run the command again and redo your request.'
         )
 
-    
+
     async def on_processed(self, status: Literal['Accepted', 'Rejected',
                                                  'Sent'],
                            req_data: RequestData, user: discord.abc.User,
@@ -680,7 +591,6 @@ class FinanceCog(commands.Cog):
             f'{status if status != "Sent" else "Accepted and Sent"} Request from {req_data.requester.mention}',
             allowed_mentions=discord.AllowedMentions.none())
 
-    
     @request.error
     async def request_error(self, ctx: commands.Context,
                             error: commands.CommandError) -> None:
@@ -689,44 +599,41 @@ class FinanceCog(commands.Cog):
             return None
         await discordutils.default_error_handler(ctx, error)
 
-    
+
     @commands.guild_only()
     @commands.check(discordutils.gov_check)
     @request.group(invoke_without_command=True)
     async def set(self, ctx: commands.Context) -> None:
         await ctx.send('Subcommands: `channel`, `war_aid`, `infra_rebuild_cap`'
                        )
-    
+
+
     @commands.guild_only()
     @commands.check(discordutils.gov_check)
-    @set.command(aliases=('chan', ))
-    async def channel(self, ctx: commands.Context) -> None:
-        self.channel = ctx.channel
-        await self.bot.db_set('finance', 'channel_id', self.channel.id)
+    @set.command(aliases=('channel', ))
+    async def chan(self, ctx: commands.Context) -> None:
+        await self.channel.set(ctx.channel)
         await ctx.send(
             'Output channel set! New responses will now be sent here.')
-    
+
     @commands.guild_only()
     @commands.check(discordutils.gov_check)
     @set.command(aliases=('aid', ))
     async def war_aid(self, ctx: commands.Context) -> None:
-        await self.prep()
-        self.has_war_aid = not self.has_war_aid
-        await self.bot.db_set('finance', 'has_war_aid', self.has_war_aid)
+        await self.has_war_aid.transform(operator.not_)
         await ctx.send(
-            f'War Aid is now {(not self.has_war_aid) * "not "}available!')
+            f'War Aid is now {(not await self.has_war_aid.get()) * "not "}available!')
 
-    
     @commands.guild_only()
     @commands.check(discordutils.gov_check)
     @set.command(aliases=('infra_cap', 'cap'))
     async def infra_rebuild_cap(self, ctx: commands.Context, cap: int) -> None:
-        self.infra_rebuild_cap = max(0, 50 * round(cap/50))
-        await self.bot.db_set('finance', 'infra_rebuild_cap', self.infra_rebuild_cap)
+        await self.infra_rebuild_cap.set(max(0, 50 * round(cap/50)))
         await ctx.send(
-            f'The infrastructure rebuild cap has been set to {self.infra_rebuild_cap}.'
+            f'The infrastructure rebuild cap has been set to {await self.infra_rebuild_cap.get()}.'
         )
-    
+
+
     @infra_rebuild_cap.error
     async def infra_cap_set_error(self, ctx: commands.Context,
                                   error: commands.CommandError) -> None:
@@ -743,5 +650,5 @@ class FinanceCog(commands.Cog):
 
 
 # Setup Finance Cog as an extension
-def setup(bot: DBBot) -> None:
+def setup(bot: discordutils.DBBot) -> None:
     bot.add_cog(FinanceCog(bot))
