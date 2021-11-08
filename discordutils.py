@@ -1,17 +1,71 @@
+from __future__ import annotations
+
+import random
+import aiohttp
+from replit.database import AsyncDatabase
 import asyncio
 import operator
 import sys
 import traceback
 import os   # For env variables
-from typing import Awaitable, Mapping
+from typing import Any, Awaitable, Callable, Generic, Mapping, TypeVar, Union
 
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 
 
 
 # Setup what is exported by default
 __all__ = ('Config', 'Choices', 'construct_embed', 'gov_check')
+
+
+
+# Setup bot
+class DBBot(commands.Bot):
+    def __init__(self, db_url, on_ready_func: Callable[[], None]):
+        super().__init__(command_prefix=os.environ['command_prefix'])
+        self.on_ready_func = on_ready_func
+        
+        self.db = AsyncDatabase(db_url)
+        self.prepped = False
+
+    
+    async def prep(self):
+        self.session = await aiohttp.ClientSession().__aenter__()
+        self.db = await self.db.__aenter__()
+
+    
+    async def cleanup(self):
+        await self.session.__aexit__()
+        await self.db.__aexit__()
+    
+    
+    # Change bot status (background task for 24/7 functionality)
+    status = (
+        *map(discord.Game, ("with Python", "with repl.it", "with the P&W API")),
+        discord.Activity(type=discord.ActivityType.listening, name="Spotify"),
+        discord.Activity(type=discord.ActivityType.watching, name="YouTube")
+    )
+    @tasks.loop(seconds=20)
+    async def change_status(self):
+        await self.change_presence(activity=random.choice(self.status))
+    
+    
+    async def on_ready(self):
+        if not self.prepped:
+            self.prepped = True
+            await self.prep()
+
+        self.change_status.start()
+        self.on_ready_func()
+    
+    
+    def db_set(self, cog_name: str, key: str, val: Any) -> Awaitable[None]:
+        return self.db.set(cog_name + '.' + key, val)
+
+
+    def db_get(self, cog_name: str, key: str) -> Awaitable[Any]:
+        return self.db.get(cog_name + '.' + key)
 
 
 
