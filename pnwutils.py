@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from itertools import chain
 import os   # For env variables
 
+import discord
+
 
 
 # Setup what is exported by default
@@ -95,7 +97,7 @@ class Resources:
 
     
     # Output all resources with values associated
-    def not_none_res(self) -> Generator[tuple[str, int], None, None]:
+    def nonzero_resources(self) -> Generator[tuple[str, int], None, None]:
         for res_name in Constants.all_res:
             res_amt = self.__getattribute__(res_name)
             if res_amt != 0:
@@ -118,16 +120,23 @@ class Resources:
 
         # Add parameters to withdrawal / deposit url
         link = f'{Constants.base_url}alliance/id={Config.aa_id}&display=bank'
-        for res_name, res_amt in self.not_none_res():
+        for res_name, res_amt in self.nonzero_resources():
             link += f'&{kind}_{res_name}={res_amt}'
         if note is not None:
-            link += f'&{kind}_note={"%20".join(note.split())}'
+            link += f'&{kind}_note={note.replace(" ", "%20")}'
         if with_aa:
             link += '&w_type=alliance'
         if recipient is not None:
             # Replace spaces with url encoding for spaces
-            link += f'&w_recipient={"%20".join(recipient.split())}'
+            link += f'&w_recipient={recipient.replace(" ", "%20")}'
         return link
+    
+
+    def create_embed(self, **kwargs: str) -> discord.Embed:
+        embed = discord.Embed(**kwargs)
+        for n, a in self.nonzero_resources():
+            embed.add_field(name=n, value=a)
+        return embed
 
 
     # Create string returned when Resources object printed
