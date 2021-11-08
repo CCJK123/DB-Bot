@@ -2,15 +2,14 @@ from __future__ import annotations
 
 import aiohttp
 import enum
-from typing import Any, Optional, TYPE_CHECKING
+import operator
+from typing import Any, Optional
 
 from discord.ext import commands, tasks
 import discord
 
 import pnwutils
 import discordutils
-if TYPE_CHECKING:
-    from ..main import DBBot
 
 
 
@@ -20,21 +19,17 @@ class WarType(enum.Enum):
     ATT = 1
 
 
-class WarCog(commands.Cog):
-    def __init__(self, bot: DBBot):
-        self.bot = bot
-        self.prepped = False
-        self.channels: dict[WarType, Optional[discord.TextChannel]] = {}
-        self.check_losing: bool = True
-        self.done_wars: list[str] = []
-    
 
-    async def prep(self):
-        if not self.prepped:
-            self.prepped = True
-            self.check_losing = await self.bot.db_get('war', 'check_losing')
-            for t in WarType:
-                self.channels[t] = await self.bot.db_get('war', t.name)
+class WarDetectorCog(discordutils.CogBase):
+    def __init__(self, bot: discordutils.DBBot):
+        super().__init__(bot, __name__)
+        self.check_losing = discordutils.SavedProperty[bool](self, 'check_losing')
+        self.att_channel = discordutils.ChannelProperty(self, 'att_channel')
+        self.def_channel = discordutils.ChannelProperty(self, 'def_channel')
+        self.lose_channel = discordutils.ChannelProperty(self, 'lose_channel')
+        self.channels = {WarType.ATT: self.att_channel, WarType.DEF: self.def_channel, WarType.LOSE: self.lose_channel}
+        self.done_wars: list[str] = []
+
 
 
     @staticmethod
@@ -136,11 +131,11 @@ class WarCog(commands.Cog):
             if war['turnsleft'] == 60:
                 # new war
                 kind = WarType.ATT if war['att_alliance_id'] == pnwutils.Config.aa_id else WarType.DEF
-                await self.channels[kind].send(embeds=await self.war_embed(war, kind))
+                await (await self.channels[kind].get()).send(embeds=await self.war_embed(war, kind))
                 self.done_wars.append(war['id'])
                 continue
-            if self.check_losing and war[f'{kind_str[:3]}_resistance'] <= 50:
-                await self.channels[WarType.LOSE].send(embeds=await self.war_embed(war, WarType.LOSE))
+            if await self.check_losing.get() and war[f'{kind_str[:3]}_resistance'] <= 50:
+                await (await self.channels[WarType.LOSE].get()).send(embeds=await self.war_embed(war, WarType.LOSE))
                 self.done_wars.append(war['id'])
 
 
@@ -150,10 +145,10 @@ class WarCog(commands.Cog):
     async def war_detector(self, ctx: commands.Context) -> None:
         await ctx.send('Use `war_detector start` to start the detector and `war_detector stop` to stop it')
 
+
     @war_detector.command(aliases=('run',))
     async def running(self, ctx: commands.Context) -> None:
-        await self.prep()
-        if self.channels.keys() != set(WarType):
+        if (await self.channels.get()).keys() != set(WarType):
             await ctx.send('Not all of the defensive, offensive and losing wars channels have been set! '
                            'Set them with `war_detector set att`, `war_detector set def`, and `war_detector set lose`'
                            'in the respective channels.')
@@ -165,11 +160,13 @@ class WarCog(commands.Cog):
         self.detect_wars.start()
         await ctx.send('War detector is now running!')
 
+
     @war_detector.command()
     async def losing(self, ctx: commands.Context) -> None:
         await ctx.send(f'Losing wars will now {"not " * self.check_losing}be checked!')
-        self.check_losing = not self.check_losing
+        self.check_losing.transform(operator.not_)
         await self.bot.db_set('war', 'check_losing', self.check_losing)
+
 
     @war_detector.group(aliases=('set',), invoke_without_command=True)
     async def set_channel(self, ctx: commands.Context) -> None:
@@ -178,24 +175,21 @@ class WarCog(commands.Cog):
 
     @set_channel.command(aliases=('att',))
     async def a(self, ctx: commands.Context) -> None:
-        self.channels[WarType.ATT] = ctx.channel
-        await self.bot.db_set('war', WarType.ATT.name, ctx.channel.id)
+        self.att_channel.set(ctx.channel)
         await ctx.send('Offensive wars channel set!')
 
     @set_channel.command(aliases=('def',))
     async def d(self, ctx: commands.Context) -> None:
-        self.channels[WarType.DEF] = ctx.channel
-        await self.bot.db_set('war', WarType.DEF.name, ctx.channel.id)
+        self.def_channel.set(ctx.channel)
         await ctx.send('Defensive wars channel set!')
 
     @set_channel.command(aliases=('l',))
     async def lose(self, ctx: commands.Context) -> None:
-        self.channels[WarType.LOSE] = ctx.channel
-        await self.bot.db_set('war', WarType.LOSE.name, ctx.channel.id)
+        self.lose_channel.set(ctx.channel)
         await ctx.send('Losing wars channel set!')
 
 
 
-# Setup War Cog as an extension
-def setup(bot: DBBot) -> None:
-    bot.add_cog(WarCog(bot))
+# Setup War Detector Cog as an extension
+def setup(bot: discordutils.DBBot) -> None:
+    bot.add_cog(WarDetectorCog(bot))
