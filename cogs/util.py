@@ -1,12 +1,9 @@
-# Import external python modules
 import aiohttp
 from collections import defaultdict
 import operator
 
-# Import discord.py and related modules
 from discord.ext import commands
 
-# Import own modules
 import pnwutils
 
 
@@ -14,6 +11,7 @@ import pnwutils
 class UtilCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
+
 
     @commands.command()
     async def check_ran_out(self, ctx: commands.Context):
@@ -37,6 +35,7 @@ class UtilCog(commands.Cog):
         async with aiohttp.ClientSession() as session:
             data = (await pnwutils.API.post_query(session, aa_query_str, {'alliance_id': pnwutils.Config.aa_id},
                                                   'nations', True))['data']
+        
         result = defaultdict(str)
         for nation in data:
             has_food = not nation['food']

@@ -30,9 +30,10 @@
             <li>Imports are always put at the top of the file, just after any module comments and docstrings, and before module globals and constants</li>
             <li>Imports should be grouped in the following order:</li>
                 <blockquote>
-                    1. Standard library imports<br>
-                    2. Discord.py related imports<br>
-                    3. Local application/library specific imports
+                    1. Module level dunder imports<br>
+                    2. Standard library and <a href='https://packaging.python.org/glossary/#term-Distribution-Package'>package</a> imports<br>
+                    3. Discord.py related imports<br>
+                    4. Local application/library specific imports
                 </blockquote>
             <li>Prefer <a href='https://realpython.com/absolute-vs-relative-python-imports/#absolute-imports'>absolute imports</a> over <a href='https://realpython.com/absolute-vs-relative-python-imports/#relative-imports'>relative imports</a></li>
             <li>Avoid wildcard imports (i.e. <code>from module import *</code>)</li>
@@ -50,7 +51,7 @@
             <li><a href='https://www.python.org/dev/peps/pep-0008/#descriptive-naming-styles'>Naming Styles:</a><ul>
                 <li><a href='https://www.python.org/dev/peps/pep-0008/#function-and-variable-names'>Functions, Variables</a> and <a href='https://www.python.org/dev/peps/pep-0008/#method-names-and-instance-variables'>Class Methods</a>: <code>lowercase</code> or <code>lower_case_with_underscores</code></li>
                 <li><a href='python.org/dev/peps/pep-0008/#class-names'>Classes</a>: <code>CapitalizedWords</code></li>
-                <li>Reserved Methods: <code>__double_leading_and_trailing_underscore__</code></li>
+                <li><a href='https://www.python.org/dev/peps/pep-0008/#module-level-dunder-names'>Module Level Dunders</a>: <code>__double_leading_and_trailing_underscore__</code></li>
             </ul></li>
             <li><a href='https://www.python.org/dev/peps/pep-0008/#names-to-avoid'>Names to Avoid:</a> Don't use 'l', 'O', or 'I' as single character variable names</li>
             <li><a href='https://www.python.org/dev/peps/pep-0008/#package-and-module-names'>Package and Module Names:</a> Should have short, all-lowercase names, with underscores if it improves readability</li>

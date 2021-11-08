@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-# Import external python modules
 import aiohttp
 import asyncio
 import logging
@@ -9,18 +8,18 @@ from datetime import date, timedelta
 from time import time
 from typing import Optional, Callable, Awaitable, Literal, TYPE_CHECKING
 
-# Import discord.py
 import discord
 from discord.ext import commands
 
-# Import own modules
 import discordutils
 import pnwutils
 if TYPE_CHECKING:
     from ..main import DBBot
 
 
+
 logger = logging.getLogger(__name__)
+
 
 
 @dataclass
@@ -35,22 +34,27 @@ class RequestData:
     additional_info: Optional[dict[str, str]] = field(default_factory=dict)
 
 
+
 class RequestChoice(discord.ui.Button['RequestChoices']):
     def __init__(self, label: str):
         super().__init__(row=0, custom_id=label)
         self.label = label
 
+
     async def callback(self, interaction: discord.Interaction) -> None:
         self.style = discord.ButtonStyle.success
+        
         for child in self.view.children:
             if self.label != 'Accepted' or child.label != 'Sent':
                 # If self.label == Accepted and child.label is Sent, dont disable
                 child.disabled = True
         if self.label != 'Accepted':
             self.view.stop()
+        
         await interaction.response.edit_message(view=self.view)
         await self.view.callback(self.label, self.view.data, interaction.user,
                                  interaction.message)
+
 
 
 class RequestChoices(discord.ui.View):
@@ -66,6 +70,7 @@ class RequestChoices(discord.ui.View):
             self.add_item(RequestChoice(c))
 
 
+
 class ResourceSelector(discord.ui.Select['ResourceSelectView']):
     def __init__(self):
         options = [
@@ -76,8 +81,10 @@ class ResourceSelector(discord.ui.Select['ResourceSelectView']):
                          max_values=len(options),
                          options=options)
 
+    
     async def callback(self, interaction: discord.Interaction):
         self.view.set_result(self.values)
+
 
 
 class ResourceSelectView(discord.ui.View):
@@ -86,14 +93,18 @@ class ResourceSelectView(discord.ui.View):
         self._fut = asyncio.get_event_loop().create_future()
         self.add_item(ResourceSelector())
 
+    
     def set_result(self, r: list[str]) -> None:
         self._fut.set_result(r)
 
+    
     def result(self) -> Awaitable[list[str]]:
         return self._fut
     
+    
     async def on_timeout(self):
         self._fut.set_exception(asyncio.TimeoutError())
+
 
 
 # Create Finance Cog to group finance related commands
@@ -102,6 +113,7 @@ class FinanceCog(commands.Cog):
         self.bot = bot
         self.prepped = False
 
+    
     async def prep(self):
         if not self.prepped:
             self.prepped = True
@@ -110,6 +122,7 @@ class FinanceCog(commands.Cog):
             self.channel: Optional[
                 discord.TextChannel] = self.bot.get_channel(await self.bot.db_get('finance', 'channel_id'))
 
+    
     # Main request command
     @commands.group(invoke_without_command=True, aliases=('req', ))
     @commands.max_concurrency(1, commands.BucketType.user)
@@ -563,6 +576,7 @@ class FinanceCog(commands.Cog):
                         additional_info))
                 return None
 
+   
     async def on_request_fixed(self, req_data: RequestData) -> None:
         auth = req_data.requester
         agree_terms = discordutils.Choices('Yes', 'No')
@@ -620,6 +634,7 @@ class FinanceCog(commands.Cog):
             'Exiting the DB Finance Request Interface. Please run the command again and redo your request.'
         )
 
+    
     async def on_processed(self, status: Literal['Accepted', 'Rejected',
                                                  'Sent'],
                            req_data: RequestData, user: discord.abc.User,
@@ -665,6 +680,7 @@ class FinanceCog(commands.Cog):
             f'{status if status != "Sent" else "Accepted and Sent"} Request from {req_data.requester.mention}',
             allowed_mentions=discord.AllowedMentions.none())
 
+    
     @request.error
     async def request_error(self, ctx: commands.Context,
                             error: commands.CommandError) -> None:
@@ -673,13 +689,14 @@ class FinanceCog(commands.Cog):
             return None
         await discordutils.default_error_handler(ctx, error)
 
+    
     @commands.guild_only()
     @commands.check(discordutils.gov_check)
     @request.group(invoke_without_command=True)
     async def set(self, ctx: commands.Context) -> None:
         await ctx.send('Subcommands: `channel`, `war_aid`, `infra_rebuild_cap`'
                        )
-
+    
     @commands.guild_only()
     @commands.check(discordutils.gov_check)
     @set.command(aliases=('chan', ))
@@ -688,7 +705,7 @@ class FinanceCog(commands.Cog):
         await self.bot.db_set('finance', 'channel_id', self.channel.id)
         await ctx.send(
             'Output channel set! New responses will now be sent here.')
-
+    
     @commands.guild_only()
     @commands.check(discordutils.gov_check)
     @set.command(aliases=('aid', ))
@@ -699,6 +716,7 @@ class FinanceCog(commands.Cog):
         await ctx.send(
             f'War Aid is now {(not self.has_war_aid) * "not "}available!')
 
+    
     @commands.guild_only()
     @commands.check(discordutils.gov_check)
     @set.command(aliases=('infra_cap', 'cap'))
@@ -708,7 +726,7 @@ class FinanceCog(commands.Cog):
         await ctx.send(
             f'The infrastructure rebuild cap has been set to {self.infra_rebuild_cap}.'
         )
-
+    
     @infra_rebuild_cap.error
     async def infra_cap_set_error(self, ctx: commands.Context,
                                   error: commands.CommandError) -> None:
@@ -721,6 +739,7 @@ class FinanceCog(commands.Cog):
             await ctx.send('Please provide a whole number to set the cap to!')
             return
         await discordutils.default_error_handler(ctx, error)
+
 
 
 # Setup Finance Cog as an extension

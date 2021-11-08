@@ -1,4 +1,3 @@
-# Import external python modules
 import asyncio
 import operator
 import sys
@@ -6,11 +5,12 @@ import traceback
 import os   # For env variables
 from typing import Awaitable, Mapping
 
-# Import discord.py and related modules
 import discord
 from discord.ext import commands
 
-# Setup what is exported by default 
+
+
+# Setup what is exported by default
 __all__ = ('Config', 'Choices', 'construct_embed', 'gov_check')
 
 
@@ -29,6 +29,7 @@ class Choice(discord.ui.Button['Choices']):
         super().__init__()
         self.label = label
 
+
     async def callback(self, interaction: discord.Interaction) -> None:
         self.view.set_result(self.label)
         self.style = discord.ButtonStyle.success
@@ -39,6 +40,7 @@ class Choice(discord.ui.Button['Choices']):
         await interaction.response.edit_message(view=self.view)
 
 
+
 class Choices(discord.ui.View):
     def __init__(self, *choices: str):
         super().__init__()
@@ -46,12 +48,15 @@ class Choices(discord.ui.View):
         for c in choices:
             self.add_item(Choice(c))
 
+
     def set_result(self, r: str) -> None:
         self._fut.set_result(r)
+
 
     def result(self) -> Awaitable[str]:
         return self._fut
     
+
     async def on_timeout(self):
         self._fut.set_exception(asyncio.TimeoutError())
     
@@ -63,6 +68,8 @@ def construct_embed(fields: Mapping[str, str], /, **kwargs: str) -> discord.Embe
     for k, v in fields.items():
         embed.add_field(name=k, value=v)
     return embed
+
+
 
 # Check if user in DB government
 async def gov_check(ctx: commands.Context) -> bool:    
@@ -81,6 +88,8 @@ async def gov_check(ctx: commands.Context) -> bool:
         await ctx.send("Kindly run this command on the DB server.")
         
     return False
+
+
 
 async def default_error_handler(context: commands.Context, exception: commands.CommandError) -> None:
     print(f'Ignoring exception in command {context.command}:', file=sys.stderr)

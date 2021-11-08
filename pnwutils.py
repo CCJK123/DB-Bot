@@ -1,10 +1,11 @@
 from __future__ import annotations
-# Import external python modules
+
 from typing import Any, Final, Iterable, Literal, Optional, Union, Generator
 import aiohttp
 from dataclasses import dataclass
 from itertools import chain
 import os   # For env variables
+
 
 
 # Setup what is exported by default
@@ -19,6 +20,7 @@ class Config:
     aa_name: str = 'Dark Brotherhood'
 
 
+
 # Setup API & P&W constants
 class Constants:
     base_url: Final[str] = 'https://politicsandwar.com/'
@@ -27,8 +29,11 @@ class Constants:
     all_res: Final[tuple[str, ...]] = ('money', 'food', 'coal', 'oil', 'uranium', 'lead', 'iron', 'bauxite', 'gasoline', 'munitions', 'steel', 'aluminum')
 
 
+
 class APIError(Exception):
     pass
+
+
 
 # Setup API
 class API:
@@ -37,6 +42,7 @@ class API:
     def construct_query(q: str, var: dict[str, Any]) -> dict[str, Union[str, dict[str, Any]]]:
         return {'query': q, 'variables': var}
 
+    
     # Send query to P&W servers and return response
     @classmethod
     async def post_query(cls,
@@ -70,6 +76,7 @@ class API:
         return data
 
 
+
 # Setup resource types and relevant methods
 @dataclass
 class Resources:
@@ -86,12 +93,14 @@ class Resources:
     steel: int = 0
     aluminum: int = 0
 
+    
     # Output all resources with values associated
     def not_none_res(self) -> Generator[tuple[str, int], None, None]:
         for res_name in Constants.all_res:
             res_amt = self.__getattribute__(res_name)
             if res_amt != 0:
                 yield res_name, res_amt
+
 
     # Create withdrawal / deposit link
     def create_link(self,
@@ -120,6 +129,7 @@ class Resources:
             link += f'&w_recipient={"%20".join(recipient.split())}'
         return link
 
+
     # Create string returned when Resources object printed
     def __str__(self) -> str:
         return '\n'.join(f'{res_name.title()}: {res_amt}' for res_name, res_amt in self.not_none_res())
@@ -132,18 +142,23 @@ class Resources:
             return False
         return True
 
+
+
 class Link:
     @staticmethod
     def nation(nation_id: str) -> str:
         return f'{Constants.base_url}nation/id={nation_id}'
 
+
     @staticmethod
     def alliance(alliance_id: str) -> str:
         return f'{Constants.base_url}alliance/id={alliance_id}'
 
+
     @staticmethod
     def war(war_id: str) -> str:
         return f'{Constants.base_url}nation/war/timeline/war={war_id}'
+
 
 
 def war_range(score: Union[str, float]) -> tuple[float, float]:

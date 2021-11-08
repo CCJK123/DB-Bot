@@ -1,4 +1,3 @@
-# Import external python modules
 from flask import Flask
 from threading import Thread
 import random
@@ -10,16 +9,18 @@ from replit import db
 from replit.database import AsyncDatabase
 from typing import Any
 
-# Import discord.py and related modules
 import discord
 from discord.ext import commands, tasks
 
-# Import own modules
 import discordutils
 import cogs.finance
 
+
+
 cog_logger = logging.getLogger('cogs')
 cog_logger.addHandler(logging.FileHandler('logs.txt'))
+
+
 
 # Setup bot
 class DBBot(commands.Bot):
@@ -29,14 +30,17 @@ class DBBot(commands.Bot):
         self.db = AsyncDatabase(db_url)
         self.prepped = False
 
+
     async def prep(self):
         self.session = await aiohttp.ClientSession().__aenter__()
         self.db = await self.db.__aenter__()
+
 
     async def cleanup(self):
         await self.session.__aexit__()
         await self.db.__aexit__()
     
+
     # Change bot status (background task for 24/7 functionality)
     status = (
         *map(discord.Game, ("with Python", "with repl.it", "with the P&W API")),
@@ -44,10 +48,12 @@ class DBBot(commands.Bot):
         discord.Activity(type=discord.ActivityType.watching, name="YouTube")
     )
 
+
     @tasks.loop(seconds=20)
     async def change_status(self):
         await self.change_presence(activity=random.choice(self.status))
     
+
     async def on_ready(self):
         if not self.prepped:
             self.prepped = True
@@ -59,14 +65,18 @@ class DBBot(commands.Bot):
         self.change_status.start()
         print('Ready!')
     
+
     async def db_set(self, cog_name: str, key: str, val: Any) -> None:
         await self.db.set(cog_name, {
             **await self.db.get(cog_name),
             key: val
         })
     
+
     async def db_get(self, cog_name: str, key: str) -> Any:
         return (await self.db.get(cog_name))[key]
+
+
 
 if __name__ == '__main__':
     bot = DBBot(db.db_url)
@@ -89,7 +99,6 @@ if __name__ == '__main__':
         server = Thread(target=run)
         server.start()    
 
-    
 
     # Reload cogs
     @commands.guild_only()

@@ -1,14 +1,12 @@
-# Import external python modules
 from __future__ import annotations
+
 import aiohttp
 import enum
 from typing import Any, Optional, TYPE_CHECKING
 
-# Import discord.py and related modules
 from discord.ext import commands, tasks
 import discord
 
-# Import own modules
 import pnwutils
 import discordutils
 if TYPE_CHECKING:
@@ -30,12 +28,14 @@ class WarCog(commands.Cog):
         self.check_losing: bool = True
         self.done_wars: list[str] = []
     
+
     async def prep(self):
         if not self.prepped:
             self.prepped = True
             self.check_losing = await self.bot.db_get('war', 'check_losing')
             for t in WarType:
                 self.channels[t] = await self.bot.db_get('war', t.name)
+
 
     @staticmethod
     async def war_embed(data: dict[str, Any], kind: WarType) -> discord.Embed:
@@ -69,6 +69,7 @@ class WarCog(commands.Cog):
                 embeds[n].add_field(name='Action Points', value=data[f'{prefix}points'])
 
         return embeds
+
 
     @tasks.loop(minutes=2)
     async def detect_wars(self) -> None:
@@ -142,6 +143,7 @@ class WarCog(commands.Cog):
                 await self.channels[WarType.LOSE].send(embeds=await self.war_embed(war, WarType.LOSE))
                 self.done_wars.append(war['id'])
 
+
     @commands.guild_only()
     @commands.check(discordutils.gov_check)
     @commands.group(aliases=('detector',), invoke_without_command=True)
@@ -169,10 +171,10 @@ class WarCog(commands.Cog):
         self.check_losing = not self.check_losing
         await self.bot.db_set('war', 'check_losing', self.check_losing)
 
-
     @war_detector.group(aliases=('set',), invoke_without_command=True)
     async def set_channel(self, ctx: commands.Context) -> None:
         await ctx.send('Provide one of `att`, `def`, or `lose` to set the channel to!')
+
 
     @set_channel.command(aliases=('att',))
     async def a(self, ctx: commands.Context) -> None:
@@ -191,6 +193,8 @@ class WarCog(commands.Cog):
         self.channels[WarType.LOSE] = ctx.channel
         await self.bot.db_set('war', WarType.LOSE.name, ctx.channel.id)
         await ctx.send('Losing wars channel set!')
+
+
 
 # Setup War Cog as an extension
 def setup(bot: DBBot) -> None:
