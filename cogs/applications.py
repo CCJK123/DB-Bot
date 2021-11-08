@@ -9,24 +9,24 @@ import discordutils
 
 
 
-class ApplicationCog(discordutils.CogBase):
+class ApplicationCog(commands.Cog):
     def __init__(self, bot: discordutils.DBBot):
-        super().__init__(bot, __name__)
-
+        self.bot = bot
+    
 
     @commands.command()
     @commands.max_concurrency(1, commands.BucketType.user)
     async def start_interview(self, ctx: commands.Context) -> None:
         if not ctx.channel.name.endswith('-application'):
             await ctx.send('This is not an interview channel!')
-            return None
         
         def response_check(m: discord.Message) -> bool:
             return m.author == ctx.author and m.channel == ctx.channel
 
         questions = (
+            'Please answer the following questions in one message each.\n'
             '1. Why do you want to join the Dark Brotherhood? Have you been in another alliance?',
-            "2. What's your nation link and leader name?",
+            '2. What is your nation link and leader name?',
             "3. What's your timezone and first language?",
             '4. We as an alliance have high standards for activity. How often will you be able to log in?',
             '5. We believe that security of information is essential to sustainable operation. '
@@ -54,10 +54,8 @@ class ApplicationCog(discordutils.CogBase):
             '\n'
             'Finance\n'
             '- Manage resources, money, grant loans',
-            '12. Do you have any questions or anything else you want to tell us?'
-        )
+            '12. Do you have any questions for us?')
 
-        await ctx.send('Please answer each of the following questions in one message.')
         for question in questions:
             await ctx.send(question)
             try:
@@ -66,11 +64,9 @@ class ApplicationCog(discordutils.CogBase):
                 await ctx.send('You took too long to respond! Aborting...')
                 return
         
-        await ctx.send(
-            '''
-            Thank you for answering our questions. An interviewer will be reviewing your answers and will get back to you as soon as possible. Note that due to timezone differences it may take a while before someone is available to process your application. They will respond to your queries and may ask follow up questions.
-            '''
-        )
+        await ctx.send('Thank you for answering our questions. An interviewer will be reviewing your answers'
+                       'and will get back to you as soon as possible (1 - 4 hours). '
+                       'They will respond to your queries and may ask follow up questions.')
 
 
 
