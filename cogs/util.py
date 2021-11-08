@@ -5,12 +5,49 @@ import operator
 from discord.ext import commands
 
 import pnwutils
+import discordutils
 
 
 
-class UtilCog(commands.Cog):
-    def __init__(self, bot: commands.Bot):
-        self.bot = bot
+class UtilCog(discordutils.CogBase):
+    def __init__(self, bot: discordutils.DBBot):
+        super().__init__(bot, __name__)
+        self.nations = discordutils.MappingProperty[int, str](self, 'nations')
+        if await self.nations.get(None) is None:
+            await self.nations.set({})
+
+
+    @commands.command()
+    async def set_nation(self, ctx: commands.Context, nation_id: str):
+        if nation_id == '':
+            if '/' in ctx.author.display_name:
+                try:
+                    int(nation_id := ctx.author.display_name.split('/')[1])
+                except ValueError:
+                    await ctx.send('Please provide your nation id!')
+                    return
+                await self.nations[ctx.author.id].set(nation_id)
+                await ctx.send('You have been registered to our database!')
+                return
+            await ctx.send('Please provide your nation id!')
+            return
+
+        
+        nation_prefix = pnwutils.Constants.base_url + 'nation/id='
+        if nation_id.startswith(nation_prefix):
+            nation_id = nation_id[len(nation_prefix):]
+        
+        try: 
+            int(nation_id)
+        except ValueError:
+            await ctx.send("That isn't a number!")
+            return
+        
+        nation_confirm_choice = discordutils.Choices('Yes', 'No')
+        await ctx.send(f'Is this your nation? ' + pnwutils.Link.nation(nation_id), view=nation_confirm_choice)
+        if await nation_confirm_choice.result() == 'Yes':
+            await self.nations[ctx.author.id].set(nation_id)
+            await ctx.send('You have been registered to our database!')
 
 
     @commands.command()
@@ -35,7 +72,6 @@ class UtilCog(commands.Cog):
         async with aiohttp.ClientSession() as session:
             data = (await pnwutils.API.post_query(session, aa_query_str, {'alliance_id': pnwutils.Config.aa_id},
                                                   'nations', True))['data']
-        
         result = defaultdict(str)
         for nation in data:
             has_food = not nation['food']
@@ -54,5 +90,5 @@ class UtilCog(commands.Cog):
 
 
 # Setup Utility Cog as an extension
-def setup(bot: commands.Bot) -> None:
+def setup(bot: discordutils.DBBot) -> None:
     bot.add_cog(UtilCog(bot))
