@@ -3,9 +3,9 @@ from __future__ import annotations
 from discord.ext import commands
 import discord
 
-import util
 import discordutils
 import pnwutils
+import financeutils
 
 
 
@@ -37,12 +37,33 @@ class BankCog(discordutils.CogBase):
         resources = await self.balances[nation_id].get(None)
         if resources is None:
             # calculate balance
-            pass
+            await ctx.send(f"{ctx.author.mention}'s Balance has been calculated to be:",
+                           embed = resources.create_embed(),
+                           allowed_mentions=discord.AllowedMentions.none())
+            await ctx.send('If you know these values to be erroneous, '
+                           'this might due to a transaction occurring more than 14 days ago.'
+                           'Please ask a Bank Guardian to help adjust these values.')
         
         await ctx.send(f"{ctx.author.mention}'s Balance",
                        embed=resources.create_embed(),
                        allowed_mentions=discord.AllowedMentions.none())
 
+    @bank.command()
+    async def adjust(self, ctx: commands.Context, member: discord.Member):
+        nation_id = await self.nations[ctx.author.id].get(None)
+        if nation_id is None:
+            await ctx.send("This member's nation id is not set!")
+            return
+        
+        res_select_view = financeutils.ResourceSelectView()
+        await ctx.send('What resources would you like to adjust?', view=res_select_view)
+        for res in await res_select_view.result():
+            pass
+        resources = await self.balances[nation_id].get(None)
+        if resources is None:
+            pass
+        
+        
 
 
 def setup(bot: discordutils.DBBot):

@@ -36,7 +36,7 @@ class RequestChoice(discord.ui.Button['RequestChoices']):
         self.style = discord.ButtonStyle.success
         for child in self.view.children:
             if self.label != 'Accepted' or child.label != 'Sent':
-                # If self.label == Accepted and child.label is Sent, dont disable
+                # If self.label == Accepted and child.label ==. Sent, dont disable
                 child.disabled = True
         if self.label != 'Accepted':
             self.view.stop()
@@ -71,15 +71,22 @@ class ResourceSelector(discord.ui.Select['ResourceSelectView']):
                          options=options)
 
     async def callback(self, interaction: discord.Interaction):
+        if self.view.user_id is not None and interaction.user.id != self.view.user_id:
+            await interaction.send('You are not the intended recipent of this component, '
+                                   f'{interaction.user.mention}',
+                                   allowed_mentions=discord.AllowedMentions.none())
+            return 
         self.view.set_result(self.values)
+        self.disabled = True
+        await interaction.response.edit_message(view=self.view)
 
 
 
 class ResourceSelectView(discord.ui.View):
-    def __init__(self, timeout: float):
+    def __init__(self, timeout: float, user_id: Optional[int] = None):
         super().__init__(timeout=timeout)
         self._fut = asyncio.get_event_loop().create_future()
-        self.add_item(ResourceSelector())
+        self.add_item(ResourceSelector(user_id))
 
     def set_result(self, r: list[str]) -> None:
         self._fut.set_result(r)

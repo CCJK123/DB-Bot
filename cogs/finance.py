@@ -533,6 +533,7 @@ class FinanceCog(discordutils.CogBase):
                 f'[Link]({req_data.resources.create_link("w", recipient=req_data.nation_name, note=req_data.note)})'
             )
             process_view = RequestChoices(self.on_processed, req_data)
+            self.bot.add_view(process_view)
             await (await self.channel.get()).send(
                 f'New Request from {auth.mention}',
                 embed=embed,

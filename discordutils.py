@@ -8,7 +8,7 @@ import operator
 import sys
 import traceback
 import os   # For env variables
-from typing import Any, Awaitable, Callable, Generic, Mapping, TypeVar, Union
+from typing import Any, Awaitable, Callable, Generic, Mapping, Optional, TypeVar, Union
 
 import discord
 from discord.ext import commands, tasks
@@ -58,7 +58,7 @@ class DBBot(commands.Bot):
             self.prepped = True
             await self.prep()
 
-        self.add_view(RequestChoices(None, None))
+        
         self.change_status.start()
         self.on_ready_func()
     
@@ -82,12 +82,17 @@ class Config:
 
 # Setup buttons for user to make choices
 class Choice(discord.ui.Button['Choices']):
-    def __init__(self, label: str):
+    def __init__(self, label: str, user_id: Optional[int]):
         super().__init__()
         self.label = label
 
 
     async def callback(self, interaction: discord.Interaction) -> None:
+        if self.view.user_id is not None and self.view.user_id != interaction.user.id:
+            await interaction.send('You are not the intended recipent of this component, '
+                                   f'{interaction.user.mention}',
+                                   allowed_mentions=discord.AllowedMentions.none())
+            return
         self.view.set_result(self.label)
         self.style = discord.ButtonStyle.success
         for child in self.view.children:
@@ -99,7 +104,7 @@ class Choice(discord.ui.Button['Choices']):
 
 
 class Choices(discord.ui.View):
-    def __init__(self, *choices: str):
+    def __init__(self, *choices: str, user_id: Optional[int]):
         super().__init__()
         self._fut = asyncio.get_event_loop().create_future()
         for c in choices:

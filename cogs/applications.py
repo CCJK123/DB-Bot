@@ -66,11 +66,9 @@ class ApplicationCog(discordutils.CogBase):
                 await ctx.send('You took too long to respond! Aborting...')
                 return
         
-        await ctx.send(
-            '''
-            Thank you for answering our questions. An interviewer will be reviewing your answers and will get back to you as soon as possible. Note that due to timezone differences it may take a while before someone is available to process your application. They will respond to your queries and may ask follow up questions.
-            '''
-        )
+        await ctx.send('Thank you for answering our questions. An interviewer will be reviewing your answers'
+                       'and will get back to you as soon as possible (1 - 4 hours). '
+                       'They will respond to your queries and may ask follow up questions.')
 
 
 
