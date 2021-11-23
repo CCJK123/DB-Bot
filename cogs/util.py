@@ -2,6 +2,7 @@ import aiohttp
 from collections import defaultdict
 import operator
 
+import discord
 from discord.ext import commands
 
 import pnwutils
@@ -12,13 +13,14 @@ import discordutils
 class UtilCog(discordutils.CogBase):
     def __init__(self, bot: discordutils.DBBot):
         super().__init__(bot, __name__)
-        self.nations = discordutils.MappingProperty[int, str](self, 'nations')
-        if await self.nations.get(None) is None:
-            await self.nations.set({})
+        self.nations = discordutils.MappingProperty(self, 'nations')
+
 
 
     @commands.command()
-    async def set_nation(self, ctx: commands.Context, nation_id: str):
+    async def set_nation(self, ctx: commands.Context, nation_id: str = ''):
+        if await self.nations.get(None) is None:
+            await self.nations.set({})
         if nation_id == '':
             if '/' in ctx.author.display_name:
                 try:
@@ -43,12 +45,19 @@ class UtilCog(discordutils.CogBase):
             await ctx.send("That isn't a number!")
             return
         
-        nation_confirm_choice = discordutils.Choices('Yes', 'No')
+        nation_confirm_choice = discordutils.Choices('Yes', 'No', user_id=ctx.author.id)
         await ctx.send(f'Is this your nation? ' + pnwutils.Link.nation(nation_id), view=nation_confirm_choice)
         if await nation_confirm_choice.result() == 'Yes':
             await self.nations[ctx.author.id].set(nation_id)
             await ctx.send('You have been registered to our database!')
 
+    @commands.command()
+    async def list_registered(self, ctx: commands.Context):
+        m = '\n'.join(f'<@{disc_id}> - {pnwutils.Link.nation(nation_id)}' 
+            for disc_id, nation_id in (await self.nations.get()).items())
+        await ctx.send(m if m else 'There are no registrations!',
+             allowed_mentions=discord.AllowedMentions.none())
+            
 
     @commands.command()
     async def check_ran_out(self, ctx: commands.Context):

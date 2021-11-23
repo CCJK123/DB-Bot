@@ -38,7 +38,7 @@ class DBBot(commands.Bot):
 
     
     async def cleanup(self):
-        await self.session.__aexit__()
+        await self.session.__aexit__(None, None, None)
         await self.db.__aexit__()
     
     
@@ -82,7 +82,7 @@ class Config:
 
 # Setup buttons for user to make choices
 class Choice(discord.ui.Button['Choices']):
-    def __init__(self, label: str, user_id: Optional[int]):
+    def __init__(self, label: str):
         super().__init__()
         self.label = label
 
@@ -104,8 +104,9 @@ class Choice(discord.ui.Button['Choices']):
 
 
 class Choices(discord.ui.View):
-    def __init__(self, *choices: str, user_id: Optional[int]):
+    def __init__(self, *choices: str, user_id: Optional[int] = None):
         super().__init__()
+        self.user_id = user_id
         self._fut = asyncio.get_event_loop().create_future()
         for c in choices:
             self.add_item(Choice(c))
@@ -225,11 +226,11 @@ class MappingPropertyItem(Generic[T, T1]):
 
 
         async def set(self, value: T):
-            self.mapping.transform(self.get_set_func(self.key, value))
+            await self.mapping.transform(self.get_set_func(self.key, value))
 
 
 
-class MappingProperty(Generic[T, T1], SavedProperty[dict[T, T1]]):
+class MappingProperty(SavedProperty):
     def __getitem__(self, key: T) -> MappingPropertyItem[T, T1]:
         return MappingPropertyItem[T, T1](self, key)
 

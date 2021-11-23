@@ -36,7 +36,7 @@ class FinanceCog(discordutils.CogBase):
     async def request(self, ctx: commands.Context) -> None:
         ## Command Run Validity Check
         # Check if output channel has been set
-        if await self.channel.get() is None:
+        if await self.channel.get(None) is None:
             await ctx.send('Output channel has not been set! Aborting.')
             return None
         

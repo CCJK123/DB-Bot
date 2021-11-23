@@ -12,9 +12,8 @@ import financeutils
 class BankCog(discordutils.CogBase):
     def __init__(self, bot: discordutils.DBBot):
         super().__init__(bot, __name__)
-        self.balances = discordutils.MappingProperty[str, pnwutils.Resources](self, 'balances')
-        if await self.nations.get(None) is None:
-            await self.nations.set({})
+        self.balances = discordutils.MappingProperty(self, 'balances')
+        
     
 
     @property
@@ -29,6 +28,8 @@ class BankCog(discordutils.CogBase):
 
     @bank.command(aliases=('bal',))
     async def balance(self, ctx: commands.Context):
+        if await self.nations.get(None) is None:
+            await self.nations.set({})
         nation_id = await self.nations[ctx.author.id].get(None)
         if nation_id is None:
             await ctx.send('Your nation id is not set!')
@@ -55,10 +56,11 @@ class BankCog(discordutils.CogBase):
             await ctx.send("This member's nation id is not set!")
             return
         
-        res_select_view = financeutils.ResourceSelectView()
+        res_select_view = financeutils.ResourceSelectView(ctx.author.id)
         await ctx.send('What resources would you like to adjust?', view=res_select_view)
         for res in await res_select_view.result():
-            pass
+            await ctx.send(f'How much would you like to adjust {res} by?')
+            
         resources = await self.balances[nation_id].get(None)
         if resources is None:
             pass

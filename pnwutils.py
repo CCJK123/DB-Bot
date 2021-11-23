@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, Final, Iterable, Literal, Optional, Union, Generator
+from typing import Any, Final, Iterable, Literal, Optional, TypeVar, Union, Generator
 import aiohttp
 from dataclasses import dataclass
 from itertools import chain
+import operator
 import os   # For env variables
 
 import discord
@@ -33,7 +34,7 @@ class Constants:
 
 
 class APIError(Exception):
-    pass
+    """Error raised when an exception occurs when trying to call the API."""
 
 
 
@@ -77,10 +78,17 @@ class API:
         
         return data
 
+C = TypeVar('C', bound=type)
+def create_operations(cls: C) -> C:
+    cls.__add__ = cls.operation(operator.add)
+    cls.__sub__ = cls.operation(operator.sub)
+    return cls
+        
 
 
 # Setup resource types and relevant methods
 @dataclass
+@create_operations
 class Resources:
     money: int = 0
     food: int = 0
@@ -95,13 +103,21 @@ class Resources:
     steel: int = 0
     aluminum: int = 0
 
+    def resources(self) -> dict[str, int]:
+        return {
+            res_name: self.__getattribute__(res_name) 
+            for res_name in Constants.all_res
+            }
+
+
     
     # Output all resources with values associated
-    def nonzero_resources(self) -> Generator[tuple[str, int], None, None]:
-        for res_name in Constants.all_res:
-            res_amt = self.__getattribute__(res_name)
-            if res_amt != 0:
-                yield res_name, res_amt
+    def nonzero_resources(self) -> dict[str, int]:
+        return {
+            res_name: self.__getattribute__(res_name) 
+            for res_name in Constants.all_res
+            if (res_amount := self.__getattribute__(res_name))
+            }
 
 
     # Create withdrawal / deposit link
@@ -120,7 +136,7 @@ class Resources:
 
         # Add parameters to withdrawal / deposit url
         link = f'{Constants.base_url}alliance/id={Config.aa_id}&display=bank'
-        for res_name, res_amt in self.nonzero_resources():
+        for res_name, res_amt in self.nonzero_resources().items():
             link += f'&{kind}_{res_name}={res_amt}'
         if note is not None:
             link += f'&{kind}_note={note.replace(" ", "%20")}'
@@ -134,7 +150,7 @@ class Resources:
 
     def create_embed(self, **kwargs: str) -> discord.Embed:
         embed = discord.Embed(**kwargs)
-        for n, a in self.nonzero_resources():
+        for n, a in self.nonzero_resources().items():
             embed.add_field(name=n, value=a)
         return embed
 
@@ -150,6 +166,23 @@ class Resources:
         except StopIteration:
             return False
         return True
+    
+    @staticmethod
+    def operation(func: Callable[[int, int], int]
+            ) -> Callable[[Resources, Resources], Resources]:
+        def f(s: Resources, o: Resources):
+            r = Resources()
+            for name in Constants.all_res:
+                r[name] = func(s[name], o[name])
+            
+            return r
+        return f
+    
+    def __getitem__(self, key) -> int:
+        try:
+            return self.__getattribute__(key)
+        except AttributeError as ex:
+            raise IndexError from ex
 
 
 
