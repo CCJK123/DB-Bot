@@ -15,10 +15,7 @@ import discordutils
 import pnwutils
 from financeutils import RequestData, RequestChoices, ResourceSelectView
 
-
-
 logger = logging.getLogger(__name__)
-
 
 
 # Create Finance Cog to group finance related commands
@@ -29,153 +26,107 @@ class FinanceCog(discordutils.CogBase):
         self.infra_rebuild_cap = discordutils.SavedProperty[int](self, 'infra_rebuild_cap')
         self.channel = discordutils.ChannelProperty(self, 'channel')
 
+    @property
+    def nations(self):
+        return self.bot.get_cog('UtilCog').nations
 
     # Main request command
-    @commands.group(invoke_without_command=True, aliases=('req', ))
+    @commands.group(invoke_without_command=True, aliases=('req',))
     @commands.max_concurrency(1, commands.BucketType.user)
     async def request(self, ctx: commands.Context) -> None:
-        ## Command Run Validity Check
+        # Command Run Validity Check
         # Check if output channel has been set
         if await self.channel.get(None) is None:
             await ctx.send('Output channel has not been set! Aborting.')
             return None
-        
+
         if ctx.guild is not None:
             await ctx.send('Please check your DMs!')
-        
+
         auth = ctx.author
         await auth.send(
             'Welcome to the DB Finance Request Interface. '
-            'Enter your nation id to continue.'
+            # 'Enter your nation id to continue.'
         )
 
         # Check that reply was sent from same author in DMs
         def msg_chk(m: discord.Message) -> bool:
             return m.author == auth and m.guild is None
 
-        ## Get Nation ID
-        async with aiohttp.ClientSession() as session:
-            while True:
-                try:
-                    # Wait for user to input nation id
-                    nation_id: str = (await self.bot.wait_for(
-                        'message',
-                        check=msg_chk,
-                        timeout=discordutils.Config.timeout)).content
+        nation_id = await self.nations[ctx.author.id].get(None)
+        if nation_id is None:
+            await ctx.send('Your nation id has not been set!')
+            return
 
-                except asyncio.TimeoutError:
-                    # Exit if user takes too long
-                    await auth.send(
-                        'You took too long to reply. Aborting request!')
-                    return None
+        nation_query_str = '''
+        query nation_info($nation_id: [Int]) {
+            nations(id: $nation_id, first: 1) {
+                data {
+                    # Display Request
+                    nation_name
+                    
+                    # Alliance Check
+                    alliance_id
+                    
+                    # City Grants, Project Grants & War Aid
+                    num_cities
+                    
+                    # City Grants & Project Grants 
+                    city_planning
+                    adv_city_planning
+                    
+                    # Project Grants
+                    cia
+                    propb
 
-                if nation_id.lower() == 'exit':
-                    # Exit if user wants to exit
-                    await auth.send('Exiting DB FRI.')
-                    return None
-
-                # Extract nation id if users input nation url instead of nation id
-                if (pnwutils.Constants.base_url + "nation/id=") in nation_id:
-                    nation_id = nation_id.replace(
-                        pnwutils.Constants.base_url + "nation/id=", "")
-                # nation_id_msg = nation_id_msg.removeprefix(pnwutils.Constants.base_url + 'nation/id=')
-                # ^ Only works for Python 3.9+
-
-                # Test validity of nation id
-                try:
-                    int(nation_id)
-                except ValueError:
-                    await auth.send(
-                        "That isn't a number! Please enter your nation id.")
-                    continue
-
-                # Define fields about the nation to query
-                nation_query_str = '''
-                query nation_info($nation_id: [Int]) {
-                    nations(id: $nation_id, first: 1) {
-                        data {
-                            # Display Request
-                            nation_name
-                            
-                            # Alliance Check
-                            alliance_id
-                            
-                            # City Grants, Project Grants & War Aid
-                            num_cities
-                            
-                            # City Grants & Project Grants 
-                            city_planning
-                            adv_city_planning
-                            
-                            # Project Grants
-                            cia
-                            propb
-
-                            # Project Grants & War Aid
-                            cfce
-                        
-                            # War Aid
-                            soldiers
-                            tanks
-                            aircraft
-                            ships
-                            beigeturns
-                            offensive_wars {
-                                __typename
-                            }
-                            defensive_wars {
-                                __typename
-                            }
-                            cities {
-                                barracks
-                                factory
-                                airforcebase
-                                drydock
-                                name
-                                infrastructure
-                            }
-                            adv_engineering_corps
-                        }
+                    # Project Grants & War Aid
+                    cfce
+                
+                    # War Aid
+                    soldiers
+                    tanks
+                    aircraft
+                    ships
+                    beigeturns
+                    offensive_wars {
+                        __typename
                     }
+                    defensive_wars {
+                        __typename
+                    }
+                    cities {
+                        barracks
+                        factory
+                        airforcebase
+                        drydock
+                        name
+                        infrastructure
+                    }
+                    adv_engineering_corps
                 }
-                '''
+            }
+        }
+        '''
+        async with aiohttp.ClientSession() as session:
+            # Fetch nation info
+            data = await pnwutils.API.post_query(session, nation_query_str,
+                                                 {'nation_id': nation_id},
+                                                 'nations')
+            data = data['data']
+            if data:
+                # Data contains a nation, hence nation with given id exists
+                data = data.pop()
+                nation_link = pnwutils.Link.nation(nation_id)
 
-                # Fetch nation info
-                data = await pnwutils.API.post_query(session, nation_query_str,
-                                                     {'nation_id': nation_id},
-                                                     'nations')
-                data = data['data']
-                if data:
-                    # Data contains a nation, hence nation with given id exists
-                    data = data.pop()
-                    nation_link = pnwutils.Link.nation(nation_id)
-                    if data['alliance_id'] == pnwutils.Config.aa_id:
-                        nation_confirm_choice = discordutils.Choices(
-                            'Yes', 'No')
-                        await auth.send(f'Is this your nation? ' + nation_link,
-                                        view=nation_confirm_choice)
-                        try:
-                            if await nation_confirm_choice.result() == 'Yes':
-                                break
-                            else:
-                                await auth.send('Please enter your nation id!')
-                                continue
-                        except asyncio.TimeoutError:
-                            await auth.send('You took too long to respond! Exiting...')
-                            return
-                    else:
-                        await auth.send(
-                            f"{nation_link} isn't in {pnwutils.Config.aa_name}!"
-                            " Please enter your nation id.")
-                        continue
-                else:
-                    # Data has no nation, hence no nation with given id exists
-                    await auth.send(
-                        "That isn't a valid nation id! Please enter your nation id."
-                    )
-                    continue
+            else:
+                # Data has no nation, hence no nation with given id exists
+                await auth.send(
+                    "You do not have a valid nation id set!"
+                    'Please set your nation id again.'
+                )
+                return
 
-        ## Get Request Type
+        # Get Request Type
         req_types = ['Grant', 'Loan']
         if await self.has_war_aid.get():
             req_types.append('War Aid')
@@ -187,8 +138,8 @@ class FinanceCog(discordutils.CogBase):
         except asyncio.TimeoutError:
             await auth.send('You took too long to respond! Exiting...')
             return
-        
-        ## Redirect Accordingly
+
+        # Redirect Accordingly
         if req_type == 'Grant':
             grant_type_choice = discordutils.Choices('City', 'Project',
                                                      'Other')
@@ -199,18 +150,18 @@ class FinanceCog(discordutils.CogBase):
             except asyncio.TimeoutError:
                 await auth.send('You took too long to respond! Exiting...')
                 return
-            
+
             if grant_type == 'City':
                 # Get data of projects which affect city cost
                 has_up = data['city_planning']
                 has_aup = data['adv_city_planning']
                 # Calculate city cost
                 req_res = pnwutils.Resources(
-                    money=(50000 * (data['num_cities'] - 1)**3 +
+                    money=(50000 * (data['num_cities'] - 1) ** 3 +
                            150000 * data['num_cities'] + 75000 -
                            50000000 * has_up - 100000000 * has_aup) // 20 * 19)
                 # Create embed
-                project_string = 'Urban Planning' * has_up + ' and ' * (has_up and has_aup) +\
+                project_string = 'Urban Planning' * has_up + ' and ' * (has_up and has_aup) + \
                                  'Advanced Urban Planning' * has_aup + 'None' * (not has_up and not has_aup)
                 await self.on_request_fixed(
                     RequestData(auth, req_type, f'City {data["num_cities"] + 1}',
@@ -241,7 +192,7 @@ class FinanceCog(discordutils.CogBase):
                 }
                 data['other'] = None
                 # Check if they already have project
-                if data[project_field_name[project]] == True:
+                if data[project_field_name[project]]:
                     await auth.send(
                         f'You already have the {project} project. Please try again with a different project.'
                     )
@@ -261,7 +212,8 @@ class FinanceCog(discordutils.CogBase):
                 elif project == 'Urban Planning':
                     if data['num_cities'] < 11:
                         await auth.send(
-                            f'The Urban Planning project requires 11 cities to build, however you only have {data["num_cities"]} cities. Please try again next time.'
+                            'The Urban Planning project requires 11 cities to build, however you only have '
+                            f'{data["num_cities"]} cities. Please try again next time.'
                         )
                         return None
                     else:
@@ -272,14 +224,16 @@ class FinanceCog(discordutils.CogBase):
                                                      gasoline=10000,
                                                      food=1000000)
                 elif project == 'Advanced Urban Planning':
-                    if data['city_planning'] == False:
+                    if not data['city_planning']:
                         await auth.send(
-                            'You have not built the Urban Planning project, which is needed to build the Advanced Urban Planning project. Please try again next time.'
+                            'You have not built the Urban Planning project, which is needed to build the Advanced '
+                            'Urban Planning project. Please try again next time.'
                         )
                         return None
                     elif data['num_cities'] < 16:
                         await auth.send(
-                            f'The Advanced Urban Planning project requires 16 cities to build, however you only have {data["num_cities"]} cities. Please try again next time.'
+                            'The Advanced Urban Planning project requires 16 cities to build, however you only have '
+                            f'{data["num_cities"]} cities. Please try again next time.'
                         )
                         return None
                     else:
@@ -350,7 +304,7 @@ class FinanceCog(discordutils.CogBase):
             if not req_res:
                 # No resources requested
                 await auth.send(
-                    'You didn\'t request for any resources. Please run the command again and redo your request.'
+                    "You didn't request for any resources. Please run the command again and redo your request."
                 )
                 return None
             else:
@@ -374,9 +328,9 @@ class FinanceCog(discordutils.CogBase):
                 return
             additional_info = {
                 'Beige Turns':
-                data['beigeturns'],
+                    data['beigeturns'],
                 'Active Wars':
-                f'''
+                    f'''
                     Offensive: {len(data["offensive_wars"])}
                     Defensive: {len(data["defensive_wars"])}
                 '''
@@ -386,23 +340,21 @@ class FinanceCog(discordutils.CogBase):
                 # Calculate amount of military units needed
                 needed_units = {
                     # Capacity per improvement * max improvements * city count - existing units
-                    'soldiers':
-                    3000 * 5 * data['num_cities'] - data['soldiers'],
+                    'soldiers': 3000 * 5 * data['num_cities'] - data['soldiers'],
                     'tanks': 250 * 5 * data['num_cities'] - data['tanks'],
                     'aircraft': 15 * 5 * data['num_cities'] - data['aircraft'],
                     'ships': 5 * 3 * data['num_cities'] - data['ships']
                 }
                 await auth.send(
-                    f'To get to max military units, you will need an additional {needed_units["soldiers"]} soldiers, {needed_units["tanks"]} tanks, {needed_units["aircraft"]} aircraft and {needed_units["ships"]} ships.'
+                    f'To get to max military units, you will need an additional {needed_units["soldiers"]} soldiers, '
+                    f'{needed_units["tanks"]} tanks, {needed_units["aircraft"]} aircraft and '
+                    f'{needed_units["ships"]} ships.'
                 )
                 # Calculate resources needed to buy needed military units
                 req_res = pnwutils.Resources(
-                    money=5 * needed_units['soldiers'] +
-                    60 * needed_units['tanks'] +
-                    4000 * needed_units['aircraft'] +
-                    50000 * needed_units['ships'],
-                    steel=int(0.5 * (needed_units['tanks']) + 1) +
-                    30 * needed_units['ships'],
+                    money=5 * needed_units['soldiers'] + 60 * needed_units['tanks'] + 4000 * needed_units['aircraft']
+                          + 50000 * needed_units['ships'],
+                    steel=int(0.5 * (needed_units['tanks']) + 1) + 30 * needed_units['ships'],
                     aluminum=5 * needed_units['aircraft']
                 )
                 aid_req = 'Buy up to Max Military Units'
@@ -427,17 +379,17 @@ class FinanceCog(discordutils.CogBase):
                         needed_improvements[improvement] -= city[improvement]
 
                 await auth.send(
-                    f'To get to max military improvements, you will need an additional {needed_improvements["barracks"]} barracks, {needed_improvements["factory"]} factories, {needed_improvements["airforcebase"]} hangars and {needed_improvements["drydock"]} drydocks.'
+                    f'To get to max military improvements, you require an additional {needed_improvements["barracks"]} '
+                    f'barracks, {needed_improvements["factory"]} factories, {needed_improvements["airforcebase"]} '
+                    f'hangars and {needed_improvements["drydock"]} drydocks.'
                 )
                 # Calculate resources needed to buy needed military improvements
                 req_res = pnwutils.Resources(
-                    money=3000 * needed_improvements['barracks'] +
-                    15000 * needed_improvements['factory'] +
-                    100000 * needed_improvements['airforcebase'] +
-                    250000 * needed_improvements['drydock'],
+                    money=3000 * needed_improvements['barracks'] + 15000 * needed_improvements['factory'] +
+                          100000 * needed_improvements['airforcebase'] + 250000 * needed_improvements['drydock'],
                     steel=10 * needed_improvements['airforcebase'],
                     aluminum=5 * needed_improvements['factory'] +
-                    20 * needed_improvements['drydock'])
+                             20 * needed_improvements['drydock'])
 
                 aid_req = 'Rebuild to Max Military Improvements'
                 await self.on_request_fixed(
@@ -452,8 +404,8 @@ class FinanceCog(discordutils.CogBase):
                 irc = await self.infra_rebuild_cap.get()
                 await auth.send(
                     f'The current infrastructure rebuild cap is set at {irc}. '
-                    f'This means that money will only be provided to rebuild infrastructure below {irc} up to that amount. '
-                    'The amount calculated assumes that domestic policy is set to Urbanisation.'
+                    f'This means that money will only be provided to rebuild infrastructure below {irc} up to that'
+                    'amount. The amount calculated assumes that domestic policy is set to Urbanisation.'
                 )
                 # Calculate infra cost for each city
                 req_res = pnwutils.Resources()
@@ -469,7 +421,7 @@ class FinanceCog(discordutils.CogBase):
                 req_res.money *= 0.95 - 0.05 * (data['cfce'] +
                                                 data['adv_engineering_corps'])
                 req_res.money = int(req_res.money + 0.5)
-                # Check if infrastucture in any city under cap
+                # Check if infrastructure in any city under cap
                 if req_res.money == 0:
                     await auth.send(
                         'Since all your cities have an infrastructure level above '
@@ -477,7 +429,7 @@ class FinanceCog(discordutils.CogBase):
                         'not eligible for war aid to rebuild infrastructure.'
                     )
                     return None
-                
+
                 aid_req = f'Rebuild Infrastructure up to {irc}'
                 await self.on_request_fixed(
                     RequestData(
@@ -487,13 +439,12 @@ class FinanceCog(discordutils.CogBase):
                         additional_info))
                 return None
 
-
     async def on_request_fixed(self, req_data: RequestData) -> None:
         auth = req_data.requester
         agree_terms = discordutils.Choices('Yes', 'No')
         await auth.send(
-            'Do you agree to return the money and/or resources in a timely manner in the event that you leave the alliance / get kicked from the alliance for inactivity or other reasons?',
-            view=agree_terms)
+            'Do you agree to return the money and/or resources in a timely manner in the event that you leave the '
+            'alliance / get kicked from the alliance for inactivity or other reasons?', view=agree_terms)
         try:
             if await agree_terms.result() == 'No':
                 await auth.send('Exiting the DB Finance Request Interface.')
@@ -501,11 +452,11 @@ class FinanceCog(discordutils.CogBase):
         except asyncio.TimeoutError:
             auth.send('You took too long to respond! Exiting...')
             return
-        
+
         embed = discordutils.construct_embed(
             {
                 'Nation':
-                f'[{req_data.nation_name}]({req_data.nation_link})',
+                    f'[{req_data.nation_name}]({req_data.nation_link})',
                 'Request Type': req_data.kind,
                 'Requested': req_data.reason,
                 'Requested Resources': req_data.resources,
@@ -529,8 +480,7 @@ class FinanceCog(discordutils.CogBase):
             embed.title = None
             embed.add_field(
                 name='Withdrawal Link',
-                value=
-                f'[Link]({req_data.resources.create_link("w", recipient=req_data.nation_name, note=req_data.note)})'
+                value=f'[Link]({req_data.resources.create_link("w", req_data.nation_name, req_data.note)}) '
             )
             process_view = RequestChoices(self.on_processed, req_data)
             self.bot.add_view(process_view)
@@ -540,12 +490,11 @@ class FinanceCog(discordutils.CogBase):
                 allowed_mentions=discord.AllowedMentions.none(),
                 view=process_view)
 
-            return None
-        
+            return
+
         await auth.send(
             'Exiting the DB Finance Request Interface. Please run the command again and redo your request.'
         )
-
 
     async def on_processed(self, status: Literal['Accepted', 'Rejected',
                                                  'Sent'],
@@ -554,13 +503,15 @@ class FinanceCog(discordutils.CogBase):
         logger.info(f'processing {status} request: {req_data}')
         if status == 'Accepted':
             await req_data.requester.send(
-                f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} has been accepted! The resources will be sent to you soon.'
+                f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} '
+                'has been accepted! The resources will be sent to you soon. '
             )
-            #db['active_reqs'].remove(message)
+            # db['active_reqs'].remove(message)
 
         elif status == 'Rejected':
             await user.send(
-                f'What was the reason for rejecting the {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason}?'
+                f'What was the reason for rejecting the {req_data.kind} request '
+                f'{"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason}?'
             )
 
             def msg_chk(m: discord.Message) -> bool:
@@ -574,19 +525,22 @@ class FinanceCog(discordutils.CogBase):
                 await user.send('You took too long to respond! Default rejection reason set.')
                 reject_reason = 'not given'
             await req_data.requester.send(
-                f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} has been rejected!\n'
-                f'Reason: {reject_reason}')
+                f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} '
+                f'has been rejected!\nReason: {reject_reason}')
             await message.edit(embed=message.embeds.pop().add_field(
                 name='Rejection Reason', value=reject_reason, inline=True))
 
         if status == 'Sent':
             await req_data.requester.send(
-                f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} has been sent to your nation!'
+                f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} '
+                'has been sent to your nation!'
             )
             if req_data.kind == 'Loan':
-                await req_data.requester.send(f'Kindly remember to return the requested resources <t:{round(time() + 30*24*60*60)}:R>. Once you have done so, ping and inform the Finance staff in #finance-and-audits.')
+                await req_data.requester.send(
+                    f'Kindly remember to return the requested resources <t:{round(time() + 30 * 24 * 60 * 60)}:R>. '
+                    'Once you have done so, ping and inform the Finance staff in #finance-and-audits.')
                 await message.edit(embed=message.embeds.pop().add_field(
-                name='Return Date', value=(date.today() + timedelta(days=30)).strftime('%d %b, %Y'), inline=True))
+                    name='Return Date', value=(date.today() + timedelta(days=30)).strftime('%d %b, %Y'), inline=True))
 
         await message.edit(
             f'{status if status != "Sent" else "Accepted and Sent"} Request from {req_data.requester.mention}',
@@ -600,7 +554,6 @@ class FinanceCog(discordutils.CogBase):
             return None
         await discordutils.default_error_handler(ctx, error)
 
-
     @commands.guild_only()
     @commands.check(discordutils.gov_check)
     @request.group(invoke_without_command=True)
@@ -608,10 +561,9 @@ class FinanceCog(discordutils.CogBase):
         await ctx.send('Subcommands: `channel`, `war_aid`, `infra_rebuild_cap`'
                        )
 
-
     @commands.guild_only()
     @commands.check(discordutils.gov_check)
-    @set.command(aliases=('channel', ))
+    @set.command(aliases=('channel',))
     async def chan(self, ctx: commands.Context) -> None:
         await self.channel.set(ctx.channel)
         await ctx.send(
@@ -619,7 +571,7 @@ class FinanceCog(discordutils.CogBase):
 
     @commands.guild_only()
     @commands.check(discordutils.gov_check)
-    @set.command(aliases=('aid', ))
+    @set.command(aliases=('aid',))
     async def war_aid(self, ctx: commands.Context) -> None:
         await self.has_war_aid.transform(operator.not_)
         await ctx.send(
@@ -629,11 +581,10 @@ class FinanceCog(discordutils.CogBase):
     @commands.check(discordutils.gov_check)
     @set.command(aliases=('infra_cap', 'cap'))
     async def infra_rebuild_cap(self, ctx: commands.Context, cap: int) -> None:
-        await self.infra_rebuild_cap.set(max(0, 50 * round(cap/50)))
+        await self.infra_rebuild_cap.set(max(0, 50 * round(cap / 50)))
         await ctx.send(
             f'The infrastructure rebuild cap has been set to {await self.infra_rebuild_cap.get()}.'
         )
-
 
     @infra_rebuild_cap.error
     async def infra_cap_set_error(self, ctx: commands.Context,
@@ -647,7 +598,6 @@ class FinanceCog(discordutils.CogBase):
             await ctx.send('Please provide a whole number to set the cap to!')
             return
         await discordutils.default_error_handler(ctx, error)
-
 
 
 # Setup Finance Cog as an extension

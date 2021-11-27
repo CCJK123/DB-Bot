@@ -103,9 +103,9 @@ class Resources:
     steel: int = 0
     aluminum: int = 0
 
-    def resources(self) -> dict[str, int]:
+    def to_dict(self) -> dict[str, int]:
         return {
-            res_name: self.__getattribute__(res_name) 
+            res_name: self[res_name] 
             for res_name in Constants.all_res
             }
 
@@ -114,9 +114,9 @@ class Resources:
     # Output all resources with values associated
     def nonzero_resources(self) -> dict[str, int]:
         return {
-            res_name: self.__getattribute__(res_name) 
+            res_name: res_amount
             for res_name in Constants.all_res
-            if (res_amount := self.__getattribute__(res_name))
+            if (res_amount := self[res_name])
             }
 
 
@@ -161,11 +161,7 @@ class Resources:
 
 
     def __bool__(self) -> bool:
-        try:
-            next(self.not_none_res())
-        except StopIteration:
-            return False
-        return True
+        return bool(self.nonzero_resources())
     
     @staticmethod
     def operation(func: Callable[[int, int], int]

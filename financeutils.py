@@ -8,10 +8,7 @@ import discord
 
 import pnwutils
 
-
-
 __all__ = ('RequestData', 'RequestChoices', 'ResourceSelectView')
-
 
 
 @dataclass
@@ -24,7 +21,6 @@ class RequestData:
     resources: pnwutils.Resources
     note: str
     additional_info: Optional[dict[str, str]] = field(default_factory=dict)
-
 
 
 class RequestChoice(discord.ui.Button['RequestChoices']):
@@ -45,19 +41,17 @@ class RequestChoice(discord.ui.Button['RequestChoices']):
                                  interaction.message)
 
 
-
 class RequestChoices(discord.ui.View):
     def __init__(self, callback: Callable[[
-        Literal['Accepted', 'Rejected',
-                'Sent'], RequestData, discord.abc.User, discord.Message
-    ], Awaitable[None]], req_data: RequestData):
+                                              Literal['Accepted', 'Rejected',
+                                                      'Sent'], RequestData, discord.abc.User, discord.Message
+                                          ], Awaitable[None]], req_data: RequestData):
         # Callback would be called with 'Accepted', 'Rejected', or 'Sent'
         super().__init__(timeout=None)
         self.data = req_data
         self.callback = callback
         for c in ('Accepted', 'Rejected', 'Sent'):
             self.add_item(RequestChoice(c))
-
 
 
 class ResourceSelector(discord.ui.Select['ResourceSelectView']):
@@ -72,27 +66,27 @@ class ResourceSelector(discord.ui.Select['ResourceSelectView']):
 
     async def callback(self, interaction: discord.Interaction):
         if self.view.user_id is not None and interaction.user.id != self.view.user_id:
-            await interaction.send('You are not the intended recipent of this component, '
+            await interaction.send('You are not the intended recipient of this component, '
                                    f'{interaction.user.mention}',
                                    allowed_mentions=discord.AllowedMentions.none())
-            return 
+            return
         self.view.set_result(self.values)
         self.disabled = True
         await interaction.response.edit_message(view=self.view)
-
 
 
 class ResourceSelectView(discord.ui.View):
     def __init__(self, timeout: float, user_id: Optional[int] = None):
         super().__init__(timeout=timeout)
         self._fut = asyncio.get_event_loop().create_future()
-        self.add_item(ResourceSelector(user_id))
+        self.user_id = user_id
+        self.add_item(ResourceSelector())
 
     def set_result(self, r: list[str]) -> None:
         self._fut.set_result(r)
 
     def result(self) -> Awaitable[list[str]]:
         return self._fut
-    
+
     async def on_timeout(self):
         self._fut.set_exception(asyncio.TimeoutError())
