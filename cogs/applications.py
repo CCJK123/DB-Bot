@@ -8,11 +8,9 @@ from discord.ext import commands
 import discordutils
 
 
-
 class ApplicationCog(discordutils.CogBase):
     def __init__(self, bot: discordutils.DBBot):
         super().__init__(bot, __name__)
-
 
     @commands.command()
     @commands.max_concurrency(1, commands.BucketType.user)
@@ -20,7 +18,7 @@ class ApplicationCog(discordutils.CogBase):
         if not ctx.channel.name.endswith('-application'):
             await ctx.send('This is not an interview channel!')
             return None
-        
+
         def response_check(m: discord.Message) -> bool:
             return m.author == ctx.author and m.channel == ctx.channel
 
@@ -30,13 +28,17 @@ class ApplicationCog(discordutils.CogBase):
             "3. What's your timezone and first language?",
             '4. We as an alliance have high standards for activity. How often will you be able to log in?',
             '5. We believe that security of information is essential to sustainable operation. '
-            'Do you promise not to leak information that will harm the well-being of the Dark Brotherhood or any of its associates?',
-            '6. The Dark Brotherhood offers loans and grants for cities, projects and more, what do you think about paying them back?',
+            'Do you promise not to leak information that will harm the well-being of the Dark Brotherhood '
+            'or any of its associates?',
+            '6. The Dark Brotherhood offers loans and grants for cities, projects and more, '
+            'what do you think about paying them back?',
             '7. How do you feel about being called to defend and fight for your alliance at some point?',
-            '8. How do you feel about potentially having to sacrifice your infrastructure fighting a losing war for the sake of doing the right thing?',
+            '8. How do you feel about potentially having to sacrifice your infrastructure fighting a losing war for '
+            'the sake of doing the right thing?',
             '9. If two superiors of equal rank gave you conflicting orders, what would you do?',
             '10. What skills, knowledge and values can you bring to the alliance?',
-            '11. Would you be interested in working in any of the following areas? (1) Internal Affairs (2) Foreign Affairs (3) Military Affairs (4) Finance. '
+            '11. Would you be interested in working in any of the following areas? '
+            '(1) Internal Affairs (2) Foreign Affairs (3) Military Affairs (4) Finance. '
             'Remember that it is important to help your fellow members.\n\n'
             'Internal Affairs\n'
             '- Enlist and interview people\n'
@@ -65,11 +67,10 @@ class ApplicationCog(discordutils.CogBase):
             except asyncio.TimeoutError:
                 await ctx.send('You took too long to respond! Aborting...')
                 return
-        
+
         await ctx.send('Thank you for answering our questions. An interviewer will be reviewing your answers'
                        'and will get back to you as soon as possible (1 - 4 hours). '
                        'They will respond to your queries and may ask follow up questions.')
-
 
 
 def setup(bot: discordutils.DBBot) -> None:
