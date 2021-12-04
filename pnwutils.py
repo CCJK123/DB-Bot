@@ -1,19 +1,17 @@
 from __future__ import annotations
 
-from typing import Any, Final, Iterable, Literal, Optional, TypeVar, Union, Generator
+import datetime
+import enum
+from typing import Any, Final, Iterable, Literal, Optional, Union
 import aiohttp
 from dataclasses import dataclass
 from itertools import chain
-import operator
-import os   # For env variables
+import os  # For env variables
 
 import discord
 
-
-
 # Setup what is exported by default
 __all__ = ('Config', 'Constants', 'Resources', 'Link')
-
 
 
 # Setup API configuration variables
@@ -23,19 +21,17 @@ class Config:
     aa_name: str = 'Dark Brotherhood'
 
 
-
 # Setup API & P&W constants
 class Constants:
     base_url: Final[str] = 'https://politicsandwar.com/'
     base_api_url: Final[str] = 'https://api.politicsandwar.com/graphql?api_key='
     api_url: Final[str] = base_api_url + Config.api_key
-    all_res: Final[tuple[str, ...]] = ('money', 'food', 'coal', 'oil', 'uranium', 'lead', 'iron', 'bauxite', 'gasoline', 'munitions', 'steel', 'aluminum')
-
+    all_res: Final[tuple[str, ...]] = ('money', 'food', 'coal', 'oil', 'uranium', 'lead', 'iron', 'bauxite',
+                                       'gasoline', 'munitions', 'steel', 'aluminum')
 
 
 class APIError(Exception):
     """Error raised when an exception occurs when trying to call the API."""
-
 
 
 # Setup API
@@ -45,7 +41,6 @@ class API:
     def construct_query(q: str, var: dict[str, Any]) -> dict[str, Union[str, dict[str, Any]]]:
         return {'query': q, 'variables': var}
 
-    
     # Send query to P&W servers and return response
     @classmethod
     async def post_query(cls,
@@ -54,13 +49,14 @@ class API:
                          query_variables: dict[str, Any],
                          query_type: str,
                          check_more: bool = False
-                        ) -> Union[Iterable[dict[str, Any]], dict[str, Any]]:
-        
-        # "alex put a limit of 500 entries returned per call, check_more decides if i should try check if i should be getting the next 500 entries" - chez
+                         ) -> Union[Iterable[dict[str, Any]], dict[str, Any]]:
+
+        # "alex put a limit of 500 entries returned per call, check_more decides if i should try check if i should be
+        # getting the next 500 entries" - chez
         # Set page to first page if more entries than possible in 1 call wanted
         if check_more and query_variables.get('page') is None:
             query_variables['page'] = 1
-        
+
         # Create query and get data
         query = cls.construct_query(query_string, query_variables)
         async with sess.post(Constants.api_url, json=query) as response:
@@ -74,21 +70,13 @@ class API:
             query_variables['page'] += 1
 
             # linter does not realise that in this case, the post_query call will always return Iterable[dict[str, Any]]
-            return chain(data, await cls.post_query(sess, query_string, query_variables, query_type, True))  # type: ignore
-        
-        return data
+            return chain(data, await cls.post_query(sess, query_string, query_variables, query_type, True))
 
-C = TypeVar('C', bound=type)
-def create_operations(cls: C) -> C:
-    cls.__add__ = cls.operation(operator.add)
-    cls.__sub__ = cls.operation(operator.sub)
-    return cls
-        
+        return data
 
 
 # Setup resource types and relevant methods
 @dataclass
-@create_operations
 class Resources:
     money: int = 0
     food: int = 0
@@ -105,29 +93,23 @@ class Resources:
 
     def to_dict(self) -> dict[str, int]:
         return {
-            res_name: self[res_name] 
+            res_name: self[res_name]
             for res_name in Constants.all_res
-            }
+        }
 
-
-    
     # Output all resources with values associated
     def nonzero_resources(self) -> dict[str, int]:
         return {
             res_name: res_amount
             for res_name in Constants.all_res
             if (res_amount := self[res_name])
-            }
-
+        }
 
     # Create withdrawal / deposit link
-    def create_link(self,
-                    kind: Literal['w', 'd', 'wa'],
-                    /, *, 
-                    recipient: Optional[str] = None,
-                    note: Optional[str] = None
+    def create_link(self, kind: Literal['w', 'd', 'wa'], /,
+                    recipient: Optional[str] = None, note: Optional[str] = None
                     ) -> str:
-        
+
         # Check if withdrawing to alliance
         with_aa = False
         if kind == 'wa':
@@ -146,7 +128,6 @@ class Resources:
             # Replace spaces with url encoding for spaces
             link += f'&w_recipient={recipient.replace(" ", "%20")}'
         return link
-    
 
     def create_embed(self, **kwargs: str) -> discord.Embed:
         embed = discord.Embed(**kwargs)
@@ -154,32 +135,86 @@ class Resources:
             embed.add_field(name=n, value=a)
         return embed
 
+    def __getitem__(self, key):
+        if key in Constants.all_res:
+            return getattr(self, key)
+        raise KeyError(f'{key} is not a resource!')
 
-    # Create string returned when Resources object printed
+    def __setitem__(self, key, value):
+        if key in Constants.all_res:
+            setattr(self, key, value)
+        raise KeyError(f'{key} is not a resource!')
+
     def __str__(self) -> str:
-        return '\n'.join(f'{res_name.title()}: {res_amt}' for res_name, res_amt in self.not_none_res())
-
+        return '\n'.join(f'{res_name.title()}: {res_amt}' for res_name, res_amt in self.nonzero_resources().items())
 
     def __bool__(self) -> bool:
-        return bool(self.nonzero_resources())
-    
-    @staticmethod
-    def operation(func: Callable[[int, int], int]
-            ) -> Callable[[Resources, Resources], Resources]:
-        def f(s: Resources, o: Resources):
+        try:
+            next(self.nonzero_resources())
+        except StopIteration:
+            return False
+        return True
+
+    def __add__(self, other):
+        if isinstance(other, Resources):
             r = Resources()
             for name in Constants.all_res:
-                r[name] = func(s[name], o[name])
-            
+                r[name] = self[name] + other[name]
             return r
-        return f
-    
-    def __getitem__(self, key) -> int:
-        try:
-            return self.__getattribute__(key)
-        except AttributeError as ex:
-            raise IndexError from ex
+        return NotImplemented
 
+    def __iadd__(self, other):
+        if isinstance(other, Resources):
+            for name in Constants.all_res:
+                self[name] = self[name] + other[name]
+            return self
+        return NotImplemented
+
+    def __sub__(self, other):
+        if isinstance(other, Resources):
+            r = Resources()
+            for name in Constants.all_res:
+                r[name] = self[name] - other[name]
+            return r
+        return NotImplemented
+
+    def __isub__(self, other):
+        if isinstance(other, Resources):
+            for name in Constants.all_res:
+                self[name] = self[name] - other[name]
+            return self
+        return NotImplemented
+
+
+class TransactionType(enum.Enum):
+    dep = 0
+    rec = 1
+    a_dep = 2
+    a_rec = 3
+
+
+@dataclass
+class Transaction:
+    contents: Resources
+    time: datetime.datetime
+    kind: TransactionType
+    entity_id: str
+
+    @classmethod
+    def from_api_dict(cls, data: dict) -> Transaction:
+        res = Resources(**{k: data[k] for k in data.keys() if k in Constants.all_res})
+        time = datetime.datetime.fromisoformat(data['date'])
+
+        if data['stype'] == 2 and data['sid'] == Config.aa_id:
+            # sender is our alliance
+            kind = TransactionType.rec if data['rtype'] == 1 else TransactionType.a_rec
+            entity_id = data['rid']
+        else:
+            # receiver is our alliance
+            kind = TransactionType.dep if data['stype'] == 1 else TransactionType.a_dep
+            entity_id = data['sid']
+
+        return cls(res, time, kind, entity_id)
 
 
 class Link:
@@ -187,16 +222,13 @@ class Link:
     def nation(nation_id: str) -> str:
         return f'{Constants.base_url}nation/id={nation_id}'
 
-
     @staticmethod
     def alliance(alliance_id: str) -> str:
         return f'{Constants.base_url}alliance/id={alliance_id}'
 
-
     @staticmethod
     def war(war_id: str) -> str:
         return f'{Constants.base_url}nation/war/timeline/war={war_id}'
-
 
 
 def war_range(score: Union[str, float]) -> tuple[float, float]:

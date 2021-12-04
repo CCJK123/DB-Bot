@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import aiohttp
 import asyncio
 import logging
 import operator
@@ -25,6 +24,7 @@ class FinanceCog(discordutils.CogBase):
         self.has_war_aid = discordutils.SavedProperty[bool](self, 'has_war_aid')
         self.infra_rebuild_cap = discordutils.SavedProperty[int](self, 'infra_rebuild_cap')
         self.channel = discordutils.ChannelProperty(self, 'channel')
+        self.loans = discordutils.MappingProperty(self, 'loans')
 
     @property
     def nations(self):
@@ -107,24 +107,20 @@ class FinanceCog(discordutils.CogBase):
             }
         }
         '''
-        async with aiohttp.ClientSession() as session:
-            # Fetch nation info
-            data = await pnwutils.API.post_query(session, nation_query_str,
-                                                 {'nation_id': nation_id},
-                                                 'nations')
-            data = data['data']
-            if data:
-                # Data contains a nation, hence nation with given id exists
-                data = data.pop()
-                nation_link = pnwutils.Link.nation(nation_id)
-
-            else:
-                # Data has no nation, hence no nation with given id exists
-                await auth.send(
-                    "You do not have a valid nation id set!"
-                    'Please set your nation id again.'
-                )
-                return
+        data = await pnwutils.API.post_query(self.bot.session, nation_query_str,
+                                             {'nation_id': nation_id}, 'nations')
+        data = data['data']
+        if data:
+            # Data contains a nation, hence nation with given id exists
+            data = data.pop()
+            nation_link = pnwutils.Link.nation(nation_id)
+        else:
+            # Data has no nation, hence no nation with given id exists
+            await auth.send(
+                "You do not have a valid nation id set!"
+                'Please set your nation id again.'
+            )
+            return
 
         # Get Request Type
         req_types = ['Grant', 'Loan']
@@ -141,8 +137,7 @@ class FinanceCog(discordutils.CogBase):
 
         # Redirect Accordingly
         if req_type == 'Grant':
-            grant_type_choice = discordutils.Choices('City', 'Project',
-                                                     'Other')
+            grant_type_choice = discordutils.Choices('City', 'Project', 'Other')
             await auth.send('What type of grant do you want?',
                             view=grant_type_choice)
             try:
@@ -496,10 +491,8 @@ class FinanceCog(discordutils.CogBase):
             'Exiting the DB Finance Request Interface. Please run the command again and redo your request.'
         )
 
-    async def on_processed(self, status: Literal['Accepted', 'Rejected',
-                                                 'Sent'],
-                           req_data: RequestData, user: discord.abc.User,
-                           message: discord.Message):
+    async def on_processed(self, status: Literal['Accepted', 'Rejected', 'Sent'],
+                           user: discord.abc.User, message: discord.Message, req_data: RequestData) -> None:
         logger.info(f'processing {status} request: {req_data}')
         if status == 'Accepted':
             await req_data.requester.send(

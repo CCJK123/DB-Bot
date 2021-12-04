@@ -3,7 +3,7 @@ from __future__ import annotations
 import aiohttp
 import enum
 import operator
-from typing import Any, Dict
+from typing import Any
 
 from discord.ext import commands, tasks
 import discord

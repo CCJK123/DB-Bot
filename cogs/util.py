@@ -97,6 +97,7 @@ class UtilCog(discordutils.CogBase):
         result = defaultdict(str)
         for nation in data:
             has_food = not nation['food']
+            # check if has 0 ura and if so check if has nuclear power
             has_ura = not nation['uranium'] and any(map(operator.itemgetter('nuclearpower'), nation['cities']))
 
             if has_food:

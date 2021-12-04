@@ -22,6 +22,10 @@ class DebugCog(discordutils.CogBase):
     async def set_key(self, ctx, key, val):
         await self.bot.db.set(key, eval(val))
         await ctx.send(f'{key} set to {eval(val)}')
+    
+    @commands.command()
+    async def cheese(self, ctx: commands.Context):
+        await ctx.send(dir(self))
 
 
 def setup(bot: discordutils.DBBot):
