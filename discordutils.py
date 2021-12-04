@@ -22,7 +22,7 @@ class DBBot(commands.Bot):
     def __init__(self, db_url, on_ready_func: Callable[[], None]):
         super().__init__(command_prefix=os.environ['command_prefix'])
         self.on_ready_func = on_ready_func
-        self.session = aiohttp.ClientSession
+        self.session = aiohttp.ClientSession()
         self.db = AsyncDatabase(db_url)
         self.prepped = False
 
@@ -75,9 +75,9 @@ class Choice(discord.ui.Button['Choices']):
 
     async def callback(self, interaction: discord.Interaction) -> None:
         if self.view.user_id is not None and self.view.user_id != interaction.user.id:
-            await interaction.send('You are not the intended recipient of this component, '
-                                   f'{interaction.user.mention}',
-                                   allowed_mentions=discord.AllowedMentions.none())
+            await interaction.channel.send('You are not the intended recipient of this component, '
+                                           f'{interaction.user.mention}',
+                                           allowed_mentions=discord.AllowedMentions.none())
             return
         self.view.set_result(self.label)
         self.style = discord.ButtonStyle.success
@@ -114,9 +114,16 @@ def construct_embed(fields: Mapping[str, str], /, **kwargs: str) -> discord.Embe
     return embed
 
 
-def get_msg_chk(auth_id: int, chan_id: int):
+def get_msg_chk(ctx: commands.Context) -> Callable[[discord.Message], bool]:
     def msg_chk(m: discord.Message) -> bool:
-        return m.author.id == auth_id and m.channel.id == chan_id
+        return m.author.id == ctx.author.id and m.channel.id == ctx.channel.id
+
+    return msg_chk
+
+
+def get_dm_msg_chk(auth_id: int) -> Callable[[discord.Message], bool]:
+    def msg_chk(m: discord.Message) -> bool:
+        return m.author.id == auth_id and m.guild is None
 
     return msg_chk
 
@@ -159,6 +166,8 @@ _sentinel = object()
 
 
 class SavedProperty(Generic[T]):
+    __slots__ = ('value', 'key', 'owner')
+
     def __init__(self, owner: CogBase, key: str):
         self.value: Union[object, T] = _sentinel
         self.key = key
@@ -183,11 +192,13 @@ class SavedProperty(Generic[T]):
 
 
 class MappingPropertyItem(Generic[T, T1]):
+    __slots__ = ('mapping', 'key')
+
     def __init__(self, mapping: MappingProperty[T, T1], key: T):
         self.mapping = mapping
         self.key = key
 
-    async def get(self, default: Union[object, DT] = _sentinel) -> Union[T, DT]:
+    async def get(self, default: Union[object, DT] = _sentinel) -> Union[T1, DT]:
         try:
             return (await self.mapping.get())[self.key]
         except KeyError:
@@ -203,16 +214,24 @@ class MappingPropertyItem(Generic[T, T1]):
 
         return func
 
-    async def set(self, value: T):
+    async def set(self, value: T) -> None:
         await self.mapping.transform(self.get_set_func(self.key, value))
 
 
-class MappingProperty(SavedProperty):
+class MappingProperty(Generic[T, T1], SavedProperty[dict[T, T1]]):
+    __slots__ = ()
+
     def __getitem__(self, key: T) -> MappingPropertyItem[T, T1]:
         return MappingPropertyItem[T, T1](self, key)
 
+    async def initialise(self) -> None:
+        if await self.get(None) is None:
+            await self.set({})
 
-class WrappedProperty(SavedProperty[T], Generic[T, T1]):
+
+class WrappedProperty(Generic[T, T1], SavedProperty[T]):
+    __slots__ = ('transform_to', 'transform_from')
+
     def __init__(self, owner: CogBase, key: str,
                  transform_to: Callable[[T1], T] = lambda x: x,
                  transform_from: Callable[[T], T1] = lambda x: x):
@@ -239,5 +258,7 @@ class WrappedProperty(SavedProperty[T], Generic[T, T1]):
 
 
 class ChannelProperty(WrappedProperty[discord.TextChannel, int]):
+    __slots__ = ()
+
     def __init__(self, owner: CogBase, key: str):
         super().__init__(owner, key, owner.bot.get_channel, operator.attrgetter('id'))

@@ -17,11 +17,11 @@ import financeutils
 class BankCog(discordutils.CogBase):
     def __init__(self, bot: discordutils.DBBot):
         super().__init__(bot, __name__)
-        self.balances = discordutils.MappingProperty(self, 'balances')
+        self.balances = discordutils.MappingProperty[str, pnwutils.Resources](self, 'balances')
 
     @property
-    def nations(self):
-        return self.bot.get_cog('UtilCog').nations
+    def nations(self) -> discordutils.MappingProperty[int, str]:
+        return self.bot.get_cog('UtilCog').nations  # type: ignore
 
     async def get_transactions(self, entity_id: Optional[str] = None, kind: Optional[pnwutils.TransactionType] = None
                                ) -> list[pnwutils.Transaction]:
@@ -92,8 +92,7 @@ class BankCog(discordutils.CogBase):
 
     @bank.command(aliases=('bal',))
     async def balance(self, ctx: commands.Context):
-        if await self.nations.get(None) is None:
-            await self.nations.set({})
+        await self.nations.initialise()
         nation_id = await self.nations[ctx.author.id].get(None)
         if nation_id is None:
             await ctx.send('Your nation id has not been set!')
@@ -150,7 +149,7 @@ class BankCog(discordutils.CogBase):
             await ctx.send('Your nation id has not been set!')
             return
 
-        channel = self.bot.get_cog('FinanceCog').channel
+        channel = self.bot.get_cog('FinanceCog').channel  # type: ignore
         if await channel.get(None) is None:
             await ctx.send('Output channel has not been set! Aborting.')
             return None

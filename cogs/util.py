@@ -15,8 +15,7 @@ class UtilCog(discordutils.CogBase):
 
     @commands.command()
     async def set_nation(self, ctx: commands.Context, nation_id: str = ''):
-        if await self.nations.get(None) is None:
-            await self.nations.set({})
+        await self.nations.initialise()
         if nation_id == '':
             if '/' in ctx.author.display_name:
                 try:
@@ -97,7 +96,6 @@ class UtilCog(discordutils.CogBase):
         result = defaultdict(str)
         for nation in data:
             has_food = not nation['food']
-            # check if has 0 ura and if so check if has nuclear power
             has_ura = not nation['uranium'] and any(map(operator.itemgetter('nuclearpower'), nation['cities']))
 
             if has_food:

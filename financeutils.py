@@ -24,32 +24,32 @@ class RequestData:
 
 
 class RequestChoice(discord.ui.Button['RequestChoices']):
-    def __init__(self, label: str):
+    def __init__(self, label: Literal['Accepted', 'Rejected', 'Sent']):
         super().__init__(row=0, custom_id=label)
         self.label = label
 
     async def callback(self, interaction: discord.Interaction) -> None:
         self.style = discord.ButtonStyle.success
         for child in self.view.children:
+            assert isinstance(child, RequestChoice)
             if self.label != 'Accepted' or child.label != 'Sent':
-                # If self.label == Accepted and child.label ==. Sent, dont disable
+                # If self.label == Accepted and child.label == Sent, don't disable
                 child.disabled = True
         if self.label != 'Accepted':
             self.view.stop()
         await interaction.response.edit_message(view=self.view)
-        await self.view.callback(self.label, self.view.data, interaction.user,
-                                 interaction.message)
+        # type checker does not realise self.label is one of [Accepted, Rejected, Sent]
+        await self.view.callback(self.label, interaction.user, interaction.message, *self.view.args)  # type: ignore
 
 
 class RequestChoices(discord.ui.View):
-    def __init__(self, callback: Callable[[
-                                              Literal['Accepted', 'Rejected',
-                                                      'Sent'], RequestData, discord.abc.User, discord.Message
-                                          ], Awaitable[None]], req_data: RequestData):
+    def __init__(self, callback: Callable[[Literal['Accepted', 'Rejected', 'Sent'], discord.abc.User,
+                                           discord.Message, ...], Awaitable[None]], *args):
         # Callback would be called with 'Accepted', 'Rejected', or 'Sent'
         super().__init__(timeout=None)
-        self.data = req_data
+        self.args = args
         self.callback = callback
+        c: Literal['Accepted', 'Rejected', 'Sent']
         for c in ('Accepted', 'Rejected', 'Sent'):
             self.add_item(RequestChoice(c))
 
@@ -66,9 +66,9 @@ class ResourceSelector(discord.ui.Select['ResourceSelectView']):
 
     async def callback(self, interaction: discord.Interaction):
         if self.view.user_id is not None and interaction.user.id != self.view.user_id:
-            await interaction.send('You are not the intended recipient of this component, '
-                                   f'{interaction.user.mention}',
-                                   allowed_mentions=discord.AllowedMentions.none())
+            await interaction.channel.send('You are not the intended recipient of this component, '
+                                           f'{interaction.user.mention}',
+                                           allowed_mentions=discord.AllowedMentions.none())
             return
         self.view.set_result(self.values)
         self.disabled = True

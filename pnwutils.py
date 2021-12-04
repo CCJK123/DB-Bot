@@ -36,6 +36,8 @@ class APIError(Exception):
 
 # Setup API
 class API:
+    __slots__ = ()
+
     # Combine query string & variables into a query json
     @staticmethod
     def construct_query(q: str, var: dict[str, Any]) -> dict[str, Union[str, dict[str, Any]]]:
@@ -218,6 +220,8 @@ class Transaction:
 
 
 class Link:
+    __slots__ = ()
+
     @staticmethod
     def nation(nation_id: str) -> str:
         return f'{Constants.base_url}nation/id={nation_id}'
