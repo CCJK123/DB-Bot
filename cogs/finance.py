@@ -28,7 +28,7 @@ class FinanceCog(discordutils.CogBase):
 
     @property
     def nations(self):
-        return self.bot.get_cog('UtilCog').nations
+        return self.bot.get_cog('UtilCog').nations  # type: ignore
 
     # Main request command
     @commands.group(invoke_without_command=True, aliases=('req',))
@@ -62,7 +62,7 @@ class FinanceCog(discordutils.CogBase):
         query nation_info($nation_id: [Int]) {
             nations(id: $nation_id, first: 1) {
                 data {
-                    # Display Request
+                    # Display Request, Withdrawal Link
                     nation_name
                     
                     # Alliance Check
@@ -448,16 +448,7 @@ class FinanceCog(discordutils.CogBase):
             auth.send('You took too long to respond! Exiting...')
             return
 
-        embed = discordutils.construct_embed(
-            {
-                'Nation':
-                    f'[{req_data.nation_name}]({req_data.nation_link})',
-                'Request Type': req_data.kind,
-                'Requested': req_data.reason,
-                'Requested Resources': req_data.resources,
-                **req_data.additional_info
-            },
-            title='Please confirm your request.')
+        embed = req_data.create_embed(title='Please confirm your request.')
         confirm_request_choice = discordutils.Choices('Yes', 'No')
         await auth.send('Is this your request?',
                         embed=embed,
@@ -475,7 +466,7 @@ class FinanceCog(discordutils.CogBase):
             embed.title = None
             embed.add_field(
                 name='Withdrawal Link',
-                value=f'[Link]({req_data.resources.create_link("w", req_data.nation_name, req_data.note)}) '
+                value=f'[Link]({req_data.create_link()}) '
             )
             process_view = RequestChoices(self.on_processed, req_data)
             self.bot.add_view(process_view)
@@ -499,7 +490,6 @@ class FinanceCog(discordutils.CogBase):
                 f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} '
                 'has been accepted! The resources will be sent to you soon. '
             )
-            # db['active_reqs'].remove(message)
 
         elif status == 'Rejected':
             await user.send(
@@ -536,7 +526,7 @@ class FinanceCog(discordutils.CogBase):
                     name='Return Date', value=(date.today() + timedelta(days=30)).strftime('%d %b, %Y'), inline=True))
 
         await message.edit(
-            f'{status if status != "Sent" else "Accepted and Sent"} Request from {req_data.requester.mention}',
+            content=f'{status if status != "Sent" else "Accepted and Sent"} Request from {req_data.requester.mention}',
             allowed_mentions=discord.AllowedMentions.none())
 
     @request.error

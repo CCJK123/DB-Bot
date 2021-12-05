@@ -16,7 +16,7 @@ __all__ = ('Config', 'Constants', 'Resources', 'Link')
 
 # Setup API configuration variables
 class Config:
-    api_key: str = os.environ['api_key']
+    api_key: str = '6b6a6ab065a851' or os.environ['api_key']
     aa_id: str = '4221'
     aa_name: str = 'Dark Brotherhood'
 
@@ -106,30 +106,6 @@ class Resources:
             for res_name in Constants.all_res
             if (res_amount := self[res_name])
         }
-
-    # Create withdrawal / deposit link
-    def create_link(self, kind: Literal['w', 'd', 'wa'], /,
-                    recipient: Optional[str] = None, note: Optional[str] = None
-                    ) -> str:
-
-        # Check if withdrawing to alliance
-        with_aa = False
-        if kind == 'wa':
-            with_aa = True
-            kind = 'w'
-
-        # Add parameters to withdrawal / deposit url
-        link = f'{Constants.base_url}alliance/id={Config.aa_id}&display=bank'
-        for res_name, res_amt in self.nonzero_resources().items():
-            link += f'&{kind}_{res_name}={res_amt}'
-        if note is not None:
-            link += f'&{kind}_note={note.replace(" ", "%20")}'
-        if with_aa:
-            link += '&w_type=alliance'
-        if recipient is not None:
-            # Replace spaces with url encoding for spaces
-            link += f'&w_recipient={recipient.replace(" ", "%20")}'
-        return link
 
     def create_embed(self, **kwargs: str) -> discord.Embed:
         embed = discord.Embed(**kwargs)
@@ -227,8 +203,36 @@ class Link:
         return f'{Constants.base_url}nation/id={nation_id}'
 
     @staticmethod
-    def alliance(alliance_id: str) -> str:
+    def alliance(alliance_id: Optional[str] = None) -> str:
+        if alliance_id is None:
+            alliance_id = Config.aa_id
         return f'{Constants.base_url}alliance/id={alliance_id}'
+
+    @classmethod
+    def bank(cls, kind: Literal['w', 'd', 'wa'], res: Optional[Resources] = None,
+             recipient: Optional[str] = None, note: Optional[str] = None) -> str:
+        if kind == 'd' and recipient is not None:
+            raise ValueError('Do not provide recipient for deposits!')
+
+        # Check if withdrawing to alliance
+        with_aa = False
+        if kind == 'wa':
+            with_aa = True
+            kind = 'w'
+
+        # Add parameters to withdrawal / deposit url
+        link = f'{Link.alliance()}&display=bank'
+        if res is not None:
+            for res_name, res_amt in res.nonzero_resources().items():
+                link += f'&{kind}_{res_name}={res_amt}'
+        if note is not None:
+            link += f'&{kind}_note={note.replace(" ", "%20")}'
+        if with_aa:
+            link += '&w_type=alliance'
+        if recipient is not None:
+            # Replace spaces with url encoding for spaces
+            link += f'&w_recipient={recipient.replace(" ", "%20")}'
+        return link
 
     @staticmethod
     def war(war_id: str) -> str:

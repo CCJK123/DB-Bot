@@ -22,6 +22,19 @@ class RequestData:
     note: str
     additional_info: Optional[dict[str, str]] = field(default_factory=dict)
 
+    def create_embed(self, **kwargs: str) -> discord.Embed:
+        embed = discord.Embed(**kwargs)
+        embed.add_field(name='Nation', value=f'[{self.nation_name}]({self.nation_link})')
+        embed.add_field(name='Request Type', value=self.kind)
+        embed.add_field(name='Requested', value=self.reason)
+        embed.add_field(name='Requested Resources', value=self.resources)
+        for n, v in self.additional_info.items():
+            embed.add_field(name=n, value=v)
+        return embed
+
+    def create_link(self) -> str:
+        return pnwutils.Link.bank("w", self.resources, self.nation_name, self.note)
+
 
 class RequestChoice(discord.ui.Button['RequestChoices']):
     def __init__(self, label: Literal['Accepted', 'Rejected', 'Sent']):
