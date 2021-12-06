@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime
 import enum
-from typing import Any, Final, Iterable, Literal, Optional, Union
+from typing import Any, Final, Iterable, Literal, Optional, TypedDict, Union
 import aiohttp
 from dataclasses import dataclass
 from itertools import chain
@@ -76,6 +76,19 @@ class API:
 
         return data
 
+class ResourceDict(TypedDict, total=False):
+    money: int
+    food: int
+    coal: int
+    oil: int
+    uranium: int
+    lead: int
+    iron: int
+    bauxite: int
+    gasoline: int
+    munitions: int
+    steel: int
+    aluminum: int
 
 # Setup resource types and relevant methods
 @dataclass
@@ -93,14 +106,8 @@ class Resources:
     steel: int = 0
     aluminum: int = 0
 
-    def to_dict(self) -> dict[str, int]:
-        return {
-            res_name: self[res_name]
-            for res_name in Constants.all_res
-        }
-
     # Output all resources with values associated
-    def nonzero_resources(self) -> dict[str, int]:
+    def to_dict(self) -> ResourceDict:
         return {
             res_name: res_amount
             for res_name in Constants.all_res
@@ -109,9 +116,16 @@ class Resources:
 
     def create_embed(self, **kwargs: str) -> discord.Embed:
         embed = discord.Embed(**kwargs)
-        for n, a in self.nonzero_resources().items():
-            embed.add_field(name=n, value=a)
-        return embed
+        for name, amt in self:
+            embed.add_field(name=name.title(), value=amt)
+        if self or kwargs:
+            return embed
+        raise ValueError('The embed is empty and cannot be sent!')
+    
+    def create_balance_embed(self, reciever: str) -> discord.Embed:
+        if self:
+            return self.create_embed(title=f"{reciever}'s Balance")
+        return discord.Embed(title=f"{reciever}'s Balance", description='Hmm... Nothing here')
 
     def __getitem__(self, key):
         if key in Constants.all_res:
@@ -121,17 +135,17 @@ class Resources:
     def __setitem__(self, key, value):
         if key in Constants.all_res:
             setattr(self, key, value)
+            return
         raise KeyError(f'{key} is not a resource!')
 
     def __str__(self) -> str:
-        return '\n'.join(f'{res_name.title()}: {res_amt}' for res_name, res_amt in self.nonzero_resources().items())
+        return '\n'.join(f'{res_name.title()}: {res_amt}' for res_name, res_amt in self)
 
     def __bool__(self) -> bool:
-        try:
-            next(self.nonzero_resources())
-        except StopIteration:
-            return False
-        return True
+        return bool(self.to_dict())
+    
+    def __iter__(self):
+        return iter(self.to_dict().items())
 
     def __add__(self, other):
         if isinstance(other, Resources):
@@ -223,7 +237,7 @@ class Link:
         # Add parameters to withdrawal / deposit url
         link = f'{Link.alliance()}&display=bank'
         if res is not None:
-            for res_name, res_amt in res.nonzero_resources().items():
+            for res_name, res_amt in res:
                 link += f'&{kind}_{res_name}={res_amt}'
         if note is not None:
             link += f'&{kind}_note={note.replace(" ", "%20")}'

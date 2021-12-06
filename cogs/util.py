@@ -11,7 +11,7 @@ import discordutils
 class UtilCog(discordutils.CogBase):
     def __init__(self, bot: discordutils.DBBot):
         super().__init__(bot, __name__)
-        self.nations = discordutils.MappingProperty(self, 'nations')
+        self.nations = discordutils.MappingProperty[str, str](self, 'nations')
 
     @commands.command()
     async def set_nation(self, ctx: commands.Context, nation_id: str = ''):
@@ -38,6 +38,7 @@ class UtilCog(discordutils.CogBase):
         except ValueError:
             await ctx.send("That isn't a number!")
             return
+        
         nation_query_str = '''
         query nation_info($nation_id: [Int]) {
             nations(id: $nation_id, first: 1) {
@@ -54,6 +55,7 @@ class UtilCog(discordutils.CogBase):
         if not data:
             # nation does not exist, empty list returned
             await ctx.send('This nation does not exist!')
+            return
         # nation exists, is in one elem list
         if data[0]['alliance_id'] != pnwutils.Config.aa_id:
             await ctx.send(f'This nation is not in {pnwutils.Config.aa_name}!')
@@ -64,12 +66,14 @@ class UtilCog(discordutils.CogBase):
         if await nation_confirm_choice.result() == 'Yes':
             await self.nations[ctx.author.id].set(nation_id)
             await ctx.send('You have been registered to our database!')
+        else:
+            await ctx.send('Aborting!')
 
     @commands.command()
     async def list_registered(self, ctx: commands.Context):
         m = '\n'.join(f'<@{disc_id}> - {pnwutils.Link.nation(nation_id)}'
                       for disc_id, nation_id in (await self.nations.get()).items())
-        await ctx.send(m if m else 'There are no registrations!',
+        await ctx.send(m or 'There are no registrations!',
                        allowed_mentions=discord.AllowedMentions.none())
 
     @commands.command()

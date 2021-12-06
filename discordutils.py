@@ -8,7 +8,7 @@ import operator
 import sys
 import traceback
 import os  # For env variables
-from typing import Any, Awaitable, Callable, Generic, Mapping, Optional, TypeVar, Union
+from typing import Any, Awaitable, Callable, Dict, Generic, Mapping, Optional, TypeVar, Union
 
 import discord
 from discord.ext import commands, tasks
@@ -206,26 +206,31 @@ class MappingPropertyItem(Generic[T, T1]):
                 raise
             return default
 
-    @staticmethod
-    def get_set_func(key: T, value: T1) -> Callable[[dict[T, T1]], dict[T, T1]]:
-        def func(m: dict[T, T1]) -> dict[T, T1]:
-            m[key] = value
-            return m
-
-        return func
-
     async def set(self, value: T) -> None:
-        await self.mapping.transform(self.get_set_func(self.key, value))
+        m = await self.mapping.get()
+        m[self.key] = value
+        await self.mapping.set(m)
+    
+    async def delete(self) -> None:
+        m = await self.mapping.get()
+        del m[self.key]
+        await self.mapping.set(m)
 
 
-class MappingProperty(Generic[T, T1], SavedProperty[dict[T, T1]]):
+class MappingProperty(Generic[T, T1], SavedProperty[Dict[T, T1]]):
     __slots__ = ()
 
     def __getitem__(self, key: T) -> MappingPropertyItem[T, T1]:
         return MappingPropertyItem[T, T1](self, key)
 
     async def initialise(self) -> None:
+        """
+        Makes sure that the property is set to a dict before it is accessed
+        Should only actually do anything the first time, when nothing is set to self.key
+        """
         if await self.get(None) is None:
+            import sys
+            print(f'Initialising key {self.key} from {self.owner.cog_name} to {{}}', file=sys.stderr)
             await self.set({})
 
 

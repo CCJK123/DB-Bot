@@ -29,7 +29,7 @@ class WarDetectorCog(discordutils.CogBase):
         self.done_wars: list[str] = []
 
     @staticmethod
-    async def war_embed(data: dict[str, Any], kind: WarType) -> discord.Embed:
+    async def war_embed(data: dict[str, Any], kind: WarType) -> tuple[discord.Embed, discord.Embed]:
         if kind == WarType.ATT:
             title = 'New Offensive War'
         elif kind == WarType.DEF:
