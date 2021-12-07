@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import asyncio
 from typing import Callable, Awaitable, Literal, Optional
 from dataclasses import dataclass, field
@@ -7,11 +5,12 @@ from dataclasses import dataclass, field
 import discord
 
 import pnwutils
+import discordutils
 
 __all__ = ('RequestData', 'RequestChoices', 'ResourceSelectView')
 
 
-@dataclass
+@dataclass(slots=True)
 class RequestData:
     requester: discord.abc.User
     nation_id: str
@@ -30,7 +29,7 @@ class RequestData:
         embed = discord.Embed(**kwargs)
         embed.add_field(name='Nation', value=f'[{self.nation_name}]({self.nation_link})')
         embed.add_field(name='Request Type', value=self.kind)
-        embed.add_field(name='Requested', value=self.reason)
+        embed.add_field(name='Reason', value=self.reason)
         embed.add_field(name='Requested Resources', value=self.resources)
         for n, v in self.additional_info.items():
             embed.add_field(name=n, value=v)
@@ -48,8 +47,7 @@ class RequestChoice(discord.ui.Button['RequestChoices']):
     async def callback(self, interaction: discord.Interaction) -> None:
         self.style = discord.ButtonStyle.success
         for child in self.view.children:
-            assert isinstance(child, RequestChoice)
-            if self.label != 'Accepted' or child.label != 'Sent':
+            if isinstance(child, RequestChoice) and (self.label != 'Accepted' or child.label != 'Sent'):
                 # If self.label == Accepted and child.label == Sent, don't disable
                 child.disabled = True
         if self.label != 'Accepted':
@@ -60,12 +58,13 @@ class RequestChoice(discord.ui.Button['RequestChoices']):
 
 
 class RequestChoices(discord.ui.View):
-    def __init__(self, callback: Callable[[Literal['Accepted', 'Rejected', 'Sent'], discord.abc.User,
+    def __init__(self, link: str, callback: Callable[[Literal['Accepted', 'Rejected', 'Sent'], discord.abc.User,
                                            discord.Message, ...], Awaitable[None]], *args):
         # Callback would be called with 'Accepted', 'Rejected', or 'Sent'
         super().__init__(timeout=None)
         self.args = args
         self.callback = callback
+        self.add_item(discordutils.LinkButton('Withdrawal Link', link))
         c: Literal['Accepted', 'Rejected', 'Sent']
         for c in ('Accepted', 'Rejected', 'Sent'):
             self.add_item(RequestChoice(c))

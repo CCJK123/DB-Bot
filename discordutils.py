@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import random
 import aiohttp
 from replit.database import AsyncDatabase
@@ -8,7 +6,7 @@ import operator
 import sys
 import traceback
 import os  # For env variables
-from typing import Any, Awaitable, Callable, Dict, Generic, Mapping, Optional, TypeVar, Union
+from typing import Any, Awaitable, Callable, Generic, Mapping, Optional, TypeVar, Union
 
 import discord
 from discord.ext import commands, tasks
@@ -106,6 +104,17 @@ class Choices(discord.ui.View):
         self._fut.set_exception(asyncio.TimeoutError())
 
 
+class LinkButton(discord.ui.Button):
+    def __init__(self, label: str, url: str):
+        super().__init__(label=label, url=url)
+
+
+class LinkView(discord.ui.View):
+    def __init__(self, label: str, url: str):
+        super().__init__()
+        self.add_item(LinkButton(label, url))
+
+
 # Create embed from dictionary of key-value pairs
 def construct_embed(fields: Mapping[str, str], /, **kwargs: str) -> discord.Embed:
     embed = discord.Embed(**kwargs)
@@ -194,7 +203,7 @@ class SavedProperty(Generic[T]):
 class MappingPropertyItem(Generic[T, T1]):
     __slots__ = ('mapping', 'key')
 
-    def __init__(self, mapping: MappingProperty[T, T1], key: T):
+    def __init__(self, mapping: 'MappingProperty[T, T1]', key: T):
         self.mapping = mapping
         self.key = key
 
@@ -217,7 +226,7 @@ class MappingPropertyItem(Generic[T, T1]):
         await self.mapping.set(m)
 
 
-class MappingProperty(Generic[T, T1], SavedProperty[Dict[T, T1]]):
+class MappingProperty(Generic[T, T1], SavedProperty[dict[T, T1]]):
     __slots__ = ()
 
     def __getitem__(self, key: T) -> MappingPropertyItem[T, T1]:

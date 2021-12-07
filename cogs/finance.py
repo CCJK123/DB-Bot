@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import asyncio
 import logging
 import operator
@@ -26,13 +24,14 @@ class FinanceCog(discordutils.CogBase):
         self.loans = discordutils.MappingProperty(self, 'loans')
 
     @property
-    def nations(self):
+    def nations(self) -> discordutils.MappingProperty[int, str]:
         return self.bot.get_cog('UtilCog').nations  # type: ignore
 
     # Main request command
     @commands.group(invoke_without_command=True, aliases=('req',))
     @commands.max_concurrency(1, commands.BucketType.user)
     async def request(self, ctx: commands.Context) -> None:
+        await self.loans.initialise()
         # Command Run Validity Check
         # Check if output channel has been set
         if await self.channel.get(None) is None:
@@ -445,11 +444,7 @@ class FinanceCog(discordutils.CogBase):
                 'Your request has been sent. Thank you for using the DB Finance Request Interface.'
             )
             embed.title = None
-            embed.add_field(
-                name='Withdrawal Link',
-                value=f'[Link]({req_data.create_link()}) '
-            )
-            process_view = RequestChoices(self.on_processed, req_data)
+            process_view = RequestChoices(req_data.create_link(), self.on_processed, req_data)
             self.bot.add_view(process_view)
             await (await self.channel.get()).send(
                 f'New Request from {auth.mention}',
@@ -503,10 +498,10 @@ class FinanceCog(discordutils.CogBase):
                 due_date = datetime.datetime.now() + datetime.timedelta(days=30)
                 await req_data.requester.send(
                     f'Kindly remember to return the requested resources by <t:{int(due_date.timestamp())}:R>. '
-                    'You should deposit enough to make all your resources under your balance non-negative by then.'
+                    'You should deposit enough to make all your resources under your balance non-negative by then. '
                     'You can check your balance with `bank bal` and deposit resources with `bank dep`.')
-                bal = await self.bot.get_cog('BankCog').balances[req_data.nation_id]
-                await bal.set(await bal.get() - req_data.resources)
+                bal = self.bot.get_cog('BankCog').balances[req_data.nation_id]
+                await bal.set((pnwutils.Resources(**await bal.get()) - req_data.resources).to_dict())
 
                 await message.edit(embed=message.embeds[0].add_field(
                     name='Return By',

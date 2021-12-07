@@ -1,9 +1,5 @@
-from __future__ import annotations
-
 import asyncio
 import datetime
-import operator
-from functools import reduce
 from typing import Optional, Union
 from collections.abc import Awaitable, Callable
 
@@ -29,10 +25,11 @@ class WithdrawalButton(discord.ui.Button['WithdrawalView']):
 
 
 class WithdrawalView(discord.ui.View):
-    def __init__(self, callback: Callable[..., Awaitable[None]], *args):
+    def __init__(self, link: str, callback: Callable[..., Awaitable[None]], *args):
         super().__init__(timeout=None)
         self.callback = callback
         self.args = args
+        self.add_item(discordutils.LinkButton('Withdrawal Link', link))
         self.add_item(WithdrawalButton())
 
 
@@ -111,11 +108,11 @@ class BankCog(discordutils.CogBase):
                 transactions.append(transaction)
 
         return transactions
-    
+
     async def loan_check(self, nation_id: str, res: Optional[pnwutils.Resources] = None) -> bool:
         if res is None:
             res = await self.balances[nation_id].get()
-        
+
         if all(amt >= 0 for amt in res.to_dict().values()):
             # loan repaid
             await self.loans[nation_id].delete()
@@ -164,15 +161,17 @@ class BankCog(discordutils.CogBase):
 
         start_time = datetime.datetime.now()
         await auth.send('You now have 5 minutes to deposit your resources into the bank. '
-                        'Once you are done, send a message here.\n'
-                        f'[Link to deposit page]({pnwutils.Link.bank("d", note="Deposit to balance")})')
+                        'Once you are done, send a message here.',
+                        view=discordutils.LinkView('Deposit Link', pnwutils.Link.bank('d', note='Deposit to balance'))
+                        )
         try:
             await self.bot.wait_for(
                 'message',
                 check=msg_chk,
                 timeout=300)
         except asyncio.TimeoutError:
-            pass
+            await auth.send('You have not responded om 5 minutes! '
+                            'Automatically checking for deposits...')
 
         resources = await self.balances[nation_id].get(None)
         if resources is None:
@@ -181,18 +180,17 @@ class BankCog(discordutils.CogBase):
         else:
             resources = pnwutils.Resources(**resources)
 
-        dep_resources = reduce(operator.add,
-                               filter(lambda t: t.time >= start_time,
-                                      await self.get_transactions(nation_id, pnwutils.TransactionType.dep))
-                               )
-        if dep_resources:
-            resources += dep_resources
+        dep_transactions = list(filter(lambda t: t.time >= start_time,
+                                       await self.get_transactions(nation_id, pnwutils.TransactionType.dep)))
+        if dep_transactions:
+            for transaction in dep_transactions:
+                resources += transaction.resources
             await self.balances[nation_id].set(resources.to_dict())
             await auth.send('Your balance is now:', embed=resources.create_balance_embed(auth.name))
             if await self.loan_check(nation_id, resources):
                 await auth.send('With this deposit, you have now repaid your loan.')
             return
-        await auth.send('You did not deposit any resources!')
+        await auth.send('You did not deposit any resources! Aborting!')
 
     @bank.command(aliases=('with',))
     @commands.max_concurrency(1, commands.BucketType.user)
@@ -267,11 +265,11 @@ class BankCog(discordutils.CogBase):
 
         embed = discord.Embed()
         embed.add_field(name='Nation', value=f'[{name}]({pnwutils.Link.nation(nation_id)})')
-        embed.add_field(name='Requested', value=reason)
+        embed.add_field(name='Reason', value=reason)
         embed.add_field(name='Requested Resources', value=req_resources)
-        embed.add_field(name='Withdrawal Link', value=f'[Link]({link})')
 
-        view = WithdrawalView(self.on_sent, auth, req_resources)
+        view = WithdrawalView(link, self.on_sent, auth, req_resources)
+        self.bot.add_view(view)
         await channel.send(f'Withdrawal Request from {auth.mention}',
                            embed=embed,
                            allowed_mentions=discord.AllowedMentions.none(),

@@ -30,8 +30,7 @@ class UtilCog(discordutils.CogBase):
             return
 
         nation_prefix = pnwutils.Constants.base_url + 'nation/id='
-        if nation_id.startswith(nation_prefix):
-            nation_id = nation_id[len(nation_prefix):]
+        nation_id.removeprefix(nation_prefix)
 
         try:
             int(nation_id)

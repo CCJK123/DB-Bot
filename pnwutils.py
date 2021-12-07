@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import datetime
 import enum
 from typing import Any, Final, Iterable, Literal, Optional, TypedDict, Union
@@ -187,17 +185,17 @@ class TransactionType(enum.Enum):
     a_rec = 3
 
 
-@dataclass
+@dataclass(slots=True)
 class Transaction:
-    contents: Resources
+    resources: Resources
     time: datetime.datetime
     kind: TransactionType
     entity_id: str
 
     @classmethod
-    def from_api_dict(cls, data: dict) -> Transaction:
+    def from_api_dict(cls, data: dict) -> 'Transaction':
         res = Resources(**{k: data[k] for k in data.keys() if k in Constants.all_res})
-        time = datetime.datetime.fromisoformat(data['date'])
+        t = datetime.datetime.fromisoformat(data['date'])
 
         if data['stype'] == 2 and data['sid'] == Config.aa_id:
             # sender is our alliance
@@ -208,7 +206,7 @@ class Transaction:
             kind = TransactionType.dep if data['stype'] == 1 else TransactionType.a_dep
             entity_id = data['sid']
 
-        return cls(res, time, kind, entity_id)
+        return cls(res, t, kind, entity_id)
 
 
 class Link:
