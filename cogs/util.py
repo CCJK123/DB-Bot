@@ -11,7 +11,7 @@ import discordutils
 class UtilCog(discordutils.CogBase):
     def __init__(self, bot: discordutils.DBBot):
         super().__init__(bot, __name__)
-        self.nations = discordutils.MappingProperty[str, str](self, 'nations')
+        self.nations: discordutils.MappingProperty[int, str] = discordutils.MappingProperty[int, str](self, 'nations')
 
     @commands.command()
     async def set_nation(self, ctx: commands.Context, nation_id: str = ''):
@@ -38,7 +38,7 @@ class UtilCog(discordutils.CogBase):
         except ValueError:
             await ctx.send("That isn't a number!")
             return
-        
+
         nation_query_str = '''
         query nation_info($nation_id: [Int]) {
             nations(id: $nation_id, first: 1) {

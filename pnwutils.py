@@ -76,6 +76,7 @@ class API:
 
         return data
 
+
 class ResourceDict(TypedDict, total=False):
     money: int
     food: int
@@ -89,6 +90,7 @@ class ResourceDict(TypedDict, total=False):
     munitions: int
     steel: int
     aluminum: int
+
 
 # Setup resource types and relevant methods
 @dataclass
@@ -121,7 +123,7 @@ class Resources:
         if self or kwargs:
             return embed
         raise ValueError('The embed is empty and cannot be sent!')
-    
+
     def create_balance_embed(self, reciever: str) -> discord.Embed:
         if self:
             return self.create_embed(title=f"{reciever}'s Balance")
@@ -143,7 +145,7 @@ class Resources:
 
     def __bool__(self) -> bool:
         return bool(self.to_dict())
-    
+
     def __iter__(self):
         return iter(self.to_dict().items())
 

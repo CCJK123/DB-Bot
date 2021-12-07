@@ -206,11 +206,11 @@ class MappingPropertyItem(Generic[T, T1]):
                 raise
             return default
 
-    async def set(self, value: T) -> None:
+    async def set(self, value: T1) -> None:
         m = await self.mapping.get()
         m[self.key] = value
         await self.mapping.set(m)
-    
+
     async def delete(self) -> None:
         m = await self.mapping.get()
         del m[self.key]
@@ -221,7 +221,7 @@ class MappingProperty(Generic[T, T1], SavedProperty[Dict[T, T1]]):
     __slots__ = ()
 
     def __getitem__(self, key: T) -> MappingPropertyItem[T, T1]:
-        return MappingPropertyItem[T, T1](self, key)
+        return MappingPropertyItem[T, T1](self, str(key))
 
     async def initialise(self) -> None:
         """

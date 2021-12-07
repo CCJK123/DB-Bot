@@ -3,8 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import operator
-from datetime import date, timedelta
-from time import time
+import datetime
 from typing import Literal
 
 import discord
@@ -64,24 +63,24 @@ class FinanceCog(discordutils.CogBase):
                 data {
                     # Display Request, Withdrawal Link
                     nation_name
-                    
+
                     # Alliance Check
                     alliance_id
-                    
+
                     # City Grants, Project Grants & War Aid
                     num_cities
-                    
+
                     # City Grants & Project Grants 
                     city_planning
                     adv_city_planning
-                    
+
                     # Project Grants
                     cia
                     propb
 
                     # Project Grants & War Aid
                     cfce
-                
+
                     # War Aid
                     soldiers
                     tanks
@@ -113,7 +112,7 @@ class FinanceCog(discordutils.CogBase):
         if data:
             # Data contains a nation, hence nation with given id exists
             data = data.pop()
-            nation_link = pnwutils.Link.nation(nation_id)
+            req_data = RequestData(auth, nation_id, data['nation_name'])
         else:
             # Data has no nation, hence no nation with given id exists
             await auth.send(
@@ -130,13 +129,13 @@ class FinanceCog(discordutils.CogBase):
         req_type_choice = discordutils.Choices(*req_types)
         await auth.send('What kind of request is this?', view=req_type_choice)
         try:
-            req_type = await req_type_choice.result()
+            req_data.kind = await req_type_choice.result()
         except asyncio.TimeoutError:
             await auth.send('You took too long to respond! Exiting...')
             return
 
         # Redirect Accordingly
-        if req_type == 'Grant':
+        if req_data.kind == 'Grant':
             grant_type_choice = discordutils.Choices('City', 'Project', 'Other')
             await auth.send('What type of grant do you want?',
                             view=grant_type_choice)
@@ -151,18 +150,17 @@ class FinanceCog(discordutils.CogBase):
                 has_up = data['city_planning']
                 has_aup = data['adv_city_planning']
                 # Calculate city cost
-                req_res = pnwutils.Resources(
+                req_data.resources = pnwutils.Resources(
                     money=(50000 * (data['num_cities'] - 1) ** 3 +
                            150000 * data['num_cities'] + 75000 -
                            50000000 * has_up - 100000000 * has_aup) // 20 * 19)
                 # Create embed
-                project_string = 'Urban Planning' * has_up + ' and ' * (has_up and has_aup) + \
-                                 'Advanced Urban Planning' * has_aup + 'None' * (not has_up and not has_aup)
-                await self.on_request_fixed(
-                    RequestData(auth, req_type, f'City {data["num_cities"] + 1}',
-                                data['nation_name'], nation_link, req_res,
-                                f'City {data["num_cities"] + 1} Grant',
-                                {'Projects': project_string}))
+                project_string = ('Urban Planning' * has_up + ' and ' * (has_up and has_aup) +
+                                  'Advanced Urban Planning' * has_aup) or 'None'
+                req_data.reason = f'City {data["num_cities"] + 1}'
+                req_data.note = f'{req_data.reason} Grant'
+                req_data.additional_info = {'Projects': project_string}
+                await self.on_request_fixed(req_data)
                 return None
 
             elif grant_type == 'Project':
@@ -194,16 +192,16 @@ class FinanceCog(discordutils.CogBase):
                     return
                 # If not, then redirect accordingly
                 elif project == 'Center for Civil Engineering':
-                    req_res = pnwutils.Resources(oil=1000,
-                                                 iron=1000,
-                                                 bauxite=1000,
-                                                 money=3000000)
+                    req_data.resources = pnwutils.Resources(oil=1000,
+                                                            iron=1000,
+                                                            bauxite=1000,
+                                                            money=3000000)
                 elif project == 'Intelligence Agency':
-                    req_res = pnwutils.Resources(steel=500,
-                                                 gasoline=500,
-                                                 money=5000000)
+                    req_data.resources = pnwutils.Resources(steel=500,
+                                                            gasoline=500,
+                                                            money=5000000)
                 elif project == 'Propaganda Bureau':
-                    req_res = pnwutils.Resources(aluminum=1500, money=15000000)
+                    req_data.resources = pnwutils.Resources(aluminum=1500, money=15000000)
                 elif project == 'Urban Planning':
                     if data['num_cities'] < 11:
                         await auth.send(
@@ -212,12 +210,12 @@ class FinanceCog(discordutils.CogBase):
                         )
                         return None
                     else:
-                        req_res = pnwutils.Resources(coal=10000,
-                                                     oil=10000,
-                                                     aluminum=20000,
-                                                     munitions=10000,
-                                                     gasoline=10000,
-                                                     food=1000000)
+                        req_data.resources = pnwutils.Resources(coal=10000,
+                                                                oil=10000,
+                                                                aluminum=20000,
+                                                                munitions=10000,
+                                                                gasoline=10000,
+                                                                food=1000000)
                 elif project == 'Advanced Urban Planning':
                     if not data['city_planning']:
                         await auth.send(
@@ -232,20 +230,18 @@ class FinanceCog(discordutils.CogBase):
                         )
                         return None
                     else:
-                        req_res = pnwutils.Resources(uranium=10000,
-                                                     aluminum=40000,
-                                                     steel=20000,
-                                                     munitions=20000,
-                                                     food=2500000)
+                        req_data.resources = pnwutils.Resources(uranium=10000,
+                                                                aluminum=40000,
+                                                                steel=20000,
+                                                                munitions=20000,
+                                                                food=2500000)
                 else:
                     await auth.send(
-                        'Other projects are not eligble for grants. Kindly request for a loan.'
+                        'Other projects are not eligible for grants. Kindly request for a loan.'
                     )
                     return None
-                await self.on_request_fixed(
-                    RequestData(auth, req_type, project, data['nation_name'],
-                                nation_link, req_res,
-                                f'{project} Project Grant'))
+                req_data.note = f'{project} Project Grant'
+                await self.on_request_fixed(req_data)
                 return None
 
             else:
@@ -254,7 +250,7 @@ class FinanceCog(discordutils.CogBase):
                 )
                 return None
 
-        elif req_type == 'Loan':
+        elif req_data.kind == 'Loan':
             await auth.send('What are you requesting a loan for?')
             try:
                 # Wait for user to input loan request
@@ -267,7 +263,6 @@ class FinanceCog(discordutils.CogBase):
                                 )
                 return None
 
-            req_res = {}
             res_select_view = ResourceSelectView(discordutils.Config.timeout)
             await auth.send('What resources are you requesting?', view=res_select_view)
             try:
@@ -280,15 +275,15 @@ class FinanceCog(discordutils.CogBase):
                 while True:
                     try:
                         # Wait for user to input how much of each res they want
-                        res_amt: int = int((await self.bot.wait_for(
+                        res_amt = int((await self.bot.wait_for(
                             'message',
                             check=msg_chk,
                             timeout=discordutils.Config.timeout)).content)
                         if res_amt > 0:
-                            req_res[res_name] = res_amt
+                            req_data.resources[res_name] = res_amt
                         break
                     except ValueError:
-                        await auth.send('Kindly input a whole mumber.')
+                        await auth.send('Kindly input a whole number.')
                         continue
                     except asyncio.TimeoutError:
                         await auth.send(
@@ -296,21 +291,19 @@ class FinanceCog(discordutils.CogBase):
                         return None
 
             # Ensure that user didn't request for nothing
-            if not req_res:
+            if not req_data.resources:
                 # No resources requested
                 await auth.send(
                     "You didn't request for any resources. Please run the command again and redo your request."
                 )
-                return None
+                return
             else:
-                req_res = pnwutils.Resources(**req_res)
-                await self.on_request_fixed(
-                    RequestData(auth, req_type, loan_req, data['nation_name'],
-                                nation_link, req_res,
-                                f'{loan_req.title()} Loan'))
-                return None
+                req_data.reason = loan_req
+                req_data.note = f'{loan_req.title()} Loan'
+                await self.on_request_fixed(req_data)
+                return
 
-        elif req_type == 'War Aid':
+        elif req_data.kind == 'War Aid':
             war_aid_type_choice = discordutils.Choices(
                 'Buy Military Units', 'Rebuild Military Improvements',
                 'Rebuild Infrastructure')
@@ -321,7 +314,7 @@ class FinanceCog(discordutils.CogBase):
             except asyncio.TimeoutError:
                 await auth.send('You took too long to respond! Exiting...')
                 return
-            additional_info = {
+            req_data.additional_info = {
                 'Beige Turns':
                     data['beigeturns'],
                 'Active Wars':
@@ -346,20 +339,16 @@ class FinanceCog(discordutils.CogBase):
                     f'{needed_units["ships"]} ships.'
                 )
                 # Calculate resources needed to buy needed military units
-                req_res = pnwutils.Resources(
+                req_data.resources = pnwutils.Resources(
                     money=5 * needed_units['soldiers'] + 60 * needed_units['tanks'] + 4000 * needed_units['aircraft']
                           + 50000 * needed_units['ships'],
                     steel=int(0.5 * (needed_units['tanks']) + 1) + 30 * needed_units['ships'],
                     aluminum=5 * needed_units['aircraft']
                 )
-                aid_req = 'Buy up to Max Military Units'
-                await self.on_request_fixed(
-                    RequestData(
-                        auth, req_type, aid_req, data['nation_name'],
-                        nation_link, req_res,
-                        f'War Aid to {aid_req}',
-                        additional_info))
-                return None
+                req_data.reason = 'Buy up to Max Military Units'
+                req_data.note = f'War Aid to {req_data.reason}'
+                await self.on_request_fixed(req_data)
+                return
 
             elif war_aid_type == 'Rebuild Military Improvements':
                 # Calculate amount of military improvements needed
@@ -379,21 +368,17 @@ class FinanceCog(discordutils.CogBase):
                     f'hangars and {needed_improvements["drydock"]} drydocks.'
                 )
                 # Calculate resources needed to buy needed military improvements
-                req_res = pnwutils.Resources(
+                req_data.resources = pnwutils.Resources(
                     money=3000 * needed_improvements['barracks'] + 15000 * needed_improvements['factory'] +
                           100000 * needed_improvements['airforcebase'] + 250000 * needed_improvements['drydock'],
                     steel=10 * needed_improvements['airforcebase'],
                     aluminum=5 * needed_improvements['factory'] +
                              20 * needed_improvements['drydock'])
 
-                aid_req = 'Rebuild to Max Military Improvements'
-                await self.on_request_fixed(
-                    RequestData(
-                        auth, req_type, aid_req, data['nation_name'],
-                        nation_link, req_res,
-                        f'War Aid to {aid_req}',
-                        additional_info))
-                return None
+                req_data.reason = 'Rebuild to Max Military Improvements'
+                req_data.note = f'War Aid to {req_data.reason}'
+                await self.on_request_fixed(req_data)
+                return
 
             elif war_aid_type == 'Rebuild Infrastructure':
                 irc = await self.infra_rebuild_cap.get()
@@ -423,16 +408,12 @@ class FinanceCog(discordutils.CogBase):
                         f'the current infrastructure rebuild cap ({irc}), you are '
                         'not eligible for war aid to rebuild infrastructure.'
                     )
-                    return None
+                    return
 
-                aid_req = f'Rebuild Infrastructure up to {irc}'
-                await self.on_request_fixed(
-                    RequestData(
-                        auth, req_type, aid_req, data['nation_name'],
-                        nation_link, req_res,
-                        f'War Aid to {aid_req}',
-                        additional_info))
-                return None
+                req_data.reason = f'Rebuild Infrastructure up to {irc}'
+                req_data.note = f'War Aid to {req_data.reason}'
+                await self.on_request_fixed(req_data)
+                return
 
     async def on_request_fixed(self, req_data: RequestData) -> None:
         auth = req_data.requester
@@ -519,11 +500,19 @@ class FinanceCog(discordutils.CogBase):
                 'has been sent to your nation!'
             )
             if req_data.kind == 'Loan':
+                due_date = datetime.datetime.now() + datetime.timedelta(days=30)
                 await req_data.requester.send(
-                    f'Kindly remember to return the requested resources <t:{round(time() + 30 * 24 * 60 * 60)}:R>. '
-                    'Once you have done so, ping and inform the Finance staff in #finance-and-audits.')
-                await message.edit(embed=message.embeds.pop().add_field(
-                    name='Return Date', value=(date.today() + timedelta(days=30)).strftime('%d %b, %Y'), inline=True))
+                    f'Kindly remember to return the requested resources by <t:{int(due_date.timestamp())}:R>. '
+                    'You should deposit enough to make all your resources under your balance non-negative by then.'
+                    'You can check your balance with `bank bal` and deposit resources with `bank dep`.')
+                bal = await self.bot.get_cog('BankCog').balances[req_data.nation_id]
+                await bal.set(await bal.get() - req_data.resources)
+
+                await message.edit(embed=message.embeds[0].add_field(
+                    name='Return By',
+                    value=due_date.strftime('%d %b, %Y'),
+                    inline=True))
+                await self.loans[req_data.nation_id].set(due_date.isoformat())
 
         await message.edit(
             content=f'{status if status != "Sent" else "Accepted and Sent"} Request from {req_data.requester.mention}',

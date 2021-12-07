@@ -14,13 +14,17 @@ __all__ = ('RequestData', 'RequestChoices', 'ResourceSelectView')
 @dataclass
 class RequestData:
     requester: discord.abc.User
-    kind: str
-    reason: str
+    nation_id: str
     nation_name: str
-    nation_link: str
-    resources: pnwutils.Resources
-    note: str
+    kind: str = ''
+    reason: str = ''
+    resources: pnwutils.Resources = field(default_factory=pnwutils.Resources)
+    note: str = ''
     additional_info: Optional[dict[str, str]] = field(default_factory=dict)
+
+    @property
+    def nation_link(self):
+        return pnwutils.Link.nation(self.nation_id)
 
     def create_embed(self, **kwargs: str) -> discord.Embed:
         embed = discord.Embed(**kwargs)

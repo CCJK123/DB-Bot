@@ -45,6 +45,10 @@ class BankCog(discordutils.CogBase):
     def nations(self) -> discordutils.MappingProperty[int, str]:
         return self.bot.get_cog('UtilCog').nations  # type: ignore
 
+    @property
+    def loans(self) -> discordutils.MappingProperty[str, str]:
+        return self.bot.get_cog('FinanceCog').loans  # type: ignore
+
     async def get_transactions(self, entity_id: Optional[str] = None, kind: Optional[pnwutils.TransactionType] = None
                                ) -> list[pnwutils.Transaction]:
         if entity_id is None and kind is not None:
@@ -107,6 +111,16 @@ class BankCog(discordutils.CogBase):
                 transactions.append(transaction)
 
         return transactions
+    
+    async def loan_check(self, nation_id: str, res: Optional[pnwutils.Resources] = None) -> bool:
+        if res is None:
+            res = await self.balances[nation_id].get()
+        
+        if all(amt >= 0 for amt in res.to_dict().values()):
+            # loan repaid
+            await self.loans[nation_id].delete()
+            return True
+        return False
 
     @commands.group(invoke_without_command=True)
     async def bank(self, ctx: commands.Context):
@@ -128,9 +142,13 @@ class BankCog(discordutils.CogBase):
         else:
             resources = pnwutils.Resources(**resources)
 
+        loan = await self.loans[nation_id].get(None)
+
         await ctx.send(f"{ctx.author.mention}'s Balance",
                        embed=resources.create_balance_embed(ctx.author.name),
                        allowed_mentions=discord.AllowedMentions.none())
+        if loan is not None:
+            await ctx.send(f'The loan is due in <t:{int(datetime.datetime.fromisoformat(loan).timestamp())}:R>')
 
     @bank.command(aliases=('dep',))
     @commands.max_concurrency(1, commands.BucketType.user)
@@ -171,6 +189,8 @@ class BankCog(discordutils.CogBase):
             resources += dep_resources
             await self.balances[nation_id].set(resources.to_dict())
             await auth.send('Your balance is now:', embed=resources.create_balance_embed(auth.name))
+            if await self.loan_check(nation_id, resources):
+                await auth.send('With this deposit, you have now repaid your loan.')
             return
         await auth.send('You did not deposit any resources!')
 
@@ -219,7 +239,7 @@ class BankCog(discordutils.CogBase):
                 if amt > resources[res]:
                     await auth.send(f'You cannot withdraw that much {res}! You only have {resources[res]} {res}!')
                     continue
-                    
+
                 break
             req_resources[res] = amt
 
@@ -233,11 +253,11 @@ class BankCog(discordutils.CogBase):
 
         name_query = '''
         query nation_name($nation_id: [Int]) {
-	      nations(id: $nation_id, first: 1) {
-		    data {
-			  nation_name
-		    }
-	      }
+          nations(id: $nation_id, first: 1) {
+            data {
+              nation_name
+            }
+          }
         }
         '''
 
@@ -318,6 +338,9 @@ class BankCog(discordutils.CogBase):
         await ctx.send(f'The balance of {member.mention} has been modified!',
                        embed=resources.create_balance_embed(member.name),
                        allowed_mentions=discord.AllowedMentions.none())
+        if await self.loan_check(nation_id, resources):
+            await ctx.send(f"{member.mention}'s loan is not considered repaid.",
+                           allowed_mentions=discord.AllowedMentions.none())
 
     @commands.check(discordutils.gov_check)
     @bank.command()
@@ -360,6 +383,9 @@ class BankCog(discordutils.CogBase):
         await ctx.send(f'The balance of {member.mention} has been modified!',
                        embed=resources.create_balance_embed(member.name),
                        allowed_mentions=discord.AllowedMentions.none())
+        if await self.loan_check(nation_id, resources):
+            await ctx.send(f"{member.mention}'s loan is not considered repaid.",
+                           allowed_mentions=discord.AllowedMentions.none())
 
 
 def setup(bot: discordutils.DBBot):
