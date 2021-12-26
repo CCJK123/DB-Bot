@@ -1,5 +1,6 @@
 from collections import defaultdict
 import operator
+import datetime
 
 import discord
 from discord.ext import commands
@@ -83,11 +84,11 @@ class UtilCog(discordutils.CogBase):
             paginatorInfo {
               hasMorePages
             }
-            data{
+            data {
               id
               food
               uranium
-              cities{
+              cities {
                 nuclearpower
               }
             }
@@ -110,6 +111,38 @@ class UtilCog(discordutils.CogBase):
 
         await ctx.send('\n'.join(f'{pnwutils.Link.nation(n)} has ran out of {ran_out_string}!'
                                  for n, ran_out_string in result.items()))
+
+    @commands.command()
+    async def activity_check(self, ctx: commands.Context):
+        aa_query_str = '''
+        query alliance_activity($alliance_id: [Int], $page: Int){
+          nations(alliance_id: $alliance_id, first: 500, page: $page){
+            paginatorInfo {
+              hasMorePages
+            }
+            data {
+              alliance_position
+              vmode
+              id
+              last_active
+            }
+          }
+        }
+        '''
+        data = (await pnwutils.API.post_query(self.bot.session, aa_query_str, {'alliance_id': pnwutils.Config.aa_id},
+                                              'nations', True))['data']
+        
+        inactives = []
+        now = datetime.datetime.now()
+        for nation in data:
+            if nation['alliance_position'] == 'APPLICANT' or nation['vmode'] > 0:
+                continue
+            time_since_active = now - datetime.datetime.fromisoformat(nation['last_active'])
+            if time_since_active >= datetime.timedelta(days=3):
+                inactives.append(nation['id'])
+        await ctx.send('Inactives:\n' + '\n'.join(f'{pnwutils.Link.nation(n)}' for n in inactives))
+
+
 
 
 # Setup Utility Cog as an extension

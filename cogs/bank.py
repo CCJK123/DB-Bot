@@ -37,6 +37,7 @@ class BankCog(discordutils.CogBase):
     def __init__(self, bot: discordutils.DBBot):
         super().__init__(bot, __name__)
         self.balances = discordutils.MappingProperty[str, pnwutils.ResourceDict](self, 'balances')
+        self.prices = discordutils.SavedProperty[dict[str, int]](self, 'prices')
 
     @property
     def nations(self) -> discordutils.MappingProperty[int, str]:
@@ -293,6 +294,33 @@ class BankCog(discordutils.CogBase):
             await ctx.send('You are already trying to withdraw/deposit!')
             return None
         await discordutils.default_error_handler(ctx, error)
+    
+    @bank.group(invoke_without_command=True)
+    async def prices(self, ctx: commands.Context):
+        await ctx.send(embed=discordutils.construct_embed(await self.prices.get(), title='Bank Trading Prices'))
+    
+    @prices.command()
+    async def set(self, ctx: commands.Context, res: str, amt: int):
+        if (prices := await self.prices.get(None)) is None:
+            prices = {}
+        
+        if amt <= 0:
+            await ctx.send('Price must be positive!')
+            return
+
+        if res.lower() in pnwutils.Constants.all_res:
+            prices[res.capitalize()] = amt
+            await self.prices.set(prices)
+            await ctx.send(f'The price of {res} has been set to {amt} ppu.')
+            return
+        
+        await ctx.send(f"{res} isn't a valid resource!")
+
+    @bank.command()
+    async def buy(self, ctx: commands.Context, res: str, amt: int):
+        prices = await self.prices.get()
+        if prices.get(res.capitalize()):
+            pass
 
     @commands.check(discordutils.gov_check)
     @bank.command()
