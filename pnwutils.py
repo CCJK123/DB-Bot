@@ -9,7 +9,11 @@ import os  # For env variables
 import discord
 
 # Setup what is exported by default
-__all__ = ('Config', 'Constants', 'Resources', 'Link')
+__all__ = ('API', 'APIError',
+           'Config', 'Constants',
+           'Resources', 'ResourceDict',
+           'Transaction', 'TransactionType',
+           'Link', 'war_range')
 
 
 # Setup API configuration variables
@@ -122,17 +126,23 @@ class Resources:
             return embed
         raise ValueError('The embed is empty and cannot be sent!')
 
-    def create_balance_embed(self, reciever: str) -> discord.Embed:
+    def create_balance_embed(self, receiver: str) -> discord.Embed:
         if self:
-            return self.create_embed(title=f"{reciever}'s Balance")
-        return discord.Embed(title=f"{reciever}'s Balance", description='Hmm... Nothing here')
+            return self.create_embed(title=f"{receiver}'s Balance")
+        return discord.Embed(title=f"{receiver}'s Balance", description='Hmm... Nothing here')
 
-    def __getitem__(self, key):
+    def all_positive(self) -> bool:
+        return all(a >= 0 for a in self.values())
+
+    def values(self) -> Iterable[int]:
+        return (self[res_name] for res_name in Constants.all_res)
+
+    def __getitem__(self, key) -> int:
         if key in Constants.all_res:
             return getattr(self, key)
         raise KeyError(f'{key} is not a resource!')
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key, value) -> None:
         if key in Constants.all_res:
             setattr(self, key, value)
             return
@@ -158,7 +168,7 @@ class Resources:
     def __iadd__(self, other):
         if isinstance(other, Resources):
             for name in Constants.all_res:
-                self[name] = self[name] + other[name]
+                self[name] += other[name]
             return self
         return NotImplemented
 
@@ -173,7 +183,7 @@ class Resources:
     def __isub__(self, other):
         if isinstance(other, Resources):
             for name in Constants.all_res:
-                self[name] = self[name] - other[name]
+                self[name] -= other[name]
             return self
         return NotImplemented
 

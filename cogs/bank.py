@@ -1,7 +1,6 @@
 import asyncio
 import datetime
-from typing import Optional, Union
-from collections.abc import Awaitable, Callable
+from typing import Any, Optional, Union
 
 from discord.ext import commands
 import discord
@@ -9,28 +8,6 @@ import discord
 import discordutils
 import pnwutils
 import financeutils
-
-
-class WithdrawalButton(discord.ui.Button['WithdrawalView']):
-    def __init__(self):
-        super().__init__(row=0, custom_id='Withdrawal Button')
-        self.label = 'Sent'
-
-    async def callback(self, interaction: discord.Interaction):
-        self.style = discord.ButtonStyle.success
-        self.disabled = True
-        self.view.stop()
-        await interaction.response.edit_message(view=self.view)
-        await self.view.callback(*self.view.args)
-
-
-class WithdrawalView(discord.ui.View):
-    def __init__(self, link: str, callback: Callable[..., Awaitable[None]], *args):
-        super().__init__(timeout=None)
-        self.callback = callback
-        self.args = args
-        self.add_item(discordutils.LinkButton('Withdrawal Link', link))
-        self.add_item(WithdrawalButton())
 
 
 class BankCog(discordutils.CogBase):
@@ -44,7 +21,7 @@ class BankCog(discordutils.CogBase):
         return self.bot.get_cog('UtilCog').nations  # type: ignore
 
     @property
-    def loans(self) -> discordutils.MappingProperty[str, str]:
+    def loans(self) -> discordutils.MappingProperty[int, dict[str, Any]]:
         return self.bot.get_cog('FinanceCog').loans  # type: ignore
 
     async def get_transactions(self, entity_id: Optional[str] = None, kind: Optional[pnwutils.TransactionType] = None
@@ -201,7 +178,7 @@ class BankCog(discordutils.CogBase):
             await ctx.send('Your nation id has not been set!')
             return
 
-        channel = self.bot.get_cog('FinanceCog').channel  # type: ignore
+        channel = self.bot.get_cog('FinanceCog').send_channel  # type: ignore
         if (channel := await channel.get(None)) is None:
             await ctx.send('Output channel has not been set! Aborting.')
             return None
@@ -264,15 +241,10 @@ class BankCog(discordutils.CogBase):
         name = data['data'][0]['nation_name']
         link = pnwutils.Link.bank('w', req_resources, name, 'Withdrawal from balance')
 
-        embed = discord.Embed()
-        embed.add_field(name='Nation', value=f'[{name}]({pnwutils.Link.nation(nation_id)})')
-        embed.add_field(name='Reason', value=reason)
-        embed.add_field(name='Requested Resources', value=req_resources)
-
-        view = WithdrawalView(link, self.on_sent, auth, req_resources)
+        view = financeutils.WithdrawalView(link, self.on_sent, auth, req_resources)
         self.bot.add_view(view)
         await channel.send(f'Withdrawal Request from {auth.mention}',
-                           embed=embed,
+                           embed=financeutils.withdrawal_embed(name, nation_id, reason, req_resources),
                            allowed_mentions=discord.AllowedMentions.none(),
                            view=view)
 
@@ -317,10 +289,65 @@ class BankCog(discordutils.CogBase):
         await ctx.send(f"{res} isn't a valid resource!")
 
     @bank.command()
-    async def buy(self, ctx: commands.Context, res: str, amt: int):
+    async def buy(self, ctx: commands.Context, res_name: str, amt: int):
         prices = await self.prices.get()
-        if prices.get(res.capitalize()):
-            pass
+        if p := prices.get(res_name.capitalize()):
+            bal = self.balances[await self.nations[ctx.author.id].get()]
+            res = pnwutils.Resources(**await bal.get())
+            res.money -= amt * p
+            if res.money < 0:
+                await ctx.send('You do not have enough money deposited to do that!')
+                return
+            res[res_name.lower()] += amt
+            await bal.set(res)
+            await ctx.send('Transaction complete!')
+            return
+        await ctx.send(f'{res_name} is not a valid resource!')
+    
+    @bank.command()
+    async def sell(self, ctx: commands.Context, res_name: str, amt: int):
+        prices = await self.prices.get()
+        if p := prices.get(res_name.capitalize()):
+            bal = self.balances[await self.nations[ctx.author.id].get()]
+            res = pnwutils.Resources(**await bal.get())
+            res[res_name.lower()] -= amt
+            if res[res_name.lower()] < 0:
+                await ctx.send('You do not have enough money deposited to do that!')
+                return
+            res.money += amt * p
+            await bal.set(res)
+            await ctx.send('Transaction complete!')
+            return
+        await ctx.send(f'{res_name} is not a valid resource!')
+
+    @bank.group(invoke_without_subcommand=True)
+    async def loan(self, ctx: commands.Context):
+        await ctx.send('Subcommands: `status`, `return`')
+
+    @loan.command(aliases=('return',))
+    async def ret(self, ctx: commands.Context):
+        loan = await self.loans[ctx.author.id].get(None)
+        if loan is None:
+            await ctx.send("You don't have an active loan!")
+            return
+        loan = financeutils.LoanData(**loan)
+        bal = self.balances[ctx.author.id]
+        res = pnwutils.Resources(**await bal.get())
+        res -= loan.resources
+        if res.all_positive():
+            await bal.set(res)
+            await self.loans[ctx.author.id].delete()
+            await ctx.send('Your loan has been successfully repaid!')
+            return
+        await ctx.send('You do not have enough resources to repay your loan.')
+
+    @loan.command()
+    async def status(self, ctx: commands.Context):
+        loan = await self.loans[ctx.author.id].get(None)
+        if loan is None:
+            await ctx.send("You don't have an active loan!")
+            return
+        await ctx.send(embed=financeutils.LoanData(**loan).to_embed())
 
     @discordutils.gov_check
     @bank.command()

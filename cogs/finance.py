@@ -2,14 +2,15 @@ import asyncio
 import logging
 import operator
 import datetime
-from typing import Literal
+from typing import Any
 
 import discord
 from discord.ext import commands
 
 import discordutils
+import financeutils
 import pnwutils
-from financeutils import RequestData, RequestChoices, ResourceSelectView
+from financeutils import RequestData, LoanData, RequestStatus, RequestChoices, ResourceSelectView
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +21,9 @@ class FinanceCog(discordutils.CogBase):
         super().__init__(bot, __name__)
         self.has_war_aid = discordutils.SavedProperty[bool](self, 'has_war_aid')
         self.infra_rebuild_cap = discordutils.SavedProperty[int](self, 'infra_rebuild_cap')
-        self.channel = discordutils.ChannelProperty(self, 'channel')
-        self.loans = discordutils.MappingProperty(self, 'loans')
+        self.process_channel = discordutils.ChannelProperty(self, 'process_channel')
+        self.send_channel = discordutils.ChannelProperty(self, 'send_channel')
+        self.loans = discordutils.MappingProperty[int, dict[str, Any]](self, 'loans')
 
     @property
     def nations(self) -> discordutils.MappingProperty[int, str]:
@@ -34,9 +36,9 @@ class FinanceCog(discordutils.CogBase):
         await self.loans.initialise()
         # Command Run Validity Check
         # Check if output channel has been set
-        if await self.channel.get(None) is None:
+        if await self.process_channel.get(None) is None or await self.send_channel.get(None) is None:
             await ctx.send('Output channel has not been set! Aborting.')
-            return None
+            return
 
         if ctx.guild is not None:
             await ctx.send('Please check your DMs!')
@@ -253,7 +255,7 @@ class FinanceCog(discordutils.CogBase):
             await auth.send('What are you requesting a loan for?')
             try:
                 # Wait for user to input loan request
-                loan_req: str = (await self.bot.wait_for(
+                req_data.reason = (await self.bot.wait_for(
                     'message',
                     check=msg_chk,
                     timeout=discordutils.Config.timeout)).content
@@ -285,27 +287,25 @@ class FinanceCog(discordutils.CogBase):
                         await auth.send('Kindly input a whole number.')
                         continue
                     except asyncio.TimeoutError:
-                        await auth.send(
-                            'You took too long to reply. Aborting request!')
-                        return None
+                        await auth.send('You took too long to reply. Aborting request!')
+                        return
 
             # Ensure that user didn't request for nothing
-            if not req_data.resources:
+            if req_data.resources:
+                req_data.note = f'{req_data.reason.title()} Loan'
+                await self.on_request_fixed(req_data)
+                return
+            else:
                 # No resources requested
                 await auth.send(
                     "You didn't request for any resources. Please run the command again and redo your request."
                 )
                 return
-            else:
-                req_data.reason = loan_req
-                req_data.note = f'{loan_req.title()} Loan'
-                await self.on_request_fixed(req_data)
-                return
 
         elif req_data.kind == 'War Aid':
             war_aid_type_choice = discordutils.Choices(
                 'Buy Military Units', 'Rebuild Military Improvements',
-                'Rebuild Infrastructure')
+                'Rebuild Infrastructure', 'Various Resources')
             await auth.send('What type of war aid are you requesting?',
                             view=war_aid_type_choice)
             try:
@@ -387,21 +387,19 @@ class FinanceCog(discordutils.CogBase):
                     'amount. The amount calculated assumes that domestic policy is set to Urbanisation.'
                 )
                 # Calculate infra cost for each city
-                req_res = pnwutils.Resources()
                 for city in data['cities']:
                     if city['infrastructure'] < irc:
                         for infra_lvl in range(city['infrastructure'], irc + 1):
                             if infra_lvl < 10:
-                                req_res.money += 300
+                                req_data.resources.money += 300
                             else:
-                                req_res.money += 300 + (infra_lvl -
-                                                        10) ** 2.2 / 710
+                                req_data.resources.money += 300 + (infra_lvl - 10) ** 2.2 / 710
                 # Account for Urbanisation and cost reducing projects (CCE and AEC)
-                req_res.money *= 0.95 - 0.05 * (data['cfce'] +
-                                                data['adv_engineering_corps'])
-                req_res.money = int(req_res.money + 0.5)
+                req_data.resources.money *= 0.95 - 0.05 * (data['cfce'] +
+                                                           data['adv_engineering_corps'])
+                req_data.resources.money = int(req_data.resources.money + 0.5)
                 # Check if infrastructure in any city under cap
-                if req_res.money == 0:
+                if req_data.resources.money == 0:
                     await auth.send(
                         'Since all your cities have an infrastructure level above '
                         f'the current infrastructure rebuild cap ({irc}), you are '
@@ -413,6 +411,56 @@ class FinanceCog(discordutils.CogBase):
                 req_data.note = f'War Aid to {req_data.reason}'
                 await self.on_request_fixed(req_data)
                 return
+            else:
+                await auth.send('Why are you requesting these various resources?')
+                try:
+                    # Wait for user to input loan request
+                    req_data.reason = (await self.bot.wait_for(
+                        'message',
+                        check=msg_chk,
+                        timeout=discordutils.Config.timeout)).content
+                except asyncio.TimeoutError:
+                    await auth.send('You took too long to reply. Aborting request!')
+                    return
+
+                res_select_view = ResourceSelectView(discordutils.Config.timeout)
+                await auth.send('What resources are you requesting?', view=res_select_view)
+                try:
+                    selected_res = await res_select_view.result()
+                except asyncio.TimeoutError:
+                    await auth.send('You took too long to respond! Exiting...')
+                    return
+                for res_name in selected_res:
+                    await auth.send(f'How much {res_name} are you requesting?')
+                    while True:
+                        try:
+                            # Wait for user to input how much of each res they want
+                            res_amt = int((await self.bot.wait_for(
+                                'message',
+                                check=msg_chk,
+                                timeout=discordutils.Config.timeout)).content)
+                            if res_amt > 0:
+                                req_data.resources[res_name] = res_amt
+                            break
+                        except ValueError:
+                            await auth.send('Kindly input a whole number.')
+                            continue
+                        except asyncio.TimeoutError:
+                            await auth.send(
+                                'You took too long to reply. Aborting request!')
+                            return
+
+                # Ensure that user didn't request for nothing
+                if req_data.resources:
+                    req_data.note = f'War Aid to {req_data.reason}'
+                    await self.on_request_fixed(req_data)
+                    return
+                else:
+                    # No resources requested
+                    await auth.send(
+                        "You didn't request for any resources. Please run the command again and redo your request."
+                    )
+                    return
 
     async def on_request_fixed(self, req_data: RequestData) -> None:
         auth = req_data.requester
@@ -444,9 +492,9 @@ class FinanceCog(discordutils.CogBase):
                 'Your request has been sent. Thank you for using the DB Finance Request Interface.'
             )
             embed.title = None
-            process_view = RequestChoices(req_data.create_link(), self.on_processed, req_data)
+            process_view = RequestChoices(self.on_processed, req_data)
             self.bot.add_view(process_view)
-            await (await self.channel.get()).send(
+            await (await self.process_channel.get()).send(
                 f'New Request from {auth.mention}',
                 embed=embed,
                 allowed_mentions=discord.AllowedMentions.none(),
@@ -458,60 +506,67 @@ class FinanceCog(discordutils.CogBase):
             'Exiting the DB Finance Request Interface. Please run the command again and redo your request.'
         )
 
-    async def on_processed(self, status: Literal['Accepted', 'Rejected', 'Sent'],
-                           user: discord.abc.User, message: discord.Message, req_data: RequestData) -> None:
+    async def on_processed(self, status: RequestStatus,
+                           interaction: discord.Interaction, req_data: RequestData) -> None:
         logger.info(f'processing {status} request: {req_data}')
-        if status == 'Accepted':
-            await req_data.requester.send(
-                f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} '
-                'has been accepted! The resources will be sent to you soon. '
-            )
+        if status == RequestStatus.ACCEPTED:
+            if req_data.kind == 'Loan':
+                data = LoanData(datetime.datetime.now() + datetime.timedelta(days=30), req_data.resources)
+                await req_data.requester.send(
+                    'The loan has been added to your balance. '
+                    'Kindly remember to return the requested resources using `bank loan return` by '
+                    f'<t:{int(data.due_date.timestamp())}:R>. '
+                    'You can check your loan status with `bank loan`.'
+                )
+                bal = self.bot.get_cog('BankCog').balances[req_data.nation_id]
+                await bal.set((pnwutils.Resources(**await bal.get()) + req_data.resources).to_dict())
 
-        elif status == 'Rejected':
-            await user.send(
+                await interaction.message.edit(embed=interaction.message.embeds[0].add_field(
+                    name='Return By',
+                    value=data.display_date,
+                    inline=True))
+                await self.loans[req_data.nation_id].set(data.to_dict())
+            else:
+                await req_data.requester.send(
+                    f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} '
+                    'has been accepted! The resources will be sent to you soon. '
+                )
+                channel = await self.send_channel.get()
+                withdrawal_view = financeutils.WithdrawalView(req_data.create_link(), self.on_sent, req_data)
+                await channel.send(embed=req_data.create_withdrawal_embed(), view=withdrawal_view)
+
+        elif status == RequestStatus.REJECTED:
+            await interaction.user.send(
                 f'What was the reason for rejecting the {req_data.kind} request '
                 f'{"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason}?'
             )
 
             def msg_chk(m: discord.Message) -> bool:
-                return m.author == user and m.guild is None
+                return m.author == interaction.user and m.guild is None
 
             try:
                 reject_reason: str = (await self.bot.wait_for(
                     'message', check=msg_chk,
                     timeout=discordutils.Config.timeout)).content
             except asyncio.TimeoutError():
-                await user.send('You took too long to respond! Default rejection reason set.')
+                await interaction.user.send('You took too long to respond! Default rejection reason set.')
                 reject_reason = 'not given'
             await req_data.requester.send(
                 f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} '
                 f'has been rejected!\nReason: {reject_reason}')
-            await message.edit(embed=message.embeds.pop().add_field(
+            await interaction.message.edit(embed=interaction.message.embeds.pop().add_field(
                 name='Rejection Reason', value=reject_reason, inline=True))
 
-        if status == 'Sent':
-            await req_data.requester.send(
-                f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} '
-                'has been sent to your nation!'
-            )
-            if req_data.kind == 'Loan':
-                due_date = datetime.datetime.now() + datetime.timedelta(days=30)
-                await req_data.requester.send(
-                    f'Kindly remember to return the requested resources by <t:{int(due_date.timestamp())}:R>. '
-                    'You should deposit enough to make all your resources under your balance non-negative by then. '
-                    'You can check your balance with `bank bal` and deposit resources with `bank dep`.')
-                bal = self.bot.get_cog('BankCog').balances[req_data.nation_id]
-                await bal.set((pnwutils.Resources(**await bal.get()) - req_data.resources).to_dict())
-
-                await message.edit(embed=message.embeds[0].add_field(
-                    name='Return By',
-                    value=due_date.strftime('%d %b, %Y'),
-                    inline=True))
-                await self.loans[req_data.nation_id].set(due_date.isoformat())
-
-        await message.edit(
-            content=f'{status if status != "Sent" else "Accepted and Sent"} Request from {req_data.requester.mention}',
+        await interaction.message.edit(
+            content=f'{status.value} Request from {req_data.requester.mention}',
             allowed_mentions=discord.AllowedMentions.none())
+
+    @staticmethod
+    async def on_sent(req_data):
+        await req_data.requester.send(
+            f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} '
+            'has been sent to your nation!'
+        )
 
     @request.error
     async def request_error(self, ctx: commands.Context,
@@ -521,22 +576,24 @@ class FinanceCog(discordutils.CogBase):
             return None
         await discordutils.default_error_handler(ctx, error)
 
-    @commands.guild_only()
     @discordutils.gov_check
     @request.group(invoke_without_command=True)
     async def set(self, ctx: commands.Context) -> None:
         await ctx.send('Subcommands: `channel`, `war_aid`, `infra_rebuild_cap`'
                        )
 
-    @commands.guild_only()
     @discordutils.gov_check
-    @set.command(aliases=('channel',))
-    async def chan(self, ctx: commands.Context) -> None:
-        await self.channel.set(ctx.channel)
-        await ctx.send(
-            'Output channel set! New responses will now be sent here.')
+    @set.command()
+    async def process(self, ctx: commands.Context) -> None:
+        await self.process_channel.set(ctx.channel)
+        await ctx.send('Process channel set!')
 
-    @commands.guild_only()
+    @discordutils.gov_check
+    @set.command()
+    async def send(self, ctx: commands.Context):
+        await self.send_channel.set(ctx.channel)
+        await ctx.send('Send channel set!')
+
     @discordutils.gov_check
     @set.command(aliases=('aid',))
     async def war_aid(self, ctx: commands.Context) -> None:
@@ -544,7 +601,6 @@ class FinanceCog(discordutils.CogBase):
         await ctx.send(
             f'War Aid is now {(not await self.has_war_aid.get()) * "not "}available!')
 
-    @commands.guild_only()
     @discordutils.gov_check
     @set.command(aliases=('infra_cap', 'cap'))
     async def infra_rebuild_cap(self, ctx: commands.Context, cap: int) -> None:

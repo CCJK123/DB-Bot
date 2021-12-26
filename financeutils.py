@@ -1,5 +1,9 @@
+from __future__ import annotations
+
 import asyncio
-from typing import Callable, Awaitable, Literal, Optional
+import datetime
+import enum
+from typing import Callable, Awaitable, Optional, TypedDict
 from dataclasses import dataclass, field
 
 import discord
@@ -7,7 +11,7 @@ import discord
 import pnwutils
 import discordutils
 
-__all__ = ('RequestData', 'RequestChoices', 'ResourceSelectView')
+__all__ = ('RequestData', 'LoanData', 'RequestStatus', 'RequestChoices', 'ResourceSelectView')
 
 
 @dataclass(slots=True)
@@ -38,36 +42,103 @@ class RequestData:
     def create_link(self) -> str:
         return pnwutils.Link.bank("w", self.resources, self.nation_name, self.note)
 
+    def create_withdrawal_embed(self) -> discord.Embed:
+        return withdrawal_embed(self.nation_name, self.nation_id, self.reason, self.resources)
+
+
+class LoanDataDict(TypedDict):
+    due_date: str
+    resources: pnwutils.ResourceDict
+
+
+class LoanData:
+    __slots__ = ('due_date', 'resources')
+
+    def __init__(self, due_date: str | datetime.datetime, resources: pnwutils.Resources | pnwutils.ResourceDict):
+        if isinstance(due_date, str):
+            self.due_date = datetime.datetime.fromisoformat(due_date)
+        else:
+            self.due_date = due_date
+
+        if isinstance(resources, pnwutils.Resources):
+            self.resources = resources
+        else:
+            self.resources = pnwutils.Resources(**resources)
+
+    @property
+    def display_date(self):
+        return self.due_date.strftime('%d %b, %Y')
+
+    def to_dict(self) -> dict[str, str]:
+        return {'due_date': self.due_date.isoformat(), 'resources': self.resources.to_dict()}
+
+    def to_embed(self, **kwargs: str) -> discord.Embed:
+        embed = self.resources.create_embed(**kwargs)
+        embed.insert_field_at(0, name='Due Date', value=self.display_date)
+        return embed
+
+
+class RequestStatus(enum.Enum):
+    ACCEPTED = 'Accepted'
+    REJECTED = 'Rejected'
+
+
+RequestChosenCallback = Callable[[RequestStatus, discord.Interaction, RequestData],
+                                 Awaitable[None]]
+
 
 class RequestChoice(discord.ui.Button['RequestChoices']):
-    def __init__(self, label: Literal['Accepted', 'Rejected', 'Sent']):
-        super().__init__(row=0, custom_id=label)
-        self.label = label
+    def __init__(self, label: RequestStatus):
+        super().__init__(row=0, custom_id=label.value)
+        self.label = label.value
 
     async def callback(self, interaction: discord.Interaction) -> None:
         self.style = discord.ButtonStyle.success
         for child in self.view.children:
-            if isinstance(child, RequestChoice) and (self.label != 'Accepted' or child.label != 'Sent'):
-                # If self.label == Accepted and child.label == Sent, don't disable
-                child.disabled = True
-        if self.label != 'Accepted':
-            self.view.stop()
+            child.disabled = True
+        self.view.stop()
         await interaction.response.edit_message(view=self.view)
-        # type checker does not realise self.label is one of [Accepted, Rejected, Sent]
-        await self.view.callback(self.label, interaction.user, interaction.message, *self.view.args)  # type: ignore
+        await self.view.callback(RequestStatus(self.label), interaction, self.view.data)
 
 
 class RequestChoices(discord.ui.View):
-    def __init__(self, link: str, callback: Callable[[Literal['Accepted', 'Rejected', 'Sent'], discord.abc.User,
-                                           discord.Message, ...], Awaitable[None]], *args):
+    def __init__(self, callback: RequestChosenCallback, data: RequestData):
         # Callback would be called with 'Accepted', 'Rejected', or 'Sent'
         super().__init__(timeout=None)
-        self.args = args
+        self.data = data
         self.callback = callback
-        self.add_item(discordutils.LinkButton('Withdrawal Link', link))
-        c: Literal['Accepted', 'Rejected', 'Sent']
-        for c in ('Accepted', 'Rejected', 'Sent'):
+        for c in RequestStatus:
             self.add_item(RequestChoice(c))
+
+
+def withdrawal_embed(name: str, nation_id: str, reason: str, resources: pnwutils.Resources) -> discord.Embed:
+    embed = discord.Embed()
+    embed.add_field(name='Nation', value=f'[{name}]({pnwutils.Link.nation(nation_id)})')
+    embed.add_field(name='Reason', value=reason)
+    embed.add_field(name='Requested Resources', value=resources)
+    return embed
+
+
+class WithdrawalButton(discord.ui.Button['WithdrawalView']):
+    def __init__(self):
+        super().__init__(row=0, custom_id='Withdrawal Button')
+        self.label = 'Sent'
+
+    async def callback(self, interaction: discord.Interaction):
+        self.style = discord.ButtonStyle.success
+        self.disabled = True
+        self.view.stop()
+        await interaction.response.edit_message(view=self.view)
+        await self.view.callback(*self.view.args)
+
+
+class WithdrawalView(discord.ui.View):
+    def __init__(self, link: str, callback: Callable[..., Awaitable[None]], *args):
+        super().__init__(timeout=None)
+        self.callback = callback
+        self.args = args
+        self.add_item(discordutils.LinkButton('Withdrawal Link', link))
+        self.add_item(WithdrawalButton())
 
 
 class ResourceSelector(discord.ui.Select['ResourceSelectView']):

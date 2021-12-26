@@ -12,7 +12,8 @@ import discord
 from discord.ext import commands, tasks
 
 # Setup what is exported by default
-__all__ = ('Config', 'Choices', 'construct_embed', 'gov_check', 'CogBase', 'SavedProperty', 'WrappedProperty')
+__all__ = ('Config', 'Choices', 'construct_embed', 'gov_check', 'CogBase',
+           'SavedProperty', 'WrappedProperty', 'ChannelProperty', 'MappingProperty')
 
 
 # Setup bot
