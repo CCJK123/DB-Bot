@@ -69,13 +69,19 @@ class UtilCog(discordutils.CogBase):
         else:
             await ctx.send('Aborting!')
 
+    @discordutils.gov_check
     @commands.command()
     async def list_registered(self, ctx: commands.Context):
-        m = '\n'.join(f'<@{disc_id}> - {pnwutils.Link.nation(nation_id)}'
-                      for disc_id, nation_id in (await self.nations.get()).items())
-        await ctx.send(m or 'There are no registrations!',
-                       allowed_mentions=discord.AllowedMentions.none())
+        nations = await self.nations.get()
+        if nations:
+            strings = (f'<@{disc_id}> - {pnwutils.Link.nation(nation_id)}'
+                    for disc_id, nation_id in nations.items())
+            for m in discordutils.split_blocks('\n', strings, 2000):
+                await ctx.send(m, allowed_mentions=discord.AllowedMentions.none())
+            return
+        await ctx.send('There are no registrations!')
 
+    @discordutils.gov_check
     @commands.command()
     async def check_ran_out(self, ctx: commands.Context):
         aa_query_str = '''
@@ -109,9 +115,11 @@ class UtilCog(discordutils.CogBase):
             if has_ura:
                 result[nation['id']] += 'uranium'
 
-        await ctx.send('\n'.join(f'{pnwutils.Link.nation(n)} has ran out of {ran_out_string}!'
-                                 for n, ran_out_string in result.items()))
+        strings = (f'{pnwutils.Link.nation(n)} has ran out of {ran_out_string}!' for n, ran_out_string in result.items())
+        for m in discordutils.split_blocks('\n', strings, 2000):
+            await ctx.send(m)
 
+    @discordutils.gov_check
     @commands.command()
     async def activity_check(self, ctx: commands.Context):
         aa_query_str = '''
@@ -132,17 +140,44 @@ class UtilCog(discordutils.CogBase):
         data = (await pnwutils.API.post_query(self.bot.session, aa_query_str, {'alliance_id': pnwutils.Config.aa_id},
                                               'nations', True))['data']
         
-        inactives = []
+        inactives = set()
         now = datetime.datetime.now()
         for nation in data:
             if nation['alliance_position'] == 'APPLICANT' or nation['vmode'] > 0:
                 continue
             time_since_active = now - datetime.datetime.fromisoformat(nation['last_active'])
             if time_since_active >= datetime.timedelta(days=3):
-                inactives.append(nation['id'])
-        await ctx.send('Inactives:\n' + '\n'.join(f'{pnwutils.Link.nation(n)}' for n in inactives))
+                inactives.add(nation['id'])
+        
+        inactives_discord = {}
+        nations = await self.nations.get()
+        for i, n in nations.items():
+            if n in inactives:
+                inactives_discord[n] = i
 
+        await ctx.send('Inactives:')
+        for m in discordutils.split_blocks('\n', (f'<@{d_id}>' for d_id in inactives_discord.values()), 2000):
+            await ctx.send(m)
+        for m in discordutils.split_blocks('\n', (pnwutils.Link.nation(n) for n in inactives - inactives_discord.keys()), 2000):
+            await ctx.send(m)
 
+    @discordutils.gov_check
+    @commands.command()
+    async def add_members(self, ctx: commands.Context):
+        count = 0
+        nations = await self.nations.get()
+        for member in ctx.guild.members:
+            if '/' in member.display_name:
+                try:
+                    int(nation_id := member.display_name.split('/')[1])
+                except ValueError:
+                    continue
+                print(member.id, nation_id)
+                nations[str(member.id)] = nation_id
+                count += 1
+        
+        await self.nations.set(nations)
+        await ctx.send(f'{count} members have been added to the database.')
 
 
 # Setup Utility Cog as an extension

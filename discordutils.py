@@ -6,7 +6,7 @@ import operator
 import sys
 import traceback
 import os  # For env variables
-from typing import Any, Awaitable, Callable, Generic, Mapping, Optional, TypeVar, Union
+from typing import Any, Awaitable, Callable, Generic, Iterable, Mapping, Optional, TypeVar, Union
 
 import discord
 from discord.ext import commands, tasks
@@ -18,7 +18,9 @@ __all__ = ('Config', 'Choices', 'construct_embed', 'gov_check', 'CogBase', 'Save
 # Setup bot
 class DBBot(commands.Bot):
     def __init__(self, db_url, on_ready_func: Callable[[], None]):
-        super().__init__(command_prefix=os.environ['command_prefix'])
+        intents = discord.Intents(guilds=True, messages=True, members=True)
+        super().__init__(command_prefix=os.environ['command_prefix'],
+                         intents=intents)
         self.on_ready_func = on_ready_func
         self.session = aiohttp.ClientSession()
         self.db = AsyncDatabase(db_url)
@@ -52,10 +54,10 @@ class DBBot(commands.Bot):
         self.on_ready_func()
 
     def db_set(self, cog_name: str, key: str, val: Any) -> Awaitable[None]:
-        return self.db.set(cog_name + '.' + key, val)
+        return self.db.set(f'{cog_name}.{key}', val)
 
     def db_get(self, cog_name: str, key: str) -> Awaitable[Any]:
-        return self.db.get(cog_name + '.' + key)
+        return self.db.get(f'{cog_name}.{key}')
 
 
 # Setup discord bot configuration variables
@@ -137,13 +139,32 @@ def get_dm_msg_chk(auth_id: int) -> Callable[[discord.Message], bool]:
     return msg_chk
 
 
+def split_blocks(joiner: str, items: Iterable[str], limit: int) -> Iterable[str]:
+    """split a message from a string.join into blocks smaller tahn limit"""
+    s = ''
+    unjoined = True
+    for i in items:
+        if len(s) + len(joiner) + len(i) > limit:
+            yield s
+            s = ''
+            unjoined = True
+        if unjoined:
+            s += i
+            unjoined = False
+        else:
+            s += joiner + i
+    yield s
+    return
+        
+
 # Check if user in DB government
+@commands.check
 async def gov_check(ctx: commands.Context) -> bool:
     # Check if command was sent in DB server or in DM
     if isinstance(ctx.author, discord.Member):
-        # Sent from DB server - Check server roles
+        # Sent from a server - Check server roles
         # Check if server member has id of "The Black Hand" role
-        if Config.gov_role_id in map(operator.attrgetter('id'), ctx.author.roles):
+        if discord.utils.get(ctx.author.roles, id=Config.gov_role_id) is not None:
             return True
         # Inform non-gov members about their lack of permissions
         await ctx.send("You do not have the necessary permissions to run this command.")

@@ -522,14 +522,14 @@ class FinanceCog(discordutils.CogBase):
         await discordutils.default_error_handler(ctx, error)
 
     @commands.guild_only()
-    @commands.check(discordutils.gov_check)
+    @discordutils.gov_check
     @request.group(invoke_without_command=True)
     async def set(self, ctx: commands.Context) -> None:
         await ctx.send('Subcommands: `channel`, `war_aid`, `infra_rebuild_cap`'
                        )
 
     @commands.guild_only()
-    @commands.check(discordutils.gov_check)
+    @discordutils.gov_check
     @set.command(aliases=('channel',))
     async def chan(self, ctx: commands.Context) -> None:
         await self.channel.set(ctx.channel)
@@ -537,7 +537,7 @@ class FinanceCog(discordutils.CogBase):
             'Output channel set! New responses will now be sent here.')
 
     @commands.guild_only()
-    @commands.check(discordutils.gov_check)
+    @discordutils.gov_check
     @set.command(aliases=('aid',))
     async def war_aid(self, ctx: commands.Context) -> None:
         await self.has_war_aid.transform(operator.not_)
@@ -545,7 +545,7 @@ class FinanceCog(discordutils.CogBase):
             f'War Aid is now {(not await self.has_war_aid.get()) * "not "}available!')
 
     @commands.guild_only()
-    @commands.check(discordutils.gov_check)
+    @discordutils.gov_check
     @set.command(aliases=('infra_cap', 'cap'))
     async def infra_rebuild_cap(self, ctx: commands.Context, cap: int) -> None:
         await self.infra_rebuild_cap.set(max(0, 50 * round(cap / 50)))

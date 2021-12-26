@@ -135,8 +135,7 @@ class WarDetectorCog(discordutils.CogBase):
                 await (await self.channels[WarType.LOSE].get()).send(embeds=await self.war_embed(war, WarType.LOSE))
                 self.done_wars.append(war['id'])
 
-    @commands.guild_only()
-    @commands.check(discordutils.gov_check)
+    @discordutils.gov_check
     @commands.group(aliases=('detector',), invoke_without_command=True)
     async def war_detector(self, ctx: commands.Context) -> None:
         await ctx.send('Use `war_detector start` to start the detector and `war_detector stop` to stop it')
@@ -156,26 +155,31 @@ class WarDetectorCog(discordutils.CogBase):
         self.detect_wars.start()
         await ctx.send('War detector is now running!')
 
+    @discordutils.gov_check
     @war_detector.command()
     async def losing(self, ctx: commands.Context) -> None:
         await ctx.send(f'Losing wars will now {"not " * self.check_losing}be checked!')
         self.check_losing.transform(operator.not_)
         await self.bot.db_set('war', 'check_losing', self.check_losing)
 
+    @discordutils.gov_check
     @war_detector.group(aliases=('set',), invoke_without_command=True)
     async def set_channel(self, ctx: commands.Context) -> None:
         await ctx.send('Provide one of `att`, `def`, or `lose` to set the channel to!')
 
+    @discordutils.gov_check
     @set_channel.command(aliases=('att',))
     async def a(self, ctx: commands.Context) -> None:
         await self.att_channel.set(ctx.channel)
         await ctx.send('Offensive wars channel set!')
 
+    @discordutils.gov_check
     @set_channel.command(aliases=('def',))
     async def d(self, ctx: commands.Context) -> None:
         await self.def_channel.set(ctx.channel)
         await ctx.send('Defensive wars channel set!')
 
+    @discordutils.gov_check
     @set_channel.command(aliases=('l',))
     async def lose(self, ctx: commands.Context) -> None:
         await self.lose_channel.set(ctx.channel)

@@ -322,7 +322,7 @@ class BankCog(discordutils.CogBase):
         if prices.get(res.capitalize()):
             pass
 
-    @commands.check(discordutils.gov_check)
+    @discordutils.gov_check
     @bank.command()
     async def adjust(self, ctx: commands.Context, member: discord.Member):
         nation_id = await self.nations[member.id].get(None)
@@ -368,7 +368,7 @@ class BankCog(discordutils.CogBase):
             await ctx.send(f"{member.mention}'s loan is not considered repaid.",
                            allowed_mentions=discord.AllowedMentions.none())
 
-    @commands.check(discordutils.gov_check)
+    @discordutils.gov_check
     @bank.command()
     async def set(self, ctx: commands.Context, member: discord.Member):
         nation_id = await self.nations[ctx.author.id].get(None)
