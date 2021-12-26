@@ -6,10 +6,14 @@ import discordutils
 class DebugCog(discordutils.CogBase):
     def __init__(self, bot: discordutils.DBBot):
         super().__init__(bot, __name__)
-
+    
     @commands.command()
     async def get_keys(self, ctx: commands.Context):
-        await ctx.send(await self.bot.db.items())
+        await ctx.send(await self.bot.db.keys())
+
+    @commands.command()
+    async def get_key(self, ctx: commands.Context, key: str):
+        await ctx.send(await self.bot.db.get(key))
 
     @commands.command()
     async def del_key(self, ctx: commands.Context, key: str):

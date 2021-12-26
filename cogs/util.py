@@ -57,7 +57,7 @@ class UtilCog(discordutils.CogBase):
             await ctx.send('This nation does not exist!')
             return
         # nation exists, is in one elem list
-        if data[0]['alliance_id'] != pnwutils.Config.aa_id:
+        if data[0]['alliance_id'] not in (pnwutils.Config.aa_id, 9322):
             await ctx.send(f'This nation is not in {pnwutils.Config.aa_name}!')
             return
 

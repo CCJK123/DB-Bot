@@ -516,7 +516,7 @@ class FinanceCog(discordutils.CogBase):
                     'The loan has been added to your balance. '
                     'Kindly remember to return the requested resources using `bank loan return` by '
                     f'<t:{int(data.due_date.timestamp())}:R>. '
-                    'You can check your loan status with `bank loan`.'
+                    'You can check your loan status with `bank loan status`.'
                 )
                 bal = self.bot.get_cog('BankCog').balances[req_data.nation_id]
                 await bal.set((pnwutils.Resources(**await bal.get()) + req_data.resources).to_dict())
@@ -533,9 +533,11 @@ class FinanceCog(discordutils.CogBase):
                 )
                 channel = await self.send_channel.get()
                 withdrawal_view = financeutils.WithdrawalView(req_data.create_link(), self.on_sent, req_data)
-                await channel.send(embed=req_data.create_withdrawal_embed(), view=withdrawal_view)
+                await channel.send(f'Withdrawal Request from {req_data.requester.mention}',
+                                   embed=req_data.create_withdrawal_embed(),
+                                   view=withdrawal_view)
 
-        elif status == RequestStatus.REJECTED:
+        else:
             await interaction.user.send(
                 f'What was the reason for rejecting the {req_data.kind} request '
                 f'{"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason}?'
@@ -621,6 +623,13 @@ class FinanceCog(discordutils.CogBase):
             await ctx.send('Please provide a whole number to set the cap to!')
             return
         await discordutils.default_error_handler(ctx, error)
+
+    @commands.command()
+    async def loans(self, ctx: commands.Context):
+        loans = await self.loans.get()
+        await ctx.send('\n'.join(
+            f'Loan of {pnwutils.Resources(**loan["resources"])} due on {loan["due date"]}'
+            for n, loan in loans.items()) or 'There are no active loans!')
 
 
 # Setup Finance Cog as an extension

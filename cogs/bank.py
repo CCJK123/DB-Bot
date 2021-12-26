@@ -87,16 +87,6 @@ class BankCog(discordutils.CogBase):
 
         return transactions
 
-    async def loan_check(self, nation_id: str, res: Optional[pnwutils.Resources] = None) -> bool:
-        if res is None:
-            res = await self.balances[nation_id].get()
-
-        if all(amt >= 0 for amt in res.to_dict().values()):
-            # loan repaid
-            await self.loans[nation_id].delete()
-            return True
-        return False
-
     @commands.group(invoke_without_command=True)
     async def bank(self, ctx: commands.Context):
         await ctx.send('Usage: `bank bal` to check your balance, `bank dep` to deposit resources, '
@@ -165,8 +155,6 @@ class BankCog(discordutils.CogBase):
                 resources += transaction.resources
             await self.balances[nation_id].set(resources.to_dict())
             await auth.send('Your balance is now:', embed=resources.create_balance_embed(auth.name))
-            if await self.loan_check(nation_id, resources):
-                await auth.send('With this deposit, you have now repaid your loan.')
             return
         await auth.send('You did not deposit any resources! Aborting!')
 
@@ -267,23 +255,23 @@ class BankCog(discordutils.CogBase):
             return None
         await discordutils.default_error_handler(ctx, error)
     
-    @bank.group(invoke_without_command=True)
-    async def prices(self, ctx: commands.Context):
+    @bank.group(invoke_without_command=True, aliases=('prices',))
+    async def p(self, ctx: commands.Context):
         await ctx.send(embed=discordutils.construct_embed(await self.prices.get(), title='Bank Trading Prices'))
     
-    @prices.command()
-    async def set(self, ctx: commands.Context, res: str, amt: int):
+    @p.command(aliases=('set',))
+    async def s(self, ctx, res: str, price: int):
         if (prices := await self.prices.get(None)) is None:
             prices = {}
         
-        if amt <= 0:
+        if price <= 0:
             await ctx.send('Price must be positive!')
             return
 
         if res.lower() in pnwutils.Constants.all_res:
-            prices[res.capitalize()] = amt
+            prices[res.capitalize()] = price
             await self.prices.set(prices)
-            await ctx.send(f'The price of {res} has been set to {amt} ppu.')
+            await ctx.send(f'The price of {res} has been set to {price} ppu.')
             return
         
         await ctx.send(f"{res} isn't a valid resource!")
@@ -299,8 +287,11 @@ class BankCog(discordutils.CogBase):
                 await ctx.send('You do not have enough money deposited to do that!')
                 return
             res[res_name.lower()] += amt
-            await bal.set(res)
-            await ctx.send('Transaction complete!')
+            await bal.set(res.to_dict())
+            await ctx.send('Transaction complete!',
+                           embed=res.create_balance_embed(ctx.author.name)
+            )
+            
             return
         await ctx.send(f'{res_name} is not a valid resource!')
     
@@ -315,35 +306,38 @@ class BankCog(discordutils.CogBase):
                 await ctx.send('You do not have enough money deposited to do that!')
                 return
             res.money += amt * p
-            await bal.set(res)
-            await ctx.send('Transaction complete!')
+            await bal.set(res.to_dict())
+            await ctx.send('Transaction complete!',
+                           embed=res.create_balance_embed(ctx.author.name)
+            )
             return
         await ctx.send(f'{res_name} is not a valid resource!')
 
-    @bank.group(invoke_without_subcommand=True)
+    @bank.group(invoke_without_command=True)
     async def loan(self, ctx: commands.Context):
         await ctx.send('Subcommands: `status`, `return`')
 
     @loan.command(aliases=('return',))
     async def ret(self, ctx: commands.Context):
-        loan = await self.loans[ctx.author.id].get(None)
+        nation_id = await self.nations[ctx.author.id].get()
+        loan = await self.loans[nation_id].get(None)
         if loan is None:
             await ctx.send("You don't have an active loan!")
             return
         loan = financeutils.LoanData(**loan)
-        bal = self.balances[ctx.author.id]
+        bal = self.balances[nation_id]
         res = pnwutils.Resources(**await bal.get())
         res -= loan.resources
         if res.all_positive():
-            await bal.set(res)
-            await self.loans[ctx.author.id].delete()
+            await bal.set(res.to_dict())
+            await self.loans[nation_id].delete()
             await ctx.send('Your loan has been successfully repaid!')
             return
         await ctx.send('You do not have enough resources to repay your loan.')
 
     @loan.command()
     async def status(self, ctx: commands.Context):
-        loan = await self.loans[ctx.author.id].get(None)
+        loan = await self.loans[await self.nations[ctx.author.id].get()].get(None)
         if loan is None:
             await ctx.send("You don't have an active loan!")
             return
@@ -391,9 +385,6 @@ class BankCog(discordutils.CogBase):
         await ctx.send(f'The balance of {member.mention} has been modified!',
                        embed=resources.create_balance_embed(member.name),
                        allowed_mentions=discord.AllowedMentions.none())
-        if await self.loan_check(nation_id, resources):
-            await ctx.send(f"{member.mention}'s loan is not considered repaid.",
-                           allowed_mentions=discord.AllowedMentions.none())
 
     @discordutils.gov_check
     @bank.command()
@@ -436,9 +427,6 @@ class BankCog(discordutils.CogBase):
         await ctx.send(f'The balance of {member.mention} has been modified!',
                        embed=resources.create_balance_embed(member.name),
                        allowed_mentions=discord.AllowedMentions.none())
-        if await self.loan_check(nation_id, resources):
-            await ctx.send(f"{member.mention}'s loan is not considered repaid.",
-                           allowed_mentions=discord.AllowedMentions.none())
 
 
 def setup(bot: discordutils.DBBot):
