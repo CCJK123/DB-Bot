@@ -1,3 +1,12 @@
 {
-  "files": {}
+  "files": {
+    "cogs/finance.py": [
+      {
+        "id": "4a2f53a1-25be-4bc6-859c-8908d94b0136",
+        "line": 3,
+        "version": 18893,
+        "index": 36
+      }
+    ]
+  }
 }

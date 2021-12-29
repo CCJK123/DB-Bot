@@ -532,7 +532,7 @@ class FinanceCog(commands.Cog):
                 req_res = pnwutils.Resources()
                 for city in data['cities']:
                     if city['infrastructure'] < self.infra_rebuild_cap:
-                        for infra_lvl in range(city['infrastructure'],
+                        for infra_lvl in range(int(city['infrastructure']),
                                                self.infra_rebuild_cap + 1):
                             if infra_lvl < 10:
                                 req_res.money += 300
