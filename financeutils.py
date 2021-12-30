@@ -1,0 +1,179 @@
+from __future__ import annotations
+
+import asyncio
+import datetime
+import enum
+from typing import Callable, Awaitable, Optional, TypedDict
+from dataclasses import dataclass, field
+
+import discord
+
+import pnwutils
+import discordutils
+
+__all__ = ('RequestData', 'LoanData', 'RequestStatus', 'RequestChoices', 'ResourceSelectView')
+
+
+@dataclass(slots=True)
+class RequestData:
+    requester: discord.abc.User
+    nation_id: str
+    nation_name: str
+    kind: str = ''
+    reason: str = ''
+    resources: pnwutils.Resources = field(default_factory=pnwutils.Resources)
+    note: str = ''
+    additional_info: Optional[dict[str, str]] = field(default_factory=dict)
+
+    @property
+    def nation_link(self):
+        return pnwutils.Link.nation(self.nation_id)
+
+    def create_embed(self, **kwargs: str) -> discord.Embed:
+        embed = discord.Embed(**kwargs)
+        embed.add_field(name='Nation', value=f'[{self.nation_name}]({self.nation_link})')
+        embed.add_field(name='Request Type', value=self.kind)
+        embed.add_field(name='Reason', value=self.reason)
+        embed.add_field(name='Requested Resources', value=self.resources)
+        for n, v in self.additional_info.items():
+            embed.add_field(name=n, value=v)
+        return embed
+
+    def create_link(self) -> str:
+        return pnwutils.Link.bank("w", self.resources, self.nation_name, self.note)
+
+    def create_withdrawal_embed(self) -> discord.Embed:
+        return withdrawal_embed(self.nation_name, self.nation_id, self.reason, self.resources)
+
+
+class LoanDataDict(TypedDict):
+    due_date: str
+    resources: pnwutils.ResourceDict
+
+
+class LoanData:
+    __slots__ = ('due_date', 'resources')
+
+    def __init__(self, due_date: str | datetime.datetime, resources: pnwutils.Resources | pnwutils.ResourceDict):
+        if isinstance(due_date, str):
+            self.due_date = datetime.datetime.fromisoformat(due_date)
+        else:
+            self.due_date = due_date
+
+        if isinstance(resources, pnwutils.Resources):
+            self.resources = resources
+        else:
+            self.resources = pnwutils.Resources(**resources)
+
+    @property
+    def display_date(self):
+        return self.due_date.strftime('%d %b, %Y')
+
+    def to_dict(self) -> dict[str, str]:
+        return {'due_date': self.due_date.isoformat(), 'resources': self.resources.to_dict()}
+
+    def to_embed(self, **kwargs: str) -> discord.Embed:
+        embed = self.resources.create_embed(**kwargs)
+        embed.insert_field_at(0, name='Due Date', value=self.display_date)
+        return embed
+
+
+class RequestStatus(enum.Enum):
+    ACCEPTED = 'Accepted'
+    REJECTED = 'Rejected'
+
+
+RequestChosenCallback = Callable[[RequestStatus, discord.Interaction, RequestData],
+                                 Awaitable[None]]
+
+
+class RequestChoice(discord.ui.Button['RequestChoices']):
+    def __init__(self, label: RequestStatus):
+        super().__init__(row=0, custom_id=label.value)
+        self.label = label.value
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        self.style = discord.ButtonStyle.success
+        for child in self.view.children:
+            child.disabled = True
+        self.view.stop()
+        await interaction.response.edit_message(view=self.view)
+        await self.view.callback(RequestStatus(self.label), interaction, self.view.data)
+
+
+class RequestChoices(discord.ui.View):
+    def __init__(self, callback: RequestChosenCallback, data: RequestData):
+        # Callback would be called with 'Accepted', 'Rejected', or 'Sent'
+        super().__init__(timeout=None)
+        self.data = data
+        self.callback = callback
+        for c in RequestStatus:
+            self.add_item(RequestChoice(c))
+
+
+def withdrawal_embed(name: str, nation_id: str, reason: str, resources: pnwutils.Resources) -> discord.Embed:
+    embed = discord.Embed()
+    embed.add_field(name='Nation', value=f'[{name}]({pnwutils.Link.nation(nation_id)})')
+    embed.add_field(name='Reason', value=reason)
+    embed.add_field(name='Requested Resources', value=resources)
+    return embed
+
+
+class WithdrawalButton(discord.ui.Button['WithdrawalView']):
+    def __init__(self):
+        super().__init__(row=0, custom_id='Withdrawal Button')
+        self.label = 'Sent'
+
+    async def callback(self, interaction: discord.Interaction):
+        self.style = discord.ButtonStyle.success
+        self.disabled = True
+        self.view.stop()
+        await interaction.response.edit_message(view=self.view)
+        await self.view.callback(*self.view.args)
+
+
+class WithdrawalView(discord.ui.View):
+    def __init__(self, link: str, callback: Callable[..., Awaitable[None]], *args):
+        super().__init__(timeout=None)
+        self.callback = callback
+        self.args = args
+        self.add_item(discordutils.LinkButton('Withdrawal Link', link))
+        self.add_item(WithdrawalButton())
+
+
+class ResourceSelector(discord.ui.Select['ResourceSelectView']):
+    def __init__(self):
+        options = [
+            discord.SelectOption(label=s) for s in pnwutils.Constants.all_res
+        ]
+        super().__init__(placeholder='Choose the resources you want',
+                         min_values=1,
+                         max_values=len(options),
+                         options=options)
+
+    async def callback(self, interaction: discord.Interaction):
+        if self.view.user_id is not None and interaction.user.id != self.view.user_id:
+            await interaction.channel.send('You are not the intended recipient of this component, '
+                                           f'{interaction.user.mention}',
+                                           allowed_mentions=discord.AllowedMentions.none())
+            return
+        self.view.set_result(self.values)
+        self.disabled = True
+        await interaction.response.edit_message(view=self.view)
+
+
+class ResourceSelectView(discord.ui.View):
+    def __init__(self, timeout: float, user_id: Optional[int] = None):
+        super().__init__(timeout=timeout)
+        self._fut = asyncio.get_event_loop().create_future()
+        self.user_id = user_id
+        self.add_item(ResourceSelector())
+
+    def set_result(self, r: list[str]) -> None:
+        self._fut.set_result(r)
+
+    def result(self) -> Awaitable[list[str]]:
+        return self._fut
+
+    async def on_timeout(self):
+        self._fut.set_exception(asyncio.TimeoutError())
