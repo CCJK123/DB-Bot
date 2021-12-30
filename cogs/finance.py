@@ -386,7 +386,7 @@ class FinanceCog(discordutils.CogBase):
                 irc = await self.infra_rebuild_cap.get()
                 await auth.send(
                     f'The current infrastructure rebuild cap is set at {irc}. '
-                    f'This means that money will only be provided to rebuild infrastructure below {irc} up to that'
+                    f'This means that money will only be provided to rebuild infrastructure below {irc} up to that '
                     'amount. The amount calculated assumes that domestic policy is set to Urbanisation.'
                 )
                 # Calculate infra cost for each city

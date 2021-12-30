@@ -269,7 +269,7 @@ def war_range(score: Union[str, float]) -> tuple[float, float]:
     return score * 0.75, score * 1.75
 
 
-def infra_value():
+def infra_value(infra_lvl: float):
     return 300 + abs(infra_lvl -  10) ** 2.2 / 710
 
 
