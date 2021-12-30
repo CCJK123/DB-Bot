@@ -89,10 +89,10 @@ class FinanceCog(discordutils.CogBase):
                     ships
                     beigeturns
                     offensive_wars {
-                        __typename
+                        turnsleft
                     }
                     defensive_wars {
-                        __typename
+                        turnsleft
                     }
                     cities {
                         barracks
@@ -305,7 +305,8 @@ class FinanceCog(discordutils.CogBase):
         elif req_data.kind == 'War Aid':
             war_aid_type_choice = discordutils.Choices(
                 'Buy Military Units', 'Rebuild Military Improvements',
-                'Rebuild Infrastructure', 'Various Resources')
+                'Rebuild Infrastructure', 'Various Resources'
+            )
             await auth.send('What type of war aid are you requesting?',
                             view=war_aid_type_choice)
             try:
@@ -313,14 +314,16 @@ class FinanceCog(discordutils.CogBase):
             except asyncio.TimeoutError:
                 await auth.send('You took too long to respond! Exiting...')
                 return
+            print(data["offensive_wars"])
+            print(data["defensive_wars"])
             req_data.additional_info = {
-                'Beige Turns':
-                    data['beigeturns'],
-                'Active Wars':
-                    f'''
-                    Offensive: {len(data["offensive_wars"])}
-                    Defensive: {len(data["defensive_wars"])}
+                'Beige Turns': data['beigeturns'],
+                'Active Wars': f'''
+                    Offensive: {sum(w["turnsleft"] > 0 for w in data["offensive_wars"])}
+                    Defensive: {sum(w["turnsleft"] > 0 for w in data["defensive_wars"])}
                 '''
+                # fsr the value of turnsleft when war is over seems to be always -12? idk
+                # maybe its diff for wars that ended recently? didnt check
             }
 
             if war_aid_type == 'Buy Military Units':
@@ -389,11 +392,7 @@ class FinanceCog(discordutils.CogBase):
                 # Calculate infra cost for each city
                 for city in data['cities']:
                     if city['infrastructure'] < irc:
-                        for infra_lvl in range(city['infrastructure'], irc + 1):
-                            if infra_lvl < 10:
-                                req_data.resources.money += 300
-                            else:
-                                req_data.resources.money += 300 + (infra_lvl - 10) ** 2.2 / 710
+                        req_data.resources.money += pnwutils.infra_price(city['infrastructure'], irc)
                 # Account for Urbanisation and cost reducing projects (CCE and AEC)
                 req_data.resources.money *= 0.95 - 0.05 * (data['cfce'] +
                                                            data['adv_engineering_corps'])
@@ -624,6 +623,7 @@ class FinanceCog(discordutils.CogBase):
             return
         await discordutils.default_error_handler(ctx, error)
 
+    @discordutils.gov_check
     @commands.command()
     async def loans(self, ctx: commands.Context):
         loans = await self.loans.get()

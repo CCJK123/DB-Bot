@@ -57,7 +57,7 @@ class UtilCog(discordutils.CogBase):
             await ctx.send('This nation does not exist!')
             return
         # nation exists, is in one elem list
-        if data[0]['alliance_id'] not in (pnwutils.Config.aa_id, 9322):
+        if data[0]['alliance_id'] not in (pnwutils.Config.aa_id, '9322'):
             await ctx.send(f'This nation is not in {pnwutils.Config.aa_name}!')
             return
 
@@ -91,6 +91,8 @@ class UtilCog(discordutils.CogBase):
               hasMorePages
             }
             data {
+              alliance_position
+              vmode
               id
               food
               uranium
@@ -105,6 +107,8 @@ class UtilCog(discordutils.CogBase):
                                               'nations', True))['data']
         result = defaultdict(str)
         for nation in data:
+            if nation['alliance_position'] == 'APPLICANT' or nation['vmode'] > 0:
+                continue
             has_food = not nation['food']
             has_ura = not nation['uranium'] and any(map(operator.itemgetter('nuclearpower'), nation['cities']))
 
@@ -114,12 +118,19 @@ class UtilCog(discordutils.CogBase):
                 result[nation['id']] += ' and '
             if has_ura:
                 result[nation['id']] += 'uranium'
-
-        strings = (f'{pnwutils.Link.nation(n)} has ran out of {ran_out_string}!' for n, ran_out_string in result.items())
-        for m in discordutils.split_blocks('\n', strings, 2000):
+        
+        out_discord = {}
+        nations = await self.nations.get()
+        for i, n in nations.items():
+            if n in result.keys():
+                out_discord[n] = i
+        for m in discordutils.split_blocks('\n', (f'<@{d_id}> has ran out of {result[n]}!' for n, d_id in out_discord.items()), 2000):
+            await ctx.send(m)
+        for m in discordutils.split_blocks('\n', (f'{pnwutils.Link.nation(n)} has ran out of {result[n]}!'
+                                                  for n in (set(result.keys()) - out_discord.keys())), 2000):
             await ctx.send(m)
 
-    @discordutils.gov_check
+    @commands.check_any(commands.has_role(383815082473291778), discordutils.gov_check)
     @commands.command()
     async def activity_check(self, ctx: commands.Context):
         aa_query_str = '''

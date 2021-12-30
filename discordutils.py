@@ -51,8 +51,19 @@ class DBBot(commands.Bot):
             self.prepped = True
             await self.prep()
 
-        self.change_status.start()
+        if not self.change_status.is_running():
+            self.change_status.start()
         self.on_ready_func()
+    
+    async def on_command_error(self, ctx: commands.Context, exception):
+        if isinstance(exception, commands.errors.CommandNotFound):
+            # ignore
+            return
+        elif isinstance(exception, commands.errors.MissingRole):
+            await ctx.send('You do not have the permissions to run this command!')
+            return
+        
+        await super().on_command_error(ctx, exception)
 
     def db_set(self, cog_name: str, key: str, val: Any) -> Awaitable[None]:
         return self.db.set(f'{cog_name}.{key}', val)
@@ -154,28 +165,13 @@ def split_blocks(joiner: str, items: Iterable[str], limit: int) -> Iterable[str]
             unjoined = False
         else:
             s += joiner + i
-    yield s
+    
+    if s:
+        yield s
     return
         
 
-# Check if user in DB government
-@commands.check
-async def gov_check(ctx: commands.Context) -> bool:
-    # Check if command was sent in DB server or in DM
-    if isinstance(ctx.author, discord.Member):
-        # Sent from a server - Check server roles
-        # Check if server member has id of "The Black Hand" role
-        if discord.utils.get(ctx.author.roles, id=Config.gov_role_id) is not None:
-            return True
-        # Inform non-gov members about their lack of permissions
-        await ctx.send("You do not have the necessary permissions to run this command.")
-
-    else:
-        # type(ctx.author) == discord.User
-        # Sent from DM - Ignore
-        await ctx.send("Kindly run this command on the DB server.")
-
-    return False
+gov_check = commands.has_role(Config.gov_role_id)
 
 
 async def default_error_handler(context: commands.Context, exception: commands.CommandError) -> None:
