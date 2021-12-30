@@ -183,7 +183,6 @@ class UtilCog(discordutils.CogBase):
                     int(nation_id := member.display_name.split('/')[1])
                 except ValueError:
                     continue
-                print(member.id, nation_id)
                 nations[str(member.id)] = nation_id
                 count += 1
         

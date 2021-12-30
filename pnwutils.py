@@ -28,8 +28,8 @@ class Constants:
     base_url: Final[str] = 'https://politicsandwar.com/'
     base_api_url: Final[str] = 'https://api.politicsandwar.com/graphql?api_key='
     api_url: Final[str] = base_api_url + Config.api_key
-    all_res: Final[tuple[str, ...]] = ('money', 'food', 'coal', 'oil', 'uranium', 'lead', 'iron', 'bauxite',
-                                       'gasoline', 'munitions', 'steel', 'aluminum')
+    all_res: Final[set[str]] = {'money', 'food', 'coal', 'oil', 'uranium', 'lead', 'iron', 'bauxite',
+                                'gasoline', 'munitions', 'steel', 'aluminum'}
 
 
 class APIError(Exception):
@@ -133,6 +133,12 @@ class Resources:
 
     def all_positive(self) -> bool:
         return all(a >= 0 for a in self.values())
+    
+    def keys_nonzero(self) -> Iterable[str]:
+        return (res_name for res_name in Constants.all_res if self[res_name])
+    
+    def values_nonzero(self) -> Iterable[int]:
+        return (amt for res_name in Constants.all_res if (amt := self[res_name]))
 
     def values(self) -> Iterable[int]:
         return (self[res_name] for res_name in Constants.all_res)

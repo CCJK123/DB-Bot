@@ -63,6 +63,8 @@ class DBBot(commands.Bot):
             await ctx.send('You do not have the permissions to run this command!')
             return
         
+        await ctx.send(exception)
+        
         await super().on_command_error(ctx, exception)
 
     def db_set(self, cog_name: str, key: str, val: Any) -> Awaitable[None]:

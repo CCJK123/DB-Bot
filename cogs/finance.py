@@ -55,7 +55,7 @@ class FinanceCog(discordutils.CogBase):
 
         nation_id = await self.nations[ctx.author.id].get(None)
         if nation_id is None:
-            await ctx.send('Your nation id has not been set!')
+            await auth.send('Your nation id has not been set!')
             return
 
         nation_query_str = '''
@@ -120,6 +120,10 @@ class FinanceCog(discordutils.CogBase):
                 "You do not have a valid nation id set!"
                 'Please set your nation id again.'
             )
+            return
+        
+        if data['alliance_id'] != pnwutils.Config.aa_id:
+            await auth.send(f'You are not in {pnwutils.Config.aa_name}!')
             return
 
         # Get Request Type
@@ -264,7 +268,7 @@ class FinanceCog(discordutils.CogBase):
                                 )
                 return None
 
-            res_select_view = ResourceSelectView(discordutils.Config.timeout)
+            res_select_view = ResourceSelectView()
             await auth.send('What resources are you requesting?', view=res_select_view)
             try:
                 selected_res = await res_select_view.result()
@@ -422,7 +426,7 @@ class FinanceCog(discordutils.CogBase):
                     await auth.send('You took too long to reply. Aborting request!')
                     return
 
-                res_select_view = ResourceSelectView(discordutils.Config.timeout)
+                res_select_view = ResourceSelectView()
                 await auth.send('What resources are you requesting?', view=res_select_view)
                 try:
                     selected_res = await res_select_view.result()
