@@ -9,10 +9,10 @@ description = ""
 name = "repl_python3_DB-Bot"
 version = "0.1.0"
 [tool.poetry.dependencies]
-aiohttp = "^3.7.4"
 python = "^3.8"
 typing-extensions = "^3.10.0"
 yarl = "^1.6.3"
 Flask = "^2.0.1"
 orjson = "^3.6.3"
+aiohttp = "^3.8.1"
 [tool.poetry.dev-dependencies]
