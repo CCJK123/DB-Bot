@@ -532,13 +532,7 @@ class FinanceCog(commands.Cog):
                 req_res = pnwutils.Resources()
                 for city in data['cities']:
                     if city['infrastructure'] < self.infra_rebuild_cap:
-                        for infra_lvl in range(int(city['infrastructure']),
-                                               self.infra_rebuild_cap + 1):
-                            if infra_lvl < 10:
-                                req_res.money += 300
-                            else:
-                                req_res.money += 300 + (infra_lvl -
-                                                        10)**2.2 / 710
+                        req_res.money += pnwutils.infra_price(city['infrastructure'], self.infra_rebuild_cap)
                 # Account for Urbanisation and cost reducing projects (CCE and AEC)
                 req_res.money *= 0.95 - 0.05 * (data['cfce'] +
                                                 data['adv_engineering_corps'])
