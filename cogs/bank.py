@@ -120,7 +120,9 @@ class BankCog(discordutils.CogBase):
                        embed=resources.create_balance_embed(ctx.author.name),
                        allowed_mentions=discord.AllowedMentions.none())
         if loan is not None:
-            await ctx.send(f'Your loan is due in <t:{int(datetime.datetime.fromisoformat(loan).timestamp())}:R>')
+            print(loan)
+            await ctx.send(f'You have a loan due in <t:{int(datetime.datetime.fromisoformat(loan["due_date"]).timestamp())}:R>',
+                           embed=pnwutils.Resources(**loan['resources']).create_embed(title='Loaned Resources'))
 
     @discordutils.gov_check
     @balance.command()
@@ -151,8 +153,9 @@ class BankCog(discordutils.CogBase):
         if nation_id is None:
             await ctx.send('Your nation id has not been set!')
             return
-
-        await ctx.send('Please check your DMs!')
+        
+        if ctx.guild is not None:
+            await ctx.send('Please check your DMs!')
         auth = ctx.author
         msg_chk = discordutils.get_dm_msg_chk(auth.id)
 
@@ -200,7 +203,8 @@ class BankCog(discordutils.CogBase):
             await ctx.send('Output channel has not been set! Aborting.')
             return None
 
-        await ctx.send('Please check your DMs!')
+        if ctx.guild is not None:
+            await ctx.send('Please check your DMs!')
         auth = ctx.author
 
         resources = await self.balances[nation_id].get(None)

@@ -158,9 +158,8 @@ class WarDetectorCog(discordutils.CogBase):
     @discordutils.gov_check
     @war_detector.command()
     async def losing(self, ctx: commands.Context) -> None:
-        await ctx.send(f'Losing wars will now {"not " * self.check_losing}be checked!')
-        self.check_losing.transform(operator.not_)
-        await self.bot.db_set('war', 'check_losing', self.check_losing)
+        await ctx.send(f'Losing wars will now {"not " * await self.check_losing.get()}be checked!')
+        await self.check_losing.transform(operator.not_)
 
     @discordutils.gov_check
     @war_detector.group(aliases=('set',), invoke_without_command=True)

@@ -34,20 +34,6 @@ class DebugCog(discordutils.CogBase):
     async def cheese(self, ctx: commands.Context):
         await ctx.send(dir(self))
     
-    @discordutils.gov_check
-    @commands.command()
-    async def test(self, ctx, o):
-        nations = self.bot.get_cog('UtilCog').nations
-        if o == '0':
-            await ctx.send(await nations['1'].get() or 'A')
-        elif o == '1':
-            await ctx.send(await nations['1'].set('1') or 'A')
-        elif o == '2':
-            await ctx.send(await nations['1'].delete() or 'A')
-        elif o == '3':
-            await ctx.send(await nations['1'].get(None) or 'A')
-        else:
-            await ctx.send(await nations.get())
     
     @discordutils.gov_check
     @commands.command()

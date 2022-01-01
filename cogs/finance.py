@@ -256,6 +256,9 @@ class FinanceCog(discordutils.CogBase):
                 return None
 
         elif req_data.kind == 'Loan':
+            if await self.loans[req_data.nation_id].get(False):
+                await auth.send('You already have an active loan! Repay that before requesting another.')
+                return
             await auth.send('What are you requesting a loan for?')
             try:
                 # Wait for user to input loan request
@@ -516,8 +519,9 @@ class FinanceCog(discordutils.CogBase):
             if req_data.kind == 'Loan':
                 data = LoanData(datetime.datetime.now() + datetime.timedelta(days=30), req_data.resources)
                 await req_data.requester.send(
-                    'The loan has been added to your balance. '
-                    'Kindly remember to return the requested resources using `bank loan return` by '
+                    'The loan has been added to your bank balance. '
+                    'You will have to use `bank withdraw` to withdraw the loan from your bank balance to your nation. '
+                    'Kindly remember to return the requested resources by depositing it back into your bank balance and using `bank loan return` by '
                     f'<t:{int(data.due_date.timestamp())}:R>. '
                     'You can check your loan status with `bank loan status`.'
                 )
@@ -631,8 +635,9 @@ class FinanceCog(discordutils.CogBase):
     @commands.command()
     async def loans(self, ctx: commands.Context):
         loans = await self.loans.get()
+        print(loans)
         await ctx.send('\n'.join(
-            f'Loan of {pnwutils.Resources(**loan["resources"])} due on {loan["due date"]}'
+            f'Loan of [{pnwutils.Resources(**loan["resources"])}] due on {loan["due_date"]}'
             for n, loan in loans.items()) or 'There are no active loans!')
 
 

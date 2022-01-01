@@ -56,16 +56,15 @@ class DBBot(commands.Bot):
         self.on_ready_func()
     
     async def on_command_error(self, ctx: commands.Context, exception):
-        if isinstance(exception, commands.errors.CommandNotFound):
-            # ignore
-            return
-        elif isinstance(exception, commands.errors.MissingRole):
-            await ctx.send('You do not have the permissions to run this command!')
-            return
-        
         await ctx.send(exception)
-        
-        await super().on_command_error(ctx, exception)
+
+        p_ignore = (
+            commands.CommandNotFound,
+            commands.MissingRole,
+            commands.MissingRequiredArgument
+        )
+        if not isinstance(exception, p_ignore):
+            await super().on_command_error(ctx, exception)
 
     def db_set(self, cog_name: str, key: str, val: Any) -> Awaitable[None]:
         return self.db.set(f'{cog_name}.{key}', val)
