@@ -316,23 +316,22 @@ class BankCog(discordutils.CogBase):
             'Do spell the resource name in full!'
         )
     
-    @market.command()
-    async def prices(self, ctx: commands.Context):
-        await ctx.send(embed=discordutils.construct_embed(p, title='Bank Trading Prices'))
+    @market.command(aliases=('prices', 'p'), hidden=True)
+    async def price(self, ctx: commands.Context):
+        await ctx.send(embed=discordutils.construct_embed(await self.prices.get(), title='Bank Trading Prices'))
 
     @discordutils.gov_check
     @market.command(aliases=('set',))
     async def s(self, ctx, res: str, price: int):
         if (prices := await self.prices.get(None)) is None:
-            prices = {}
+            await self.prices.set({})
         
         if price <= 0:
             await ctx.send('Price must be positive!')
             return
 
         if res.lower() in pnwutils.Constants.all_res:
-            prices[res.capitalize()] = price
-            await self.prices.set(prices)
+            await self.prices[res.capitalize()].set(price)
             await ctx.send(f'The price of {res} has been set to {price} ppu.')
             return
         

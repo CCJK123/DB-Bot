@@ -16,12 +16,18 @@ __all__ = ('Config', 'Choices', 'construct_embed', 'gov_check', 'CogBase',
            'SavedProperty', 'WrappedProperty', 'ChannelProperty', 'MappingProperty')
 
 
+class DBHelpCommand(commands.DefaultHelpCommand):
+    pass
+
+
 # Setup bot
 class DBBot(commands.Bot):
     def __init__(self, db_url, on_ready_func: Callable[[], None]):
         intents = discord.Intents(guilds=True, messages=True, members=True)
         super().__init__(command_prefix=os.environ['command_prefix'],
+                         help_command=DBHelpCommand(),
                          intents=intents)
+        
         self.on_ready_func = on_ready_func
         self.session = aiohttp.ClientSession()
         self.db = AsyncDatabase(db_url)
@@ -56,6 +62,10 @@ class DBBot(commands.Bot):
         self.on_ready_func()
     
     async def on_command_error(self, ctx: commands.Context, exception):
+        command = ctx.command
+        if command and command.has_error_handler():
+            return
+        
         await ctx.send(exception)
 
         p_ignore = (

@@ -542,7 +542,8 @@ class FinanceCog(discordutils.CogBase):
                 withdrawal_view = financeutils.WithdrawalView(req_data.create_link(), self.on_sent, req_data)
                 await channel.send(f'Withdrawal Request from {req_data.requester.mention}',
                                    embed=req_data.create_withdrawal_embed(),
-                                   view=withdrawal_view)
+                                   view=withdrawal_view,
+                                   allowed_mentions=discord.AllowedMentions.none())
 
         else:
             await interaction.user.send(
@@ -582,8 +583,9 @@ class FinanceCog(discordutils.CogBase):
                             error: commands.CommandError) -> None:
         if isinstance(error, commands.MaxConcurrencyReached):
             await ctx.send('You are already making a request!')
-            return None
-        await discordutils.default_error_handler(ctx, error)
+            return
+        await super().request_error(ctx, error)
+        # await discordutils.default_error_handler(ctx, error)
 
     @discordutils.gov_check
     @request.group(invoke_without_command=True)

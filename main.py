@@ -40,6 +40,7 @@ if __name__ == '__main__':
     for ext in cogs:
         bot.load_extension(f'cogs.{ext}')
 
+    bot.help_command.cog = bot.get_cog('UtilCog')
 
     # Reload cogs
     @commands.guild_only()

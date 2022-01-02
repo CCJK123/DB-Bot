@@ -32,6 +32,7 @@ class DebugCog(discordutils.CogBase):
     @discordutils.gov_check
     @commands.command()
     async def cheese(self, ctx: commands.Context):
+        '''for debugging purposes.'''
         await ctx.send(dir(self))
     
     
