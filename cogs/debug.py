@@ -1,6 +1,7 @@
+import discord
 from discord.ext import commands
 
-import discordutils
+from util import discordutils
 
 
 class DebugCog(discordutils.CogBase):
@@ -15,7 +16,8 @@ class DebugCog(discordutils.CogBase):
     @discordutils.gov_check
     @commands.command()
     async def get_key(self, ctx: commands.Context, key: str):
-        await ctx.send(await self.bot.db.get(key))
+        print(a := await self.bot.db.get(key))        
+        await ctx.send(a)
 
     @discordutils.gov_check
     @commands.command()

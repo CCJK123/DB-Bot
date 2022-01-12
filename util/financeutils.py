@@ -8,10 +8,9 @@ from dataclasses import dataclass, field
 
 import discord
 
-import pnwutils
-import discordutils
+from . import discordutils, pnwutils
 
-__all__ = ('RequestData', 'LoanData', 'RequestStatus', 'RequestChoices', 'ResourceSelectView')
+__all__ = ('RequestData', 'LoanData', 'RequestStatus', 'RequestChoices', 'ResourceSelectView', 'WithdrawalView')
 
 
 @dataclass(slots=True)
@@ -163,7 +162,8 @@ class ResourceSelector(discord.ui.Select['ResourceSelectView']):
 
 
 class ResourceSelectView(discord.ui.View):
-    def __init__(self, user_id: Optional[int] = None, res: Iterable[str] | None = None, timeout: float = discordutils.Config.timeout):
+    def __init__(self, user_id: Optional[int] = None, res: Iterable[str] | None = None,
+                 timeout: float = discordutils.Config.timeout):
         super().__init__(timeout=timeout)
         
         if res:
@@ -182,4 +182,5 @@ class ResourceSelectView(discord.ui.View):
         return self._fut
 
     async def on_timeout(self):
-        self._fut.set_exception(asyncio.TimeoutError())
+        if not self._fut.done():
+            self._fut.set_exception(asyncio.TimeoutError())

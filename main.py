@@ -7,7 +7,7 @@ from replit import db
 
 from discord.ext import commands
 
-import discordutils
+from util import discordutils
 
 
 
@@ -40,19 +40,7 @@ if __name__ == '__main__':
     for ext in cogs:
         bot.load_extension(f'cogs.{ext}')
 
-    bot.help_command.cog = bot.get_cog('UtilCog')
-
-    # Reload cogs
-    @commands.guild_only()
-    @commands.check(discordutils.gov_check)
-    @bot.command(aliases=('reload',))
-    async def reload_ext(ctx: commands.Context, extension: str) -> None:
-        try:
-            bot.reload_extension(f'cogs.{extension}')
-        except commands.ExtensionNotLoaded:
-            await ctx.send(f'The extension {extension} was not previously loaded!')
-            return
-        await ctx.send(f'Extension {extension} reloaded!')
+    bot.help_command.cog = bot.get_cog('UtilCog')    
 
     bot.run(discordutils.Config.token)
 

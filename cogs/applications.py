@@ -3,7 +3,7 @@ import asyncio
 import discord
 from discord.ext import commands
 
-import discordutils
+from util import discordutils
 
 
 class ApplicationCog(discordutils.CogBase):

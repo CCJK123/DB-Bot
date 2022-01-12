@@ -7,10 +7,8 @@ from typing import Any
 import discord
 from discord.ext import commands
 
-import discordutils
-import financeutils
-import pnwutils
-from financeutils import RequestData, LoanData, RequestStatus, RequestChoices, ResourceSelectView
+from util import discordutils, pnwutils
+from util.financeutils import RequestData, LoanData, RequestStatus, RequestChoices, ResourceSelectView, WithdrawalView
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +119,7 @@ class FinanceCog(discordutils.CogBase):
                 'Please set your nation id again.'
             )
             return
-        
+
         if data['alliance_id'] != pnwutils.Config.aa_id:
             await auth.send(f'You are not in {pnwutils.Config.aa_name}!')
             return
@@ -499,12 +497,14 @@ class FinanceCog(discordutils.CogBase):
             )
             embed.title = None
             process_view = RequestChoices(self.on_processed, req_data)
-            self.bot.add_view(process_view)
-            await (await self.process_channel.get()).send(
+
+            msg = await (await self.process_channel.get()).send(
                 f'New Request from {auth.mention}',
                 embed=embed,
                 allowed_mentions=discord.AllowedMentions.none(),
-                view=process_view)
+                view=process_view
+            )
+            self.bot.add_view(process_view, message_id=msg.id)
 
             return
 
@@ -521,7 +521,8 @@ class FinanceCog(discordutils.CogBase):
                 await req_data.requester.send(
                     'The loan has been added to your bank balance. '
                     'You will have to use `bank withdraw` to withdraw the loan from your bank balance to your nation. '
-                    'Kindly remember to return the requested resources by depositing it back into your bank balance and using `bank loan return` by '
+                    'Kindly remember to return the requested resources by depositing it back into your bank balance '
+                    'and using `bank loan return` by '
                     f'<t:{int(data.due_date.timestamp())}:R>. '
                     'You can check your loan status with `bank loan status`.'
                 )
@@ -539,11 +540,12 @@ class FinanceCog(discordutils.CogBase):
                     'has been accepted! The resources will be sent to you soon. '
                 )
                 channel = await self.send_channel.get()
-                withdrawal_view = financeutils.WithdrawalView(req_data.create_link(), self.on_sent, req_data)
-                await channel.send(f'Withdrawal Request from {req_data.requester.mention}',
-                                   embed=req_data.create_withdrawal_embed(),
-                                   view=withdrawal_view,
-                                   allowed_mentions=discord.AllowedMentions.none())
+                withdrawal_view = WithdrawalView(req_data.create_link(), self.on_sent, req_data)
+                msg = await channel.send(f'Withdrawal Request from {req_data.requester.mention}',
+                                         embed=req_data.create_withdrawal_embed(),
+                                         view=withdrawal_view,
+                                         allowed_mentions=discord.AllowedMentions.none())
+                self.bot.add_view(withdrawal_view, message_id=msg.id)
 
         else:
             await interaction.user.send(
@@ -584,7 +586,6 @@ class FinanceCog(discordutils.CogBase):
         if isinstance(error, commands.MaxConcurrencyReached):
             await ctx.send('You are already making a request!')
             return
-        await super().request_error(ctx, error)
         # await discordutils.default_error_handler(ctx, error)
 
     @discordutils.gov_check
@@ -635,7 +636,7 @@ class FinanceCog(discordutils.CogBase):
 
     @discordutils.gov_check
     @commands.command()
-    async def loans(self, ctx: commands.Context):
+    async def all_loans(self, ctx: commands.Context):
         loans = await self.loans.get()
         print(loans)
         await ctx.send('\n'.join(

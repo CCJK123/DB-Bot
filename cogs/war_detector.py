@@ -6,8 +6,7 @@ from typing import Any
 from discord.ext import commands, tasks
 import discord
 
-import pnwutils
-import discordutils
+from util import discordutils, pnwutils
 
 
 class WarType(enum.Enum):
@@ -140,6 +139,7 @@ class WarDetectorCog(discordutils.CogBase):
     async def war_detector(self, ctx: commands.Context) -> None:
         await ctx.send('Use `war_detector start` to start the detector and `war_detector stop` to stop it')
 
+    @discordutils.gov_check
     @war_detector.command(aliases=('run',))
     async def running(self, ctx: commands.Context) -> None:
         if any(c.get(None) is None for c in self.channels.values()):
