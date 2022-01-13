@@ -182,8 +182,18 @@ class LinkView(discord.ui.View):
         self.add_item(LinkButton(label, url))
 
 
-# Create embed from dictionary of key-value pairs
+async def get_member_from_context(ctx: commands.Context) -> discord.Member:
+    """Returns replied member, otherwise message author from context's message"""
+    if ctx.message.reference is not None:
+        msg = ctx.message.reference.cached_message
+        if msg is None:
+            msg = await ctx.channel.fetch_message(ctx.message.reference.message_id)
+        return msg.author
+    return ctx.author
+
+
 def construct_embed(fields: Mapping[str, str], /, **kwargs: str) -> discord.Embed:
+    """Create embed from dictionary of key-value pairs"""
     embed = discord.Embed(**kwargs)
     for k, v in fields.items():
         embed.add_field(name=k, value=v)

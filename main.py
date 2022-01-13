@@ -5,9 +5,7 @@ import logging
 import os   # For env variables
 from replit import db
 
-from discord.ext import commands
-
-from util import discordutils
+from utils import discordutils
 
 
 

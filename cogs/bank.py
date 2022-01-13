@@ -6,7 +6,7 @@ from typing import Any, Optional, Union
 from discord.ext import commands
 import discord
 
-from util import financeutils, discordutils, pnwutils
+from utils import financeutils, discordutils, pnwutils
 
 
 class BankCog(discordutils.CogBase):
@@ -93,7 +93,8 @@ class BankCog(discordutils.CogBase):
 
     @bank.group(invoke_without_command=True, aliases=('bal',))
     async def balance(self, ctx: commands.Context):
-        '''Check your balance'''
+        """Check your balance"""
+        
         await self.balances.initialise()
         nation_id = await self.nations[ctx.author.id].get(None)
         if nation_id is None:
@@ -120,7 +121,10 @@ class BankCog(discordutils.CogBase):
 
     @discordutils.gov_check
     @balance.command()
-    async def check(self, ctx: commands.Context, member: discord.Member):
+    async def check(self, ctx: commands.Context, member: discord.Member = None):
+        if member is None:
+            member = await discordutils.get_member_from_context(ctx)
+        
         nation_id = await self.nations[member.id].get(None)
         if nation_id is None:
             await ctx.send(f'{member.mention} nation id has not been set!',
@@ -143,7 +147,7 @@ class BankCog(discordutils.CogBase):
     @bank.command(aliases=('dep',))
     @commands.max_concurrency(1, commands.BucketType.user)
     async def deposit(self, ctx: commands.Context):
-        '''Deposit resources'''
+        """Deposit resources"""
         nation_id = await self.nations[ctx.author.id].get(None)
         if nation_id is None:
             await ctx.send('Your nation id has not been set!')
@@ -188,7 +192,7 @@ class BankCog(discordutils.CogBase):
     @bank.command(aliases=('with',))
     @commands.max_concurrency(1, commands.BucketType.user)
     async def withdraw(self, ctx: commands.Context):
-        '''Withdraw resources'''
+        """Withdraw resources"""
         nation_id = await self.nations[ctx.author.id].get(None)
         if nation_id is None:
             await ctx.send('Your nation id has not been set!')
@@ -305,19 +309,19 @@ class BankCog(discordutils.CogBase):
 
     @bank.group(invoke_without_command=True, aliases=('m',), hidden=True)
     async def market(self, ctx: commands.Context):
-        '''Market related commands'''
+        """Market related commands"""
         await ctx.send_help(self.market)
 
     @market.command(name='prices', aliases=('price', 'p'), hidden=True)
     async def _prices(self, ctx: commands.Context):
-        '''List out the prices of resources'''
+        """List out the prices of resources"""
         await ctx.send(embed=discordutils.construct_embed(await self.prices.get(), title='Bank Trading Prices'))
 
     @discordutils.gov_check
     @market.command(name='set', aliases=('s',))
     async def _set(self, ctx, res: str, price: int):
-        '''Set the buying/selling price of a resource'''
-        if (prices := await self.prices.get(None)) is None:
+        """Set the buying/selling price of a resource"""
+        if (await self.prices.get(None)) is None:
             await self.prices.set({})
 
         if price <= 0:
@@ -334,14 +338,14 @@ class BankCog(discordutils.CogBase):
     @discordutils.gov_check
     @market.command()
     async def open(self, ctx: commands.Context):
-        '''Open or close the market'''
+        """Open or close the market"""
         await self.market_open.transform(operator.not_)
         s = 'open' if await self.market_open.get() else 'closed'
         await ctx.send(f'The market is now {s}!')
 
     @market.command()
     async def buy(self, ctx: commands.Context, res_name: str, amt: int):
-        '''Purchase some amount of a resource for money'''
+        """Purchase some amount of a resource for money"""
         if not await self.market_open.get():
             await ctx.send('The market is currently closed!')
             return
@@ -365,7 +369,7 @@ class BankCog(discordutils.CogBase):
 
     @market.command()
     async def sell(self, ctx: commands.Context, res_name: str, amt: int):
-        '''Sell some amount of a resource to the bank for money'''
+        """Sell some amount of a resource to the bank for money"""
         if not await self.market_open.get():
             await ctx.send('The market is currently closed!')
             return
@@ -388,12 +392,12 @@ class BankCog(discordutils.CogBase):
 
     @bank.group(invoke_without_command=True)
     async def loan(self, ctx: commands.Context):
-        '''Loan related commands'''
+        """Loan related commands"""
         await ctx.send_help(self.loan)
 
     @loan.command(name='return', aliases=('ret',))
     async def _return(self, ctx: commands.Context):
-        '''Return your loan from your balance, if any'''
+        """Return your loan from your balance, if any"""
         nation_id = await self.nations[ctx.author.id].get()
         loan = await self.loans[nation_id].get(None)
         if loan is None:
@@ -412,7 +416,7 @@ class BankCog(discordutils.CogBase):
 
     @loan.command()
     async def status(self, ctx: commands.Context):
-        '''Check the current status of your loan, if any'''
+        """Check the current status of your loan, if any"""
         loan = await self.loans[await self.nations[ctx.author.id].get()].get(None)
         if loan is None:
             await ctx.send("You don't have an active loan!")
@@ -422,9 +426,9 @@ class BankCog(discordutils.CogBase):
     @discordutils.gov_check
     @bank.command()
     async def adjust(self, ctx: commands.Context, member: discord.Member = None):
-        '''Manually adjust the resource values of someone's balance'''
+        """Manually adjust the resource values of someone's balance"""
         if member is None:
-            member = ctx.author
+            member = await discordutils.get_member_from_context(ctx)
         nation_id = await self.nations[member.id].get(None)
         if nation_id is None:
             await ctx.send(f"{member.mention}'s nation id has not been set!",
@@ -468,9 +472,9 @@ class BankCog(discordutils.CogBase):
     @discordutils.gov_check
     @bank.command()
     async def set(self, ctx: commands.Context, member: discord.Member = None):
-        '''Manually set the resource values of someone's balance'''
+        """Manually set the resource values of someone's balance"""
         if member is None:
-            member = ctx.author
+            member = await discordutils.get_member_from_context(ctx)
         nation_id = await self.nations[member.id].get(None)
         if nation_id is None:
             await ctx.send(f"{member.mention}'s nation id has not been set!",
@@ -513,11 +517,33 @@ class BankCog(discordutils.CogBase):
     @discordutils.gov_check
     @bank.command(aliases=('check',))
     async def c(self, ctx: commands.Context):
+        bank_query_string = '''
+        query bank_info($alliance_id: [Int]) {
+          alliances(id: $alliance_id, first: 1) {
+            data {
+              money
+              food
+              aluminum
+              steel
+              munitions
+              gasoline
+              bauxite
+              iron
+              lead
+              uranium
+              oil
+              coal
+            }
+          }
+        }
+        '''
         data = await pnwutils.API.post_query(
             self.bot.session, bank_query_string,
             {'alliance_id': pnwutils.Config.aa_id},
-            'alliances')
-        await ctx.send(data)
+            'alliances'
+        )
+        resources = pnwutils.Resources(**data['data'].pop())
+        await ctx.send(embed=resources.create_embed())
 
     @discordutils.gov_check
     @commands.command()

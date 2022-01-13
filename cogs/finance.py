@@ -7,8 +7,8 @@ from typing import Any
 import discord
 from discord.ext import commands
 
-from util import discordutils, pnwutils
-from util.financeutils import RequestData, LoanData, RequestStatus, RequestChoices, ResourceSelectView, WithdrawalView
+from utils import discordutils, pnwutils
+from utils.financeutils import RequestData, LoanData, RequestStatus, RequestChoices, ResourceSelectView, WithdrawalView
 
 logger = logging.getLogger(__name__)
 
@@ -591,8 +591,7 @@ class FinanceCog(discordutils.CogBase):
     @discordutils.gov_check
     @request.group(invoke_without_command=True)
     async def set(self, ctx: commands.Context) -> None:
-        await ctx.send('Subcommands: `channel`, `war_aid`, `infra_rebuild_cap`'
-                       )
+        await ctx.send_help(self.set)
 
     @discordutils.gov_check
     @set.command()

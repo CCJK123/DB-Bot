@@ -5,7 +5,7 @@ import datetime
 import discord
 from discord.ext import commands
 
-from util import discordutils, pnwutils
+from utils import discordutils, pnwutils
 
 
 class UtilCog(discordutils.CogBase):
@@ -201,13 +201,8 @@ class UtilCog(discordutils.CogBase):
     @commands.command()
     async def nation(self, ctx: commands.Context, member: discord.Member = None):
         if member is None:
-            if ctx.message.reference is not None:
-                msg = ctx.message.reference.cached_message
-                if msg is None:
-                    msg = await ctx.channel.fetch_message(ctx.message.reference.message_id)
-                member = msg.author
-            else:
-                member = ctx.author
+            member = await discordutils.get_member_from_context(ctx)
+        
         nation_id = await self.nations[member.id].get(None)
         if nation_id is None:
             await ctx.send('This user does not have their nation registered!')

@@ -6,7 +6,7 @@ from typing import Any
 from discord.ext import commands, tasks
 import discord
 
-from util import discordutils, pnwutils
+from utils import discordutils, pnwutils
 
 
 class WarType(enum.Enum):
@@ -142,16 +142,16 @@ class WarDetectorCog(discordutils.CogBase):
     @discordutils.gov_check
     @war_detector.command(aliases=('run',))
     async def running(self, ctx: commands.Context) -> None:
-        if any(c.get(None) is None for c in self.channels.values()):
+        if any(await c.get(None) is None for c in self.channels.values()):
             await ctx.send('Not all of the defensive, offensive and losing wars channels have been set! '
                            'Set them with `war_detector set att`, `war_detector set def`, and `war_detector set lose`'
                            'in the respective channels.')
-            return None
+            return
 
         if self.detect_wars.is_running():
             self.detect_wars.stop()
             await ctx.send('War detector stopped!')
-            return None
+            return
         self.detect_wars.start()
         await ctx.send('War detector is now running!')
 

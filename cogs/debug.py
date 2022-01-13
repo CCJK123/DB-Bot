@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 
-from util import discordutils
+from utils import discordutils
 
 
 class DebugCog(discordutils.CogBase):
