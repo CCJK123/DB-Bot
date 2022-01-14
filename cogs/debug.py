@@ -33,18 +33,13 @@ class DebugCog(discordutils.CogBase):
     
     @discordutils.gov_check
     @commands.command()
-    async def cheese(self, ctx: commands.Context):
-        '''for debugging purposes.'''
-        await ctx.send(dir(self))
-    
-    
+    async def a(self, ctx):
+        await ctx.send(self.bot._connection._view_store.persistent_views)
+
     @discordutils.gov_check
     @commands.command()
-    async def a(self, ctx, i):
-        nations = self.bot.get_cog('UtilCog').nations
-        await nations[ctx.author.id].set(i)
-        await ctx.send('Done')
-
+    async def b(self, ctx):
+        await ctx.send(list(view.is_dispatching() for view in self.bot._connection._view_store.persistent_views))
 
 def setup(bot: discordutils.DBBot):
     bot.add_cog(DebugCog(bot))

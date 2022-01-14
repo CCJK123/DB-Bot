@@ -71,16 +71,16 @@ class DBBot(commands.Bot):
 
         self.on_ready_func = on_ready_func
         self.session = None
-        self.db = AsyncDatabase(db_url)
+        self.database = AsyncDatabase(db_url)
         self.prepped = False
 
     async def prep(self):
         self.session = await aiohttp.ClientSession().__aenter__()
-        self.db = await self.db.__aenter__()
+        self.database = await self.database.__aenter__()
 
     async def cleanup(self):
         await self.session.__aexit__(None, None, None)
-        await self.db.__aexit__(None, None, None)
+        await self.database.__aexit__(None, None, None)
 
     # Change bot status (background task for 24/7 functionality)
     status = (
@@ -119,10 +119,10 @@ class DBBot(commands.Bot):
             await super().on_command_error(ctx, exception)
 
     def db_set(self, cog_name: str, key: str, val: Any) -> Awaitable[None]:
-        return self.db.set(f'{cog_name}.{key}', val)
+        return self.database.set(f'{cog_name}.{key}', val)
 
     def db_get(self, cog_name: str, key: str) -> Awaitable[Any]:
-        return self.db.get(f'{cog_name}.{key}')
+        return self.database.get(f'{cog_name}.{key}')
 
 
 # Setup discord bot configuration variables
@@ -264,18 +264,21 @@ class SavedProperty(Generic[T]):
         self.owner = owner
 
     async def get(self, default: Union[object, DT] = _sentinel) -> Union[T, DT]:
-        try:
-            if self.value is _sentinel:
+        if self.value is _sentinel:
+            try:
                 self.value = await self.owner.bot.db_get(self.owner.cog_name, self.key)
-        except KeyError:
-            if default is _sentinel:
-                raise
-            return default
+            except KeyError:
+                if default is _sentinel:
+                    raise
+                return default
         return self.value
 
     async def set(self, value: T) -> None:
         self.value = value
-        await self.owner.bot.db_set(self.owner.cog_name, self.key, value)
+        await self.update()
+    
+    async def update(self) -> None:
+        await self.owner.bot.db_set(self.owner.cog_name, self.key, self.value)
 
     async def transform(self, func: Callable[[T], T]) -> None:
         await self.set(func(await self.get()))
@@ -345,10 +348,9 @@ class WrappedProperty(Generic[T, T1], SavedProperty[T]):
                 return default
         return self.value
 
-    async def set(self, value: T) -> None:
-        self.value = value
+    async def update(self) -> None:
         await self.owner.bot.db_set(self.owner.cog_name, self.key,
-                                    self.transform_from(value))
+                                    self.transform_from(self.value))
 
 
 class ChannelProperty(WrappedProperty[discord.TextChannel, int]):
