@@ -6,7 +6,7 @@ import aiohttp
 import aiofiles
 
 BASEURL = "https://politicsandwar.com/api/"
-API_KEY = "6b6a6ab065a851"  # put api key here!
+API_KEY = ""  # put api key here!
 
 
 class Record:
