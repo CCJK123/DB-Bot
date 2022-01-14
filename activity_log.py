@@ -28,7 +28,7 @@ class Record:
             async with session.get(BASEURL + f'nations/?key={API_KEY}&vm=false') as resp:
                 data = await resp.json()
             if data['success']:
-                online = [str(nation['nationid']) for nation in data['nations']
+                online = [f"{nation['nationid']}|{nation['score']}|{nation['war_policy']}" for nation in data['nations']
                           if nation['minutessinceactive'] <= self.minutes]
                 await self.store(online, now)
                 print('Data recorded!')
