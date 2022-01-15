@@ -7,10 +7,11 @@ from discord.ext import commands
 import discord
 
 from utils import financeutils, discordutils, pnwutils
+import dbbot
 
 
 class BankCog(discordutils.CogBase):
-    def __init__(self, bot: discordutils.DBBot):
+    def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
         self.balances = discordutils.MappingProperty[str, pnwutils.ResourceDict](self, 'balances')
         self.prices = discordutils.SavedProperty[dict[str, int]](self, 'prices')
@@ -551,5 +552,5 @@ class BankCog(discordutils.CogBase):
         pass
 
 
-def setup(bot: discordutils.DBBot):
+def setup(bot: dbbot.DBBot):
     bot.add_cog(BankCog(bot))

@@ -7,6 +7,7 @@ from discord.ext import commands, tasks
 import discord
 
 from utils import discordutils, pnwutils
+import dbbot
 
 
 class WarType(enum.Enum):
@@ -16,7 +17,7 @@ class WarType(enum.Enum):
 
 
 class WarDetectorCog(discordutils.CogBase):
-    def __init__(self, bot: discordutils.DBBot):
+    def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
         self.check_losing = discordutils.SavedProperty[bool](self, 'check_losing')
         self.att_channel = discordutils.ChannelProperty(self, 'att_channel')
@@ -186,5 +187,5 @@ class WarDetectorCog(discordutils.CogBase):
 
 
 # Setup War Detector Cog as an extension
-def setup(bot: discordutils.DBBot) -> None:
+def setup(bot: dbbot.DBBot) -> None:
     bot.add_cog(WarDetectorCog(bot))

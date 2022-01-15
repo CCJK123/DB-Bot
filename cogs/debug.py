@@ -2,10 +2,11 @@ import discord
 from discord.ext import commands
 
 from utils import discordutils
+import dbbot
 
 
 class DebugCog(discordutils.CogBase):
-    def __init__(self, bot: discordutils.DBBot):
+    def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
     
     @discordutils.gov_check
@@ -41,5 +42,5 @@ class DebugCog(discordutils.CogBase):
     async def b(self, ctx):
         await ctx.send(list(view.is_dispatching() for view in self.bot._connection._view_store.persistent_views))
 
-def setup(bot: discordutils.DBBot):
+def setup(bot: dbbot.DBBot):
     bot.add_cog(DebugCog(bot))

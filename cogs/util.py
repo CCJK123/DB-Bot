@@ -6,10 +6,11 @@ import discord
 from discord.ext import commands
 
 from utils import discordutils, pnwutils
+import dbbot
 
 
 class UtilCog(discordutils.CogBase):
-    def __init__(self, bot: discordutils.DBBot):
+    def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
         self.nations: discordutils.MappingProperty[int, str] = discordutils.MappingProperty[int, str](self, 'nations')
 
@@ -223,5 +224,5 @@ class UtilCog(discordutils.CogBase):
 
 
 # Setup Utility Cog as an extension
-def setup(bot: discordutils.DBBot) -> None:
+def setup(bot: dbbot.DBBot) -> None:
     bot.add_cog(UtilCog(bot))

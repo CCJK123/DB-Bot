@@ -1,15 +1,16 @@
-import random
-import aiohttp
-from replit.database import AsyncDatabase
 import asyncio
 import operator
 import sys
 import traceback
 import os  # For env variables
-from typing import Any, Awaitable, Callable, Generic, Iterable, Mapping, Optional, TypeVar, Union
+from typing import (Awaitable, Callable, Generic, Iterable, Mapping,
+                    Optional, TypeVar, Union, TYPE_CHECKING)
+
+if TYPE_CHECKING:
+    import dbbot
 
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 # Setup what is exported by default
 __all__ = ('Config', 'Choices', 'construct_embed', 'gov_check', 'CogBase',
@@ -61,70 +62,6 @@ class DBHelpCommand(commands.HelpCommand):
         ))
 
 
-# Setup bot
-class DBBot(commands.Bot):
-    def __init__(self, db_url, on_ready_func: Callable[[], None]):
-        intents = discord.Intents(guilds=True, messages=True, members=True)
-        super().__init__(command_prefix=os.environ['command_prefix'],
-                         help_command=DBHelpCommand(),
-                         intents=intents)
-
-        self.on_ready_func = on_ready_func
-        self.session = None
-        self.database = AsyncDatabase(db_url)
-        self.prepped = False
-
-    async def prep(self):
-        self.session = await aiohttp.ClientSession().__aenter__()
-        self.database = await self.database.__aenter__()
-
-    async def cleanup(self):
-        await self.session.__aexit__(None, None, None)
-        await self.database.__aexit__(None, None, None)
-
-    # Change bot status (background task for 24/7 functionality)
-    status = (
-        *map(discord.Game, ("with Python", "with repl.it", "with the P&W API")),
-        discord.Activity(type=discord.ActivityType.listening, name="Spotify"),
-        discord.Activity(type=discord.ActivityType.watching, name="YouTube")
-    )
-
-    @tasks.loop(seconds=20)
-    async def change_status(self):
-        await self.change_presence(activity=random.choice(self.status))
-
-    async def on_ready(self):
-        if not self.prepped:
-            self.prepped = True
-            await self.prep()
-
-        if not self.change_status.is_running():
-            self.change_status.start()
-
-        self.on_ready_func()
-
-    async def on_command_error(self, ctx: commands.Context, exception):
-        command = ctx.command
-        if command and command.has_error_handler():
-            return
-
-        await ctx.send(str(exception))
-
-        p_ignore = (
-            commands.CommandNotFound,
-            commands.MissingRole,
-            commands.MissingRequiredArgument
-        )
-        if not isinstance(exception, p_ignore):
-            await super().on_command_error(ctx, exception)
-
-    def db_set(self, cog_name: str, key: str, val: Any) -> Awaitable[None]:
-        return self.database.set(f'{cog_name}.{key}', val)
-
-    def db_get(self, cog_name: str, key: str) -> Awaitable[Any]:
-        return self.database.get(f'{cog_name}.{key}')
-
-
 # Setup discord bot configuration variables
 class Config:
     token: str = os.environ['bot_token']
@@ -173,7 +110,7 @@ class Choices(discord.ui.View):
 
 class LinkButton(discord.ui.Button):
     def __init__(self, label: str, url: str):
-        super().__init__(label=label, url=url)
+        super().__init__(label=label, url=url, custom_id=label)
 
 
 class LinkView(discord.ui.View):
@@ -243,7 +180,7 @@ async def default_error_handler(context: commands.Context, exception: commands.C
 
 
 class CogBase(commands.Cog):
-    def __init__(self, bot: DBBot, name: str):
+    def __init__(self, bot: "dbbot.DBBot", name: str):
         self.bot = bot
         self.cog_name = name
 

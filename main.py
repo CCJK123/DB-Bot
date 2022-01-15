@@ -4,14 +4,15 @@ import asyncio
 import logging
 import os   # For env variables
 from replit import db
+import atexit
 
 from utils import discordutils
+import dbbot
 
 
 
 cog_logger = logging.getLogger('cogs')
 cog_logger.addHandler(logging.FileHandler('logs.txt'))
-
 
 
 if __name__ == '__main__':
@@ -30,18 +31,23 @@ if __name__ == '__main__':
         server.start()    
     
     
-    bot = discordutils.DBBot(db.db_url, keep_alive)
+    bot = dbbot.DBBot(db.db_url, keep_alive)
 
 
     # Load cogs
-    cogs = (file.split('.')[0] for file in os.listdir('cogs') if file.endswith('.py') and file != '__init__.py')
+    cogs = (file.split('.')[0] for file in os.listdir('cogs') if file.endswith('.py') and not file.startswith('_'))
     for ext in cogs:
         bot.load_extension(f'cogs.{ext}')
 
-    bot.help_command.cog = bot.get_cog('UtilCog')    
+    bot.help_command.cog = bot.get_cog('UtilCog')   
+
+
+    def on_stop():
+        # When bot stops
+        print('cleaning up')
+        asyncio.run(bot.cleanup())
+
+
+    atexit.register(on_stop) 
 
     bot.run(discordutils.Config.token)
-
-
-    # When bot stops
-    asyncio.run(bot.cleanup())

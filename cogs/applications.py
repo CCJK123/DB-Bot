@@ -4,10 +4,11 @@ import discord
 from discord.ext import commands
 
 from utils import discordutils
+import dbbot
 
 
 class ApplicationCog(discordutils.CogBase):
-    def __init__(self, bot: discordutils.DBBot):
+    def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
 
     @commands.command()
@@ -71,5 +72,5 @@ class ApplicationCog(discordutils.CogBase):
                        'They will respond to your queries and may ask follow up questions.')
 
 
-def setup(bot: discordutils.DBBot) -> None:
+def setup(bot: dbbot.DBBot) -> None:
     bot.add_cog(ApplicationCog(bot))

@@ -9,13 +9,14 @@ from discord.ext import commands
 
 from utils import discordutils, pnwutils
 from utils.financeutils import RequestData, LoanData, RequestStatus, RequestChoices, ResourceSelectView, WithdrawalView
+import dbbot
 
 logger = logging.getLogger(__name__)
 
 
 # Create Finance Cog to group finance related commands
 class FinanceCog(discordutils.CogBase):
-    def __init__(self, bot: discordutils.DBBot):
+    def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
         self.has_war_aid = discordutils.SavedProperty[bool](self, 'has_war_aid')
         self.infra_rebuild_cap = discordutils.SavedProperty[int](self, 'infra_rebuild_cap')
@@ -644,5 +645,5 @@ class FinanceCog(discordutils.CogBase):
 
 
 # Setup Finance Cog as an extension
-def setup(bot: discordutils.DBBot) -> None:
+def setup(bot: dbbot.DBBot) -> None:
     bot.add_cog(FinanceCog(bot))
