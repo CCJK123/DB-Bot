@@ -191,7 +191,7 @@ class FinanceCog(discordutils.CogBase):
                     await auth.send('You took too long to respond! Exiting...')
                     return
                 
-                # Rredirect accordingly
+                # Redirect accordingly
                 if project == 'Center for Civil Engineering':
                     req_data.resources = pnwutils.Resources(oil=1000,
                                                             iron=1000,
@@ -494,7 +494,7 @@ class FinanceCog(discordutils.CogBase):
                 'Your request has been sent. Thank you for using the DB Finance Request Interface.'
             )
             embed.title = None
-            process_view = RequestChoices(self.on_processed, req_data)
+            process_view = RequestChoices('on_processed', req_data)
 
             msg = await (await self.process_channel.get()).send(
                 f'New Request from {auth.mention}',
@@ -510,6 +510,7 @@ class FinanceCog(discordutils.CogBase):
             'Exiting the DB Finance Request Interface. Please run the command again and redo your request.'
         )
 
+    @RequestChoices.register_callback('on_processed')
     async def on_processed(self, status: RequestStatus,
                            interaction: discord.Interaction, req_data: RequestData) -> None:
         logger.info(f'processing {status} request: {req_data}')
@@ -538,7 +539,7 @@ class FinanceCog(discordutils.CogBase):
                     'has been accepted! The resources will be sent to you soon. '
                 )
                 channel = await self.send_channel.get()
-                withdrawal_view = WithdrawalView(req_data.create_link(), self.on_sent, req_data)
+                withdrawal_view = WithdrawalView('request_on_sent', req_data.create_link(), req_data)
                 msg = await channel.send(f'Withdrawal Request from {req_data.requester.mention}',
                                          embed=req_data.create_withdrawal_embed(),
                                          view=withdrawal_view,
@@ -571,6 +572,7 @@ class FinanceCog(discordutils.CogBase):
             content=f'{status.value} Request from {req_data.requester.mention}',
             allowed_mentions=discord.AllowedMentions.none())
 
+    @WithdrawalView.register_callback('request_on_sent')
     @staticmethod
     async def on_sent(req_data):
         await req_data.requester.send(

@@ -1,10 +1,11 @@
 import asyncio
+import functools
 import operator
 import sys
 import traceback
 import os  # For env variables
-from typing import (Awaitable, Callable, Generic, Iterable, Mapping,
-                    Optional, TypeVar, Union, TYPE_CHECKING)
+from typing import (Awaitable, Callable, Generic, Iterable,
+                    Mapping, TypeVar, Union, TYPE_CHECKING)
 
 if TYPE_CHECKING:
     import dbbot
@@ -20,7 +21,7 @@ __all__ = ('Config', 'Choices', 'construct_embed', 'gov_check', 'CogBase',
 class DBHelpCommand(commands.HelpCommand):
     d_desc = 'No description found'
 
-    async def send_bot_help(self, mapping):
+    async def send_bot_help(self, mapping: Mapping[commands.Cog | None, list[commands.command]]):
         embeds = []
         for k in mapping:
             filtered = await self.filter_commands(mapping[k])
@@ -29,22 +30,22 @@ class DBHelpCommand(commands.HelpCommand):
         
         await self.get_destination().send(embeds=embeds)
     
-    def create_cog_embed(self, cog, commands):
+    def create_cog_embed(self, cog: commands.Cog, cmds: list[commands.command]):
         embed = discord.Embed(title=cog.qualified_name,
                               description=cog.description)
         
-        for cmd in commands:
+        for cmd in cmds:
             embed.add_field(name=cmd.name,
                             value=cmd.description or cmd.short_doc or self.d_desc,
                             inline=False)
         
         return embed
 
-    async def send_cog_help(self, cog):
+    async def send_cog_help(self, cog: commands.Cog):
         embed = self.create_cog_embed(cog, await self.filter_commands(cog.get_commands()))
         await self.get_destination().send(embed=embed)
 
-    async def send_group_help(self, group):
+    async def send_group_help(self, group: commands.Group):
         embed = discord.Embed(
             title=self.get_command_signature(group),
             description=group.description
@@ -55,7 +56,7 @@ class DBHelpCommand(commands.HelpCommand):
                             inline=False)
         await self.get_destination().send(embed=embed)
 
-    async def send_command_help(self, command):
+    async def send_command_help(self, command: commands.command):
         await self.get_destination().send(embed=discord.Embed(
             title=self.get_command_signature(command),
             description=command.description or command.short_doc
@@ -90,8 +91,10 @@ class Choice(discord.ui.Button['Choices']):
 
 
 class Choices(discord.ui.View):
-    def __init__(self, *choices: str, user_id: int | None = None, disabled: set[str] = set()):
+    def __init__(self, *choices: str, user_id: int | None = None, disabled: set[str] | None = None):
         super().__init__()
+        if disabled is None:
+            disabled = set()
         self.user_id = user_id
         self._fut = asyncio.get_event_loop().create_future()
         for c in choices:
@@ -116,6 +119,34 @@ class LinkView(discord.ui.View):
     def __init__(self, label: str, url: str):
         super().__init__()
         self.add_item(LinkButton(label, url))
+
+
+Callback = Callable[..., Awaitable[None]]
+
+
+class CallbackPersistentView(discord.ui.View):
+    callbacks: dict[str, Callback] = {}
+
+    def __init__(self, *args, key: str | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.key = key
+
+    @classmethod
+    def register_callback(cls, key: str | None = None) -> Callable[[Callback], Callback]:
+        def register(func: Callback):
+            nonlocal key
+            if key is None:
+                key = func.__name__
+            cls.callbacks[key] = func
+            return func
+
+        return register
+
+    @property
+    def callback(self) -> Callback:
+        if self.key is None:
+            raise KeyError('Callback key has not been set!')
+        return self.callbacks[self.key]
 
 
 async def get_member_from_context(ctx: commands.Context) -> discord.Member:
