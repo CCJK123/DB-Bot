@@ -71,9 +71,8 @@ class Config:
 
 # Setup buttons for user to make choices
 class Choice(discord.ui.Button['Choices']):
-    def __init__(self, label: str):
-        super().__init__()
-        self.label = label
+    def __init__(self, label: str, disabled: bool = False):
+        super().__init__(disabled=disabled, label=label)
 
     async def callback(self, interaction: discord.Interaction) -> None:
         if self.view.user_id is not None and self.view.user_id != interaction.user.id:
@@ -91,12 +90,12 @@ class Choice(discord.ui.Button['Choices']):
 
 
 class Choices(discord.ui.View):
-    def __init__(self, *choices: str, user_id: Optional[int] = None):
+    def __init__(self, *choices: str, user_id: int | None = None, disabled: set[str] = set()):
         super().__init__()
         self.user_id = user_id
         self._fut = asyncio.get_event_loop().create_future()
         for c in choices:
-            self.add_item(Choice(c))
+            self.add_item(Choice(c, c in disabled))
 
     def set_result(self, r: str) -> None:
         self._fut.set_result(r)

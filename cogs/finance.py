@@ -168,18 +168,7 @@ class FinanceCog(discordutils.CogBase):
                 return None
 
             elif grant_type == 'Project':
-                project_choice = discordutils.Choices(
-                    'Center for Civil Engineering', 'Intelligence Agency',
-                    'Propaganda Bureau', 'Urban Planning',
-                    'Advanced Urban Planning', 'Other')
-                await auth.send('Which project do you want?',
-                                view=project_choice)
-                try:
-                    project = await project_choice.result()
-                except asyncio.TimeoutError:
-                    await auth.send('You took too long to respond! Exiting...')
-                    return
-                project_field_name = {
+                project_field_names = {
                     'Center for Civil Engineering': 'cfce',
                     'Intelligence Agency': 'cia',
                     'Propaganda Bureau': 'propb',
@@ -188,14 +177,22 @@ class FinanceCog(discordutils.CogBase):
                     'Other': 'other'
                 }
                 data['other'] = None
-                # Check if they already have project
-                if data[project_field_name[project]]:
-                    await auth.send(
-                        f'You already have the {project} project. Please try again with a different project.'
-                    )
+                disabled = set()
+                for label, field in project_field_names.items():
+                    if data[field]:
+                        disabled.add(label)
+                
+                project_choice = discordutils.Choices(*project_field_names.keys(), disabled=disabled)
+                await auth.send('Which project do you want?', view=project_choice)
+                
+                try:
+                    project = await project_choice.result()
+                except asyncio.TimeoutError:
+                    await auth.send('You took too long to respond! Exiting...')
                     return
-                # If not, then redirect accordingly
-                elif project == 'Center for Civil Engineering':
+                
+                # Rredirect accordingly
+                if project == 'Center for Civil Engineering':
                     req_data.resources = pnwutils.Resources(oil=1000,
                                                             iron=1000,
                                                             bauxite=1000,
