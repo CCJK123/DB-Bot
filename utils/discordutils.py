@@ -125,7 +125,7 @@ Callback = Callable[..., Awaitable[None]]
 
 
 class CallbackPersistentView(discord.ui.View):
-    callbacks: dict[str, tuple[str, Callback]] = {}
+    callbacks: dict[str, Callback] = {}
 
     def __init__(self, *args, key: str | None = None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -137,22 +137,17 @@ class CallbackPersistentView(discord.ui.View):
             nonlocal key
             if key is None:
                 key = func.__name__
-            cls.callbacks[key] = (cog_name, func)
+
+            cls.callbacks[key] = functools.partial(func, cog_name) if cog_name else func
             return func
 
         return register
 
     @property
-    def cog_name(self) -> str | None:
-        if self.key is None:
-            raise KeyError('Callback key has not been set!')
-        return self.callbacks[self.key][0]
-
-    @property
     def callback(self) -> Callback:
         if self.key is None:
             raise KeyError('Callback key has not been set!')
-        return self.callbacks[self.key][1]
+        return self.callbacks[self.key]
 
 
 async def get_member_from_context(ctx: commands.Context) -> discord.Member:

@@ -573,68 +573,72 @@ class FinanceCog(discordutils.CogBase):
             for n, loan in loans.items()) or 'There are no active loans!')
 
 
-@RequestChoices.register_callback('on_processed', FinanceCog.__cog_name__)
-async def on_processed(cog_name: str, status: RequestStatus,
-                       interaction: discord.Interaction, req_data: RequestData) -> None:
-    cog = bot
-    logger.info(f'processing {status} request: {req_data}')
-    if status == RequestStatus.ACCEPTED:
-        if req_data.kind == 'Loan':
-            data = LoanData(datetime.datetime.now() + datetime.timedelta(days=30), req_data.resources)
-            await req_data.requester.send(
-                'The loan has been added to your bank balance. '
-                'You will have to use `bank withdraw` to withdraw the loan from your bank balance to your nation. '
-                'Kindly remember to return the requested resources by depositing it back into your bank balance '
-                'and using `bank loan return` by '
-                f'<t:{int(data.due_date.timestamp())}:R>. '
-                'You can check your loan status with `bank loan status`.'
-            )
-            bal = cog.bot.get_cog('BankCog').balances[req_data.nation_id]
-            await bal.set((pnwutils.Resources(**await bal.get()) + req_data.resources).to_dict())
+# Setup Finance Cog as an extension
+def setup(bot: dbbot.DBBot) -> None:
+    bot.add_cog(FinanceCog(bot))
 
-            await interaction.message.edit(embed=interaction.message.embeds[0].add_field(
-                name='Return By',
-                value=data.display_date,
-                inline=True))
-            await cog.loans[req_data.nation_id].set(data.to_dict())
+    @RequestChoices.register_callback('on_processed', FinanceCog.__cog_name__)
+    async def on_processed(cog_name: str, status: RequestStatus,
+                           interaction: discord.Interaction, req_data: RequestData) -> None:
+        cog: FinanceCog = bot.get_cog(cog_name)  # type: ignore
+        logger.info(f'processing {status} request: {req_data}')
+        if status == RequestStatus.ACCEPTED:
+            if req_data.kind == 'Loan':
+                data = LoanData(datetime.datetime.now() + datetime.timedelta(days=30), req_data.resources)
+                await req_data.requester.send(
+                    'The loan has been added to your bank balance. '
+                    'You will have to use `bank withdraw` to withdraw the loan from your bank balance to your nation. '
+                    'Kindly remember to return the requested resources by depositing it back into your bank balance '
+                    'and using `bank loan return` by '
+                    f'<t:{int(data.due_date.timestamp())}:R>. '
+                    'You can check your loan status with `bank loan status`.'
+                )
+                bal = cog.bot.get_cog('BankCog').balances[req_data.nation_id]
+                await bal.set((pnwutils.Resources(**await bal.get()) + req_data.resources).to_dict())
+
+                await interaction.message.edit(embed=interaction.message.embeds[0].add_field(
+                    name='Return By',
+                    value=data.display_date,
+                    inline=True))
+                await cog.loans[req_data.nation_id].set(data.to_dict())
+            else:
+                await req_data.requester.send(
+                    f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} '
+                    'has been accepted! The resources will be sent to you soon. '
+                )
+                channel = await cog.send_channel.get()
+                withdrawal_view = WithdrawalView('request_on_sent', req_data.create_link(), req_data)
+                msg = await channel.send(f'Withdrawal Request from {req_data.requester.mention}',
+                                         embed=req_data.create_withdrawal_embed(),
+                                         view=withdrawal_view,
+                                         allowed_mentions=discord.AllowedMentions.none())
+                cog.bot.add_view(withdrawal_view, message_id=msg.id)
+
         else:
+            await interaction.user.send(
+                f'What was the reason for rejecting the {req_data.kind} request '
+                f'{"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason}?'
+            )
+
+            def msg_chk(m: discord.Message) -> bool:
+                return m.author == interaction.user and m.guild is None
+
+            try:
+                reject_reason: str = (await cog.bot.wait_for(
+                    'message', check=msg_chk,
+                    timeout=discordutils.Config.timeout)).content
+            except asyncio.TimeoutError():
+                await interaction.user.send('You took too long to respond! Default rejection reason set.')
+                reject_reason = 'not given'
             await req_data.requester.send(
                 f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} '
-                'has been accepted! The resources will be sent to you soon. '
-            )
-            channel = await cog.send_channel.get()
-            withdrawal_view = WithdrawalView('request_on_sent', req_data.create_link(), req_data)
-            msg = await channel.send(f'Withdrawal Request from {req_data.requester.mention}',
-                                     embed=req_data.create_withdrawal_embed(),
-                                     view=withdrawal_view,
-                                     allowed_mentions=discord.AllowedMentions.none())
-            cog.bot.add_view(withdrawal_view, message_id=msg.id)
+                f'has been rejected!\nReason: {reject_reason}')
+            await interaction.message.edit(embed=interaction.message.embeds.pop().add_field(
+                name='Rejection Reason', value=reject_reason, inline=True))
 
-    else:
-        await interaction.user.send(
-            f'What was the reason for rejecting the {req_data.kind} request '
-            f'{"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason}?'
-        )
-
-        def msg_chk(m: discord.Message) -> bool:
-            return m.author == interaction.user and m.guild is None
-
-        try:
-            reject_reason: str = (await cog.bot.wait_for(
-                'message', check=msg_chk,
-                timeout=discordutils.Config.timeout)).content
-        except asyncio.TimeoutError():
-            await interaction.user.send('You took too long to respond! Default rejection reason set.')
-            reject_reason = 'not given'
-        await req_data.requester.send(
-            f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} '
-            f'has been rejected!\nReason: {reject_reason}')
-        await interaction.message.edit(embed=interaction.message.embeds.pop().add_field(
-            name='Rejection Reason', value=reject_reason, inline=True))
-
-    await interaction.message.edit(
-        content=f'{status.value} Request from {req_data.requester.mention}',
-        allowed_mentions=discord.AllowedMentions.none())
+        await interaction.message.edit(
+            content=f'{status.value} Request from {req_data.requester.mention}',
+            allowed_mentions=discord.AllowedMentions.none())
 
 
 @WithdrawalView.register_callback('request_on_sent')
@@ -643,8 +647,3 @@ async def on_sent(req_data):
         f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} '
         'has been sent to your nation!'
     )
-
-
-# Setup Finance Cog as an extension
-def setup(bot: dbbot.DBBot) -> None:
-    bot.add_cog(FinanceCog(bot))
