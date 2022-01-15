@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import datetime
 import enum
-from typing import Callable, Awaitable, Iterable, Optional, TypedDict
+from typing import Any, Callable, Awaitable, Iterable, Optional, TypedDict
 from dataclasses import dataclass, field
 
 import discord
@@ -22,7 +22,7 @@ class RequestData:
     reason: str = ''
     resources: pnwutils.Resources = field(default_factory=pnwutils.Resources)
     note: str = ''
-    additional_info: Optional[dict[str, str]] = field(default_factory=dict)
+    additional_info: dict[str, str] = field(default_factory=dict)
 
     @property
     def nation_link(self):
@@ -44,6 +44,22 @@ class RequestData:
     def create_withdrawal_embed(self) -> discord.Embed:
         return withdrawal_embed(self.nation_name, self.nation_id, self.reason, self.resources)
 
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            'requester': self.requester,
+            'nation_id': self.nation_id,
+            'nation_name': self.nation_name,
+            'kind': self.kind,
+            'reason': self.reason,
+            'resources': self.resources.to_dict(),
+            'note': self.note,
+            'additional_info': self.additional_info
+        }
+    
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> 'RequestData':
+        d['resources'] = pnwutils.Resources(**d['resources']) 
+        return cls(**d)
 
 class LoanDataDict(TypedDict):
     due_date: str
@@ -88,8 +104,7 @@ RequestChosenCallback = Callable[[RequestStatus, discord.Interaction, RequestDat
 
 class RequestChoice(discord.ui.Button['RequestChoices']):
     def __init__(self, label: RequestStatus):
-        super().__init__(row=0, custom_id=label.value)
-        self.label = label.value
+        super().__init__(row=0, label=label.value, custom_id=label.value)
 
     async def callback(self, interaction: discord.Interaction) -> None:
         self.style = discord.ButtonStyle.success
