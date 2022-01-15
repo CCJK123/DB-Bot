@@ -142,7 +142,7 @@ class WithdrawalButton(discord.ui.Button['WithdrawalView']):
         self.disabled = True
         self.view.stop()
         await interaction.response.edit_message(view=self.view)
-        await self.view.callback(self.view.cog_name, *self.view.args)
+        await self.view.callback(*self.view.args)
 
 
 class WithdrawalView(discordutils.CallbackPersistentView):
