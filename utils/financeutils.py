@@ -100,12 +100,11 @@ class RequestChoice(discord.ui.Button['RequestChoices']):
         await self.view.callback(RequestStatus(self.label), interaction, self.view.data)
 
 
-class RequestChoices(discord.ui.View):
-    def __init__(self, callback: RequestChosenCallback, data: RequestData):
+class RequestChoices(discordutils.CallbackPersistentView):
+    def __init__(self, callback_key: str, data: RequestData):
         # Callback would be called with 'Accepted', 'Rejected', or 'Sent'
-        super().__init__(timeout=None)
+        super().__init__(timeout=None, key=callback_key)
         self.data = data
-        self.callback = callback
         for c in RequestStatus:
             self.add_item(RequestChoice(c))
 
@@ -131,10 +130,9 @@ class WithdrawalButton(discord.ui.Button['WithdrawalView']):
         await self.view.callback(*self.view.args)
 
 
-class WithdrawalView(discord.ui.View):
-    def __init__(self, link: str, callback: Callable[..., Awaitable[None]], *args):
-        super().__init__(timeout=None)
-        self.callback = callback
+class WithdrawalView(discordutils.CallbackPersistentView):
+    def __init__(self, callback_key: str, link: str, *args):
+        super().__init__(timeout=None, key=callback_key)
         self.args = args
         self.add_item(discordutils.LinkButton('Withdrawal Link', link))
         self.add_item(WithdrawalButton())

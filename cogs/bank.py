@@ -281,7 +281,7 @@ class BankCog(discordutils.CogBase):
         name = data['data'][0]['nation_name']
         link = pnwutils.Link.bank('w', req_resources, name, 'Withdrawal from balance')
 
-        view = financeutils.WithdrawalView(link, self.on_sent, auth, req_resources)
+        view = financeutils.WithdrawalView(link, 'withdrawal_on_sent', auth, req_resources)
 
         msg = await channel.send(f'Withdrawal Request from {auth.mention}',
                                  embed=financeutils.withdrawal_embed(name, nation_id, reason, req_resources),
@@ -294,6 +294,7 @@ class BankCog(discordutils.CogBase):
         await auth.send('Your withdrawal request has been sent. '
                         'It will be sent to your nation shortly.')
 
+    @financeutils.WithdrawalView.register_callback('withdrawal_on_sent')
     @staticmethod
     async def on_sent(requester: Union[discord.User, discord.Member], req_res: pnwutils.Resources):
         await requester.send('Your withdrawal request has been sent to your nation!',
