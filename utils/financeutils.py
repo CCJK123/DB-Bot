@@ -127,7 +127,7 @@ class WithdrawalButton(discord.ui.Button['WithdrawalView']):
         self.disabled = True
         self.view.stop()
         await interaction.response.edit_message(view=self.view)
-        await self.view.callback(*self.view.args)
+        await self.view.callback(self.view.cog_name, *self.view.args)
 
 
 class WithdrawalView(discordutils.CallbackPersistentView):
@@ -140,9 +140,7 @@ class WithdrawalView(discordutils.CallbackPersistentView):
 
 class ResourceSelector(discord.ui.Select['ResourceSelectView']):
     def __init__(self, res: Iterable[str]):
-        options = [
-            discord.SelectOption(label=s) for s in res
-        ]
+        options = [discord.SelectOption(label=s) for s in res]
         super().__init__(placeholder='Choose the resources you want',
                          min_values=1,
                          max_values=len(options),

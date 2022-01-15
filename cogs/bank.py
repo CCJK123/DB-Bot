@@ -294,12 +294,6 @@ class BankCog(discordutils.CogBase):
         await auth.send('Your withdrawal request has been sent. '
                         'It will be sent to your nation shortly.')
 
-    @financeutils.WithdrawalView.register_callback('withdrawal_on_sent')
-    @staticmethod
-    async def on_sent(requester: Union[discord.User, discord.Member], req_res: pnwutils.Resources):
-        await requester.send('Your withdrawal request has been sent to your nation!',
-                             embed=req_res.create_embed(title='Withdrawn Resources'))
-
     @deposit.error
     @withdraw.error
     async def on_error(self, ctx: commands.Context,
@@ -551,6 +545,12 @@ class BankCog(discordutils.CogBase):
     @commands.command()
     async def offshore(self, ctx: commands.Context):
         pass
+
+
+@financeutils.WithdrawalView.register_callback('withdrawal_on_sent')
+async def on_sent(requester: Union[discord.User, discord.Member], req_res: pnwutils.Resources):
+    await requester.send('Your withdrawal request has been sent to your nation!',
+                         embed=req_res.create_embed(title='Withdrawn Resources'))
 
 
 def setup(bot: dbbot.DBBot):
