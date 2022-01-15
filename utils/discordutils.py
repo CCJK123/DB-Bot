@@ -16,24 +16,71 @@ __all__ = ('Config', 'Choices', 'construct_embed', 'gov_check', 'CogBase',
            'SavedProperty', 'WrappedProperty', 'ChannelProperty', 'MappingProperty')
 
 
+class DBHelpCommand(commands.HelpCommand):
+    d_desc = 'No description found'
+
+    async def send_bot_help(self, mapping):
+        embeds = []
+        for k in mapping:
+            filtered = await self.filter_commands(mapping[k])
+            if filtered:
+                embeds.append(self.create_cog_embed(k, filtered))
+        
+        await self.get_destination().send(embeds=embeds)
+    
+    def create_cog_embed(self, cog, commands):
+        embed = discord.Embed(title=cog.qualified_name,
+                              description=cog.description)
+        
+        for cmd in commands:
+            embed.add_field(name=cmd.name,
+                            value=cmd.description or cmd.short_doc or self.d_desc,
+                            inline=False)
+        
+        return embed
+
+    async def send_cog_help(self, cog):
+        embed = self.create_cog_embed(cog, await self.filter_commands(cog.get_commands()))
+        await self.get_destination().send(embed=embed)
+
+    async def send_group_help(self, group):
+        embed = discord.Embed(
+            title=self.get_command_signature(group),
+            description=group.description
+        )
+        for cmd in await self.filter_commands(group.commands):
+            embed.add_field(name=cmd.name,
+                            value=cmd.description or cmd.short_doc or self.d_desc,
+                            inline=False)
+        await self.get_destination().send(embed=embed)
+
+    async def send_command_help(self, command):
+        await self.get_destination().send(embed=discord.Embed(
+            title=self.get_command_signature(command),
+            description=command.description or command.short_doc
+        ))
+
+
 # Setup bot
 class DBBot(commands.Bot):
     def __init__(self, db_url, on_ready_func: Callable[[], None]):
         intents = discord.Intents(guilds=True, messages=True, members=True)
         super().__init__(command_prefix=os.environ['command_prefix'],
+                         help_command=DBHelpCommand(),
                          intents=intents)
+
         self.on_ready_func = on_ready_func
-        self.session = aiohttp.ClientSession()
-        self.db = AsyncDatabase(db_url)
+        self.session = None
+        self.database = AsyncDatabase(db_url)
         self.prepped = False
 
     async def prep(self):
-        self.session = await self.session.__aenter__()
-        self.db = await self.db.__aenter__()
+        self.session = await aiohttp.ClientSession().__aenter__()
+        self.database = await self.database.__aenter__()
 
     async def cleanup(self):
         await self.session.__aexit__(None, None, None)
-        await self.db.__aexit__()
+        await self.database.__aexit__(None, None, None)
 
     # Change bot status (background task for 24/7 functionality)
     status = (
@@ -53,23 +100,29 @@ class DBBot(commands.Bot):
 
         if not self.change_status.is_running():
             self.change_status.start()
+
         self.on_ready_func()
-    
+
     async def on_command_error(self, ctx: commands.Context, exception):
-        if isinstance(exception, commands.errors.CommandNotFound):
-            # ignore
+        command = ctx.command
+        if command and command.has_error_handler():
             return
-        elif isinstance(exception, commands.errors.MissingRole):
-            await ctx.send('You do not have the permissions to run this command!')
-            return
-        
-        await super().on_command_error(ctx, exception)
+
+        await ctx.send(str(exception))
+
+        p_ignore = (
+            commands.CommandNotFound,
+            commands.MissingRole,
+            commands.MissingRequiredArgument
+        )
+        if not isinstance(exception, p_ignore):
+            await super().on_command_error(ctx, exception)
 
     def db_set(self, cog_name: str, key: str, val: Any) -> Awaitable[None]:
-        return self.db.set(f'{cog_name}.{key}', val)
+        return self.database.set(f'{cog_name}.{key}', val)
 
     def db_get(self, cog_name: str, key: str) -> Awaitable[Any]:
-        return self.db.get(f'{cog_name}.{key}')
+        return self.database.get(f'{cog_name}.{key}')
 
 
 # Setup discord bot configuration variables
@@ -129,8 +182,18 @@ class LinkView(discord.ui.View):
         self.add_item(LinkButton(label, url))
 
 
-# Create embed from dictionary of key-value pairs
+async def get_member_from_context(ctx: commands.Context) -> discord.Member:
+    """Returns replied member, otherwise message author from context's message"""
+    if ctx.message.reference is not None:
+        msg = ctx.message.reference.cached_message
+        if msg is None:
+            msg = await ctx.channel.fetch_message(ctx.message.reference.message_id)
+        return msg.author
+    return ctx.author
+
+
 def construct_embed(fields: Mapping[str, str], /, **kwargs: str) -> discord.Embed:
+    """Create embed from dictionary of key-value pairs"""
     embed = discord.Embed(**kwargs)
     for k, v in fields.items():
         embed.add_field(name=k, value=v)
@@ -152,24 +215,24 @@ def get_dm_msg_chk(auth_id: int) -> Callable[[discord.Message], bool]:
 
 
 def split_blocks(joiner: str, items: Iterable[str], limit: int) -> Iterable[str]:
-    """split a message from a string.join into blocks smaller tahn limit"""
+    """split a message from a string.join into blocks smaller than limit"""
     s = ''
-    unjoined = True
+    join_no_sep = True
     for i in items:
         if len(s) + len(joiner) + len(i) > limit:
             yield s
             s = ''
-            unjoined = True
-        if unjoined:
+            join_no_sep = True
+        if join_no_sep:
             s += i
-            unjoined = False
+            join_no_sep = False
         else:
             s += joiner + i
-    
+
     if s:
         yield s
     return
-        
+
 
 gov_check = commands.has_role(Config.gov_role_id)
 
@@ -201,18 +264,21 @@ class SavedProperty(Generic[T]):
         self.owner = owner
 
     async def get(self, default: Union[object, DT] = _sentinel) -> Union[T, DT]:
-        try:
-            if self.value is _sentinel:
+        if self.value is _sentinel:
+            try:
                 self.value = await self.owner.bot.db_get(self.owner.cog_name, self.key)
-        except KeyError:
-            if default is _sentinel:
-                raise
-            return default
+            except KeyError:
+                if default is _sentinel:
+                    raise
+                return default
         return self.value
 
     async def set(self, value: T) -> None:
         self.value = value
-        await self.owner.bot.db_set(self.owner.cog_name, self.key, value)
+        await self.update()
+    
+    async def update(self) -> None:
+        await self.owner.bot.db_set(self.owner.cog_name, self.key, self.value)
 
     async def transform(self, func: Callable[[T], T]) -> None:
         await self.set(func(await self.get()))
@@ -256,8 +322,7 @@ class MappingProperty(Generic[T, T1], SavedProperty[dict[T, T1]]):
         Should only actually do anything the first time, when nothing is set to self.key
         """
         if await self.get(None) is None:
-            import sys
-            print(f'Initialising key {self.key} from {self.owner.cog_name} to {{}}', file=sys.stderr)
+            print(f'Initialising key {self.key} from {self.owner.cog_name} to {{}}')
             await self.set({})
 
 
@@ -283,10 +348,9 @@ class WrappedProperty(Generic[T, T1], SavedProperty[T]):
                 return default
         return self.value
 
-    async def set(self, value: T) -> None:
-        self.value = value
+    async def update(self) -> None:
         await self.owner.bot.db_set(self.owner.cog_name, self.key,
-                                    self.transform_from(value))
+                                    self.transform_from(self.value))
 
 
 class ChannelProperty(WrappedProperty[discord.TextChannel, int]):

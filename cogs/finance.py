@@ -7,10 +7,8 @@ from typing import Any
 import discord
 from discord.ext import commands
 
-import discordutils
-import financeutils
-import pnwutils
-from financeutils import RequestData, LoanData, RequestStatus, RequestChoices, ResourceSelectView
+from utils import discordutils, pnwutils
+from utils.financeutils import RequestData, LoanData, RequestStatus, RequestChoices, ResourceSelectView, WithdrawalView
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +53,7 @@ class FinanceCog(discordutils.CogBase):
 
         nation_id = await self.nations[ctx.author.id].get(None)
         if nation_id is None:
-            await ctx.send('Your nation id has not been set!')
+            await auth.send('Your nation id has not been set!')
             return
 
         nation_query_str = '''
@@ -120,6 +118,10 @@ class FinanceCog(discordutils.CogBase):
                 "You do not have a valid nation id set!"
                 'Please set your nation id again.'
             )
+            return
+
+        if data['alliance_id'] != pnwutils.Config.aa_id:
+            await auth.send(f'You are not in {pnwutils.Config.aa_name}!')
             return
 
         # Get Request Type
@@ -252,6 +254,9 @@ class FinanceCog(discordutils.CogBase):
                 return None
 
         elif req_data.kind == 'Loan':
+            if await self.loans[req_data.nation_id].get(False):
+                await auth.send('You already have an active loan! Repay that before requesting another.')
+                return
             await auth.send('What are you requesting a loan for?')
             try:
                 # Wait for user to input loan request
@@ -264,7 +269,7 @@ class FinanceCog(discordutils.CogBase):
                                 )
                 return None
 
-            res_select_view = ResourceSelectView(discordutils.Config.timeout)
+            res_select_view = ResourceSelectView()
             await auth.send('What resources are you requesting?', view=res_select_view)
             try:
                 selected_res = await res_select_view.result()
@@ -422,7 +427,7 @@ class FinanceCog(discordutils.CogBase):
                     await auth.send('You took too long to reply. Aborting request!')
                     return
 
-                res_select_view = ResourceSelectView(discordutils.Config.timeout)
+                res_select_view = ResourceSelectView()
                 await auth.send('What resources are you requesting?', view=res_select_view)
                 try:
                     selected_res = await res_select_view.result()
@@ -492,12 +497,14 @@ class FinanceCog(discordutils.CogBase):
             )
             embed.title = None
             process_view = RequestChoices(self.on_processed, req_data)
-            self.bot.add_view(process_view)
-            await (await self.process_channel.get()).send(
+
+            msg = await (await self.process_channel.get()).send(
                 f'New Request from {auth.mention}',
                 embed=embed,
                 allowed_mentions=discord.AllowedMentions.none(),
-                view=process_view)
+                view=process_view
+            )
+            self.bot.add_view(process_view, message_id=msg.id)
 
             return
 
@@ -512,8 +519,10 @@ class FinanceCog(discordutils.CogBase):
             if req_data.kind == 'Loan':
                 data = LoanData(datetime.datetime.now() + datetime.timedelta(days=30), req_data.resources)
                 await req_data.requester.send(
-                    'The loan has been added to your balance. '
-                    'Kindly remember to return the requested resources using `bank loan return` by '
+                    'The loan has been added to your bank balance. '
+                    'You will have to use `bank withdraw` to withdraw the loan from your bank balance to your nation. '
+                    'Kindly remember to return the requested resources by depositing it back into your bank balance '
+                    'and using `bank loan return` by '
                     f'<t:{int(data.due_date.timestamp())}:R>. '
                     'You can check your loan status with `bank loan status`.'
                 )
@@ -531,10 +540,12 @@ class FinanceCog(discordutils.CogBase):
                     'has been accepted! The resources will be sent to you soon. '
                 )
                 channel = await self.send_channel.get()
-                withdrawal_view = financeutils.WithdrawalView(req_data.create_link(), self.on_sent, req_data)
-                await channel.send(f'Withdrawal Request from {req_data.requester.mention}',
-                                   embed=req_data.create_withdrawal_embed(),
-                                   view=withdrawal_view)
+                withdrawal_view = WithdrawalView(req_data.create_link(), self.on_sent, req_data)
+                msg = await channel.send(f'Withdrawal Request from {req_data.requester.mention}',
+                                         embed=req_data.create_withdrawal_embed(),
+                                         view=withdrawal_view,
+                                         allowed_mentions=discord.AllowedMentions.none())
+                self.bot.add_view(withdrawal_view, message_id=msg.id)
 
         else:
             await interaction.user.send(
@@ -574,14 +585,13 @@ class FinanceCog(discordutils.CogBase):
                             error: commands.CommandError) -> None:
         if isinstance(error, commands.MaxConcurrencyReached):
             await ctx.send('You are already making a request!')
-            return None
-        await discordutils.default_error_handler(ctx, error)
+            return
+        # await discordutils.default_error_handler(ctx, error)
 
     @discordutils.gov_check
     @request.group(invoke_without_command=True)
     async def set(self, ctx: commands.Context) -> None:
-        await ctx.send('Subcommands: `channel`, `war_aid`, `infra_rebuild_cap`'
-                       )
+        await ctx.send_help(self.set)
 
     @discordutils.gov_check
     @set.command()
@@ -625,10 +635,11 @@ class FinanceCog(discordutils.CogBase):
 
     @discordutils.gov_check
     @commands.command()
-    async def loans(self, ctx: commands.Context):
+    async def all_loans(self, ctx: commands.Context):
         loans = await self.loans.get()
+        print(loans)
         await ctx.send('\n'.join(
-            f'Loan of {pnwutils.Resources(**loan["resources"])} due on {loan["due date"]}'
+            f'Loan of [{pnwutils.Resources(**loan["resources"])}] due on {loan["due_date"]}'
             for n, loan in loans.items()) or 'There are no active loans!')
 
 

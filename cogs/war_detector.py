@@ -6,8 +6,7 @@ from typing import Any
 from discord.ext import commands, tasks
 import discord
 
-import pnwutils
-import discordutils
+from utils import discordutils, pnwutils
 
 
 class WarType(enum.Enum):
@@ -140,27 +139,27 @@ class WarDetectorCog(discordutils.CogBase):
     async def war_detector(self, ctx: commands.Context) -> None:
         await ctx.send('Use `war_detector start` to start the detector and `war_detector stop` to stop it')
 
+    @discordutils.gov_check
     @war_detector.command(aliases=('run',))
     async def running(self, ctx: commands.Context) -> None:
-        if any(c.get(None) is None for c in self.channels.values()):
+        if any(await c.get(None) is None for c in self.channels.values()):
             await ctx.send('Not all of the defensive, offensive and losing wars channels have been set! '
                            'Set them with `war_detector set att`, `war_detector set def`, and `war_detector set lose`'
                            'in the respective channels.')
-            return None
+            return
 
         if self.detect_wars.is_running():
             self.detect_wars.stop()
             await ctx.send('War detector stopped!')
-            return None
+            return
         self.detect_wars.start()
         await ctx.send('War detector is now running!')
 
     @discordutils.gov_check
     @war_detector.command()
     async def losing(self, ctx: commands.Context) -> None:
-        await ctx.send(f'Losing wars will now {"not " * self.check_losing}be checked!')
-        self.check_losing.transform(operator.not_)
-        await self.bot.db_set('war', 'check_losing', self.check_losing)
+        await ctx.send(f'Losing wars will now {"not " * await self.check_losing.get()}be checked!')
+        await self.check_losing.transform(operator.not_)
 
     @discordutils.gov_check
     @war_detector.group(aliases=('set',), invoke_without_command=True)

@@ -3,15 +3,14 @@ from __future__ import annotations
 import asyncio
 import datetime
 import enum
-from typing import Callable, Awaitable, Optional, TypedDict
+from typing import Callable, Awaitable, Iterable, Optional, TypedDict
 from dataclasses import dataclass, field
 
 import discord
 
-import pnwutils
-import discordutils
+from . import discordutils, pnwutils
 
-__all__ = ('RequestData', 'LoanData', 'RequestStatus', 'RequestChoices', 'ResourceSelectView')
+__all__ = ('RequestData', 'LoanData', 'RequestStatus', 'RequestChoices', 'ResourceSelectView', 'WithdrawalView')
 
 
 @dataclass(slots=True)
@@ -142,9 +141,9 @@ class WithdrawalView(discord.ui.View):
 
 
 class ResourceSelector(discord.ui.Select['ResourceSelectView']):
-    def __init__(self):
+    def __init__(self, res: Iterable[str]):
         options = [
-            discord.SelectOption(label=s) for s in pnwutils.Constants.all_res
+            discord.SelectOption(label=s) for s in res
         ]
         super().__init__(placeholder='Choose the resources you want',
                          min_values=1,
@@ -163,11 +162,18 @@ class ResourceSelector(discord.ui.Select['ResourceSelectView']):
 
 
 class ResourceSelectView(discord.ui.View):
-    def __init__(self, timeout: float, user_id: Optional[int] = None):
+    def __init__(self, user_id: Optional[int] = None, res: Iterable[str] | None = None,
+                 timeout: float = discordutils.Config.timeout):
         super().__init__(timeout=timeout)
+        
+        if res:
+            res = set(res)
+            assert res <= pnwutils.Constants.all_res
+        else:
+            res = pnwutils.Constants.all_res
         self._fut = asyncio.get_event_loop().create_future()
         self.user_id = user_id
-        self.add_item(ResourceSelector())
+        self.add_item(ResourceSelector(res))
 
     def set_result(self, r: list[str]) -> None:
         self._fut.set_result(r)
@@ -176,4 +182,5 @@ class ResourceSelectView(discord.ui.View):
         return self._fut
 
     async def on_timeout(self):
-        self._fut.set_exception(asyncio.TimeoutError())
+        if not self._fut.done():
+            self._fut.set_exception(asyncio.TimeoutError())
