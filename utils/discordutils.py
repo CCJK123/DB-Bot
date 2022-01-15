@@ -112,7 +112,7 @@ class Choices(discord.ui.View):
 
 class LinkButton(discord.ui.Button):
     def __init__(self, label: str, url: str):
-        super().__init__(label=label, url=url, custom_id=label)
+        super().__init__(label=label, url=url)
 
 
 class LinkView(discord.ui.View):
