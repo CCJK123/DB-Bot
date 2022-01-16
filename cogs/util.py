@@ -18,6 +18,11 @@ class UtilCog(discordutils.CogBase):
     async def set_nation(self, ctx: commands.Context, nation_id: str = ''):
         '''Use to manually add your nation to the database'''
         await self.nations.initialise()
+        nations = await self.nations.get()
+        if ctx.author.id in nations:
+            await ctx.send('You are already registered!')
+            return
+        
         if nation_id == '':
             if '/' in ctx.author.display_name:
                 try:
@@ -25,7 +30,8 @@ class UtilCog(discordutils.CogBase):
                 except ValueError:
                     await ctx.send('Please provide your nation id!')
                     return
-                await self.nations[ctx.author.id].set(nation_id)
+                nations[ctx.author.id] = nation_id
+                await self.nations.set(nations)
                 await ctx.send('You have been registered to our database!')
                 return
             await ctx.send('Please provide your nation id!')
@@ -65,7 +71,8 @@ class UtilCog(discordutils.CogBase):
         nation_confirm_choice = discordutils.Choices('Yes', 'No', user_id=ctx.author.id)
         await ctx.send(f'Is this your nation? ' + pnwutils.Link.nation(nation_id), view=nation_confirm_choice)
         if await nation_confirm_choice.result() == 'Yes':
-            await self.nations[ctx.author.id].set(nation_id)
+            nations[ctx.author.id] = nation_id
+            await self.nations.set(nations)
             await ctx.send('You have been registered to our database!')
         else:
             await ctx.send('Aborting!')
