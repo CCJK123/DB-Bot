@@ -29,7 +29,7 @@ class DBBot(commands.Bot):
         
         # dummy persistent views passed to add_view
         self.add_view(financeutils.RequestChoices(None, None))
-        self.add_view(financeutils.WithdrawalView(None, None))
+        self.add_view(financeutils.WithdrawalView(None, 'dummy_link'))
 
     async def cleanup(self):
         await self.session.__aexit__(None, None, None)

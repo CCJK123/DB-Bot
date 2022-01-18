@@ -134,8 +134,7 @@ def withdrawal_embed(name: str, nation_id: str, reason: str, resources: pnwutils
 
 class WithdrawalButton(discord.ui.Button['WithdrawalView']):
     def __init__(self):
-        super().__init__(row=0, custom_id='Withdrawal Button')
-        self.label = 'Sent'
+        super().__init__(row=0, custom_id='Withdrawal Button', label = 'Sent')
 
     async def callback(self, interaction: discord.Interaction):
         self.style = discord.ButtonStyle.success
