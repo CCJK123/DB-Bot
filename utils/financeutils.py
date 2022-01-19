@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import datetime
 import enum
+import pickle
 from typing import Any, Callable, Awaitable, Iterable, Optional, TypedDict
 from dataclasses import dataclass, field
 
@@ -15,14 +16,15 @@ __all__ = ('RequestData', 'LoanData', 'RequestStatus', 'RequestChoices', 'Resour
 
 @dataclass(slots=True)
 class RequestData:
-    requester: discord.abc.User
-    nation_id: str
-    nation_name: str
+    requester: discord.abc.User | None = None
+    nation_id: str = ''
+    nation_name: str = ''
     kind: str = ''
     reason: str = ''
     resources: pnwutils.Resources = field(default_factory=pnwutils.Resources)
     note: str = ''
     additional_info: dict[str, str] = field(default_factory=dict)
+    requester_id: int | None = None
 
     @property
     def nation_link(self):
@@ -44,22 +46,19 @@ class RequestData:
     def create_withdrawal_embed(self) -> discord.Embed:
         return withdrawal_embed(self.nation_name, self.nation_id, self.reason, self.resources)
 
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            'requester': self.requester,
-            'nation_id': self.nation_id,
-            'nation_name': self.nation_name,
-            'kind': self.kind,
-            'reason': self.reason,
-            'resources': self.resources.to_dict(),
-            'note': self.note,
-            'additional_info': self.additional_info
-        }
-    
-    @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> 'RequestData':
-        d['resources'] = pnwutils.Resources(**d['resources']) 
-        return cls(**d)
+    def __getstate__(self) -> tuple:
+        if self.requester_id is None:
+            self.requester_id = self.requester.id
+        return (self.requester_id, self.nation_id, self.nation_name, self.kind, self.reason,
+                self.resources.to_dict(), self.note, self.additional_info)
+
+    def __setstate__(self, state):
+        if state[0] == 0:
+            (_, self.requester_id, self.nation_id, self.nation_name, self.kind,
+             self.reason, res_dict, self.note, self.additional_info) = state
+            self.resources = pnwutils.Resources(**res_dict)
+        else:
+            raise pickle.UnpicklingError(f'Unrecognised state version {state[0]} for RequestData')
 
 
 class LoanDataDict(TypedDict):

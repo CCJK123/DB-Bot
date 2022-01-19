@@ -640,10 +640,9 @@ def setup(bot: dbbot.DBBot) -> None:
             content=f'{status.value} Request from {req_data.requester.mention}',
             allowed_mentions=discord.AllowedMentions.none())
 
-
-@WithdrawalView.register_callback('request_on_sent')
-async def on_sent(req_data):
-    await req_data.requester.send(
-        f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} '
-        'has been sent to your nation!'
-    )
+    @WithdrawalView.register_callback('request_on_sent')
+    async def on_sent(req_data):
+        await bot.get_user(req_data.requester_id).send(
+            f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} '
+            'has been sent to your nation!'
+        )
