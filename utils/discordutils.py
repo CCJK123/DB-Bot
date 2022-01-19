@@ -1,6 +1,8 @@
+import abc
 import asyncio
 import functools
 import operator
+import pickle
 import sys
 import traceback
 import os  # For env variables
@@ -65,7 +67,7 @@ class DBHelpCommand(commands.HelpCommand):
 
 # Setup discord bot configuration variables
 class Config:
-    token: str = os.environ['bot_token']
+    token: str = ''  # os.environ['bot_token']
     timeout: float = 300
     gov_role_id: int = 595155137274839040
 
@@ -124,7 +126,7 @@ class LinkView(discord.ui.View):
 Callback = Callable[..., Awaitable[None]]
 
 
-class CallbackPersistentView(discord.ui.View):
+class CallbackPersistentView(discord.ui.View, metaclass=abc.ABCMeta):
     callbacks: dict[str, Callback] = {}
 
     def __init__(self, *args, key: str | None = None, **kwargs):
@@ -148,6 +150,29 @@ class CallbackPersistentView(discord.ui.View):
         if self.key is None:
             raise KeyError('Callback key has not been set!')
         return self.callbacks[self.key]
+
+    @abc.abstractmethod
+    def get_state(self) -> tuple:
+        ...
+
+    @classmethod
+    def _new_uninitialised(cls) -> 'CallbackPersistentView':
+        return cls.__new__(cls)
+
+    def __getstate__(self) -> tuple:
+        return 0, self.key, *self.get_state()
+
+    def __setstate__(self, state: tuple) -> None:
+        if state[0] == 0:
+            self.__init__(*state[1:])
+        else:
+            raise pickle.UnpicklingError(f'Unsupported state tuple version {state[0]} for CallbackPersistentView')
+
+    def __reduce_ex__(self, protocol: int):
+        if protocol == 0:
+            return self._new_uninitialised, ()
+        else:
+            raise pickle.UnpicklingError(f'Unsupported reduce protocol {protocol} for CallbackPersistentView')
 
 
 async def get_member_from_context(ctx: commands.Context) -> discord.Member:
