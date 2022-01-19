@@ -128,10 +128,14 @@ Callback = Callable[..., Awaitable[None]]
 
 class CallbackPersistentView(discord.ui.View, metaclass=abc.ABCMeta):
     callbacks: dict[str, Callback] = {}
+    bot: dbbot.DBBot | None = None
 
     def __init__(self, *args, key: str | None = None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.key = key
+        if key in self.callbacks:
+            self.key = key
+        else:
+            raise ValueError(f'Key {key} has not been registered!')
 
     @classmethod
     def register_callback(cls, key: str | None = None, cog_name: str | None = None) -> Callable[[Callback], Callback]:
@@ -150,6 +154,10 @@ class CallbackPersistentView(discord.ui.View, metaclass=abc.ABCMeta):
         if self.key is None:
             raise KeyError('Callback key has not been set!')
         return self.callbacks[self.key]
+
+    def stop(self) -> None:
+        super().stop()
+        await self.bot.views.remove(self)
 
     @abc.abstractmethod
     def get_state(self) -> tuple:
@@ -242,18 +250,17 @@ DT = TypeVar('DT')
 _sentinel = object()
 
 
-class SavedProperty(Generic[T]):
-    __slots__ = ('value', 'key', 'owner')
+class AsyncProperty(Generic[T], metaclass=abc.ABCMeta):
+    __slots__ = ('value', 'key')
 
-    def __init__(self, owner: CogBase, key: str):
+    def __init__(self, key: str):
         self.value: Union[object, T] = _sentinel
         self.key = key
-        self.owner = owner
 
     async def get(self, default: Union[object, DT] = _sentinel) -> Union[T, DT]:
         if self.value is _sentinel:
             try:
-                self.value = await self.owner.bot.db_get(self.owner.cog_name, self.key)
+                self.value = await self.get_()
             except KeyError:
                 if default is _sentinel:
                     raise
@@ -262,13 +269,71 @@ class SavedProperty(Generic[T]):
 
     async def set(self, value: T) -> None:
         self.value = value
-        await self.update()
-    
-    async def update(self) -> None:
-        await self.owner.bot.db_set(self.owner.cog_name, self.key, self.value)
+        await self.set_(value)
 
     async def transform(self, func: Callable[[T], T]) -> None:
         await self.set(func(await self.get()))
+
+    @abc.abstractmethod
+    async def get_(self) -> T:
+        ...
+
+    @abc.abstractmethod
+    async def set_(self, value: T) -> None:
+        ...
+
+
+class BotProperty(AsyncProperty[T]):
+    __slots__ = ('bot',)
+
+    def __init__(self, bot: dbbot.DBBot, key: str):
+        super().__init__(key)
+        self.bot = bot
+
+    async def get_(self) -> T:
+        return await self.bot.database.get(self.key)
+
+    async def set_(self, value: T) -> None:
+        await self.bot.database.set(self.key, value)
+
+
+V = TypeVar('V', bound=CallbackPersistentView)
+
+
+class ViewStorage(BotProperty[list[V]]):
+    async def get_(self) -> list[V]:
+        return [pickle.loads(p_view) for p_view in await super().get_()]
+
+    async def set_(self, value: list[V]) -> None:
+        await super().set_([pickle.dumps(view, 5) for view in value])
+
+    async def append(self, v: V) -> None:
+        self.value.append(v)
+        lst = await super().get_()
+        lst.append(pickle.dumps(v, 5))
+        await super().set_(lst)
+
+    async def remove(self, v: V) -> None:
+        self.value.remove(v)
+        await self.set_(self.value)
+
+
+class SavedProperty(AsyncProperty[T]):
+    __slots__ = ('owner',)
+
+    def __init__(self, owner: CogBase, key: str):
+        super().__init__(key)
+        self.owner = owner
+
+    @property
+    def full_key(self) -> str:
+        return f'{self.owner.cog_name}.{self.key}'
+
+    async def get_(self) -> T:
+        return await self.owner.bot.database.get(self.full_key)
+    
+    async def set_(self, value: T) -> None:
+        await self.owner.bot.database.set(self.full_key, value)
 
 
 class MappingPropertyItem(Generic[T, T1]):
@@ -324,20 +389,11 @@ class WrappedProperty(Generic[T, T1], SavedProperty[T]):
         self.transform_to = transform_to
         self.transform_from = transform_from
 
-    async def get(self, default: Union[object, DT] = _sentinel) -> Union[T, DT]:
-        if self.value is _sentinel:
-            try:
-                self.value = self.transform_to(await self.owner.bot.db_get(
-                    self.owner.cog_name, self.key))
-            except KeyError:
-                if default is _sentinel:
-                    raise
-                return default
-        return self.value
+    async def get_(self):
+        return await self.transform_to(super().get_())
 
-    async def update(self) -> None:
-        await self.owner.bot.db_set(self.owner.cog_name, self.key,
-                                    self.transform_from(self.value))
+    async def set_(self, value: T) -> None:
+        await super().set_(self.transform_from(value))
 
 
 class ChannelProperty(WrappedProperty[discord.TextChannel, int]):

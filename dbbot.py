@@ -2,12 +2,13 @@ import os
 import random
 import aiohttp
 from replit.database import AsyncDatabase
-from typing import Any, Awaitable, Callable
+from typing import Callable
 
 import discord
 from discord.ext import commands, tasks
 
-from utils import discordutils, financeutils
+from utils import discordutils
+
 
 class DBBot(commands.Bot):
     def __init__(self, db_url, on_ready_func: Callable[[], None]):
@@ -19,17 +20,14 @@ class DBBot(commands.Bot):
         self.on_ready_func = on_ready_func
         self.session = None
         self.database = AsyncDatabase(db_url)
+        self.views = discordutils.ViewStorage[discordutils.CallbackPersistentView](self, 'views')
+        if await self.views.get(None) is None:
+            await self.views.set([])
         self.prepped = False
-        
 
     async def prep(self):
         self.session = await aiohttp.ClientSession().__aenter__()
         self.database = await self.database.__aenter__()
-        
-        
-        # dummy persistent views passed to add_view
-        self.add_view(financeutils.RequestChoices(None, None))
-        self.add_view(financeutils.WithdrawalView(None, 'dummy_link'))
 
     async def cleanup(self):
         await self.session.__aexit__(None, None, None)
@@ -46,6 +44,10 @@ class DBBot(commands.Bot):
     async def change_status(self):
         await self.change_presence(activity=random.choice(self.status))
 
+    def add_view(self, view: discordutils.CallbackPersistentView, *, message_id: int | None = None) -> None:
+        super().add_view(view, message_id=message_id)
+        await self.views.append(view)
+
     async def on_ready(self):
         if not self.prepped:
             self.prepped = True
@@ -53,6 +55,10 @@ class DBBot(commands.Bot):
 
         if not self.change_status.is_running():
             self.change_status.start()
+
+        # add views
+        for view in await self.views.get():
+            self.add_view(view)
 
         self.on_ready_func()
 
@@ -63,16 +69,10 @@ class DBBot(commands.Bot):
 
         await ctx.send(str(exception))
 
-        p_ignore = (
+        ignored = (
             commands.CommandNotFound,
             commands.MissingRole,
             commands.MissingRequiredArgument
         )
-        if not isinstance(exception, p_ignore):
+        if not isinstance(exception, ignored):
             await super().on_command_error(ctx, exception)
-
-    def db_set(self, cog_name: str, key: str, val: Any) -> Awaitable[None]:
-        return self.database.set(f'{cog_name}.{key}', val)
-
-    def db_get(self, cog_name: str, key: str) -> Awaitable[Any]:
-        return self.database.get(f'{cog_name}.{key}')
