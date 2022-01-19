@@ -123,12 +123,38 @@ class LinkView(discord.ui.View):
         self.add_item(LinkButton(label, url))
 
 
+class PersistentView(discord.ui.View, metaclass=abc.ABCMeta):
+    bot: dbbot.DBBot | None = None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    @abc.abstractmethod
+    def get_state(self) -> tuple:
+        ...
+
+    @classmethod
+    def _new_uninitialised(cls) -> 'PersistentView':
+        return cls.__new__(cls)
+
+    def __setstate__(self, state: tuple) -> None:
+        if state[0] == 0:
+            self.__init__(*state[1:])
+        else:
+            raise pickle.UnpicklingError(f'Unsupported state tuple version {state[0]} for CallbackPersistentView')
+
+    def __reduce_ex__(self, protocol: int):
+        return self._new_uninitialised, (), (0, *self.get_state())
+
+    async def remove(self) -> None:
+        await self.bot.views.remove(self)
+
+
 Callback = Callable[..., Awaitable[None]]
 
 
-class CallbackPersistentView(discord.ui.View, metaclass=abc.ABCMeta):
+class CallbackPersistentView(PersistentView, metaclass=abc.ABCMeta):
     callbacks: dict[str, Callback] = {}
-    bot: dbbot.DBBot | None = None
 
     def __init__(self, *args, key: str | None = None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -154,27 +180,6 @@ class CallbackPersistentView(discord.ui.View, metaclass=abc.ABCMeta):
         if self.key is None:
             raise KeyError('Callback key has not been set!')
         return self.callbacks[self.key]
-
-    def stop(self) -> None:
-        super().stop()
-        await self.bot.views.remove(self)
-
-    @abc.abstractmethod
-    def get_state(self) -> tuple:
-        ...
-
-    @classmethod
-    def _new_uninitialised(cls) -> 'CallbackPersistentView':
-        return cls.__new__(cls)
-
-    def __setstate__(self, state: tuple) -> None:
-        if state[0] == 0:
-            self.__init__(*state[1:])
-        else:
-            raise pickle.UnpicklingError(f'Unsupported state tuple version {state[0]} for CallbackPersistentView')
-
-    def __reduce_ex__(self, protocol: int):
-        return self._new_uninitialised, (), (0, self.key, *self.get_state())
 
 
 async def get_member_from_context(ctx: commands.Context) -> discord.Member:

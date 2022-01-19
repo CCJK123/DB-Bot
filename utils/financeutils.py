@@ -112,6 +112,7 @@ class RequestChoice(discord.ui.Button['RequestChoices']):
         for child in self.view.children:
             child.disabled = True
         self.view.stop()
+        await self.view.remove()
         await interaction.response.edit_message(view=self.view)
         await self.view.callback(RequestStatus(self.label), interaction, self.view.data)
 
@@ -144,6 +145,7 @@ class WithdrawalButton(discord.ui.Button['WithdrawalView']):
         self.style = discord.ButtonStyle.success
         self.disabled = True
         self.view.stop()
+        await self.view.remove()
         await interaction.response.edit_message(view=self.view)
         await self.view.callback(*self.view.args)
 

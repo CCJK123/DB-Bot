@@ -20,7 +20,7 @@ class DBBot(commands.Bot):
         self.on_ready_func = on_ready_func
         self.session = None
         self.database = AsyncDatabase(db_url)
-        self.views = discordutils.ViewStorage[discordutils.CallbackPersistentView](self, 'views')
+        self.views = discordutils.ViewStorage[discordutils.PersistentView](self, 'views')
         if await self.views.get(None) is None:
             await self.views.set([])
         self.prepped = False
@@ -44,8 +44,9 @@ class DBBot(commands.Bot):
     async def change_status(self):
         await self.change_presence(activity=random.choice(self.status))
 
-    def add_view(self, view: discordutils.CallbackPersistentView, *, message_id: int | None = None) -> None:
+    def add_view(self, view: discordutils.PersistentView, *, message_id: int | None = None) -> None:
         super().add_view(view, message_id=message_id)
+        view.bot = self
         await self.views.append(view)
 
     async def on_ready(self):
