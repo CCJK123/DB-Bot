@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 
-from utils import discordutils
+from utils import discordutils, financeutils
 import dbbot
 
 
@@ -41,6 +41,12 @@ class DebugCog(discordutils.CogBase):
     @commands.command()
     async def b(self, ctx):
         await ctx.send(list(view.is_dispatching() for view in self.bot._connection._view_store.persistent_views))
+
+    @discordutils.gov_check
+    @commands.command()
+    async def c(self, ctx):
+        import pickle
+        await ctx.send(pickle.loads(pickle.dumps(financeutils.WithdrawalView('a', 'bc'))).key)
 
 def setup(bot: dbbot.DBBot):
     bot.add_cog(DebugCog(bot))

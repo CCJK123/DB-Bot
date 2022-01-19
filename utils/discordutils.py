@@ -166,10 +166,7 @@ class CallbackPersistentView(discord.ui.View, metaclass=abc.ABCMeta):
             raise pickle.UnpicklingError(f'Unsupported state tuple version {state[0]} for CallbackPersistentView')
 
     def __reduce_ex__(self, protocol: int):
-        if protocol == 0:
-            return self._new_uninitialised, (), (0, self.key, *self.get_state())
-        else:
-            raise pickle.UnpicklingError(f'Unsupported reduce protocol {protocol} for CallbackPersistentView')
+        return self._new_uninitialised, (), (0, self.key, *self.get_state())
 
 
 async def get_member_from_context(ctx: commands.Context) -> discord.Member:

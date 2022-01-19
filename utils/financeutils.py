@@ -156,7 +156,7 @@ class WithdrawalView(discordutils.CallbackPersistentView):
         self.add_item(WithdrawalButton())
 
     def get_state(self) -> tuple:
-        return self.children[0].url, *args  # type: ignore
+        return self.children[0].url, *self.args  # type: ignore
 
 
 class ResourceSelector(discord.ui.Select['ResourceSelectView']):
