@@ -39,7 +39,7 @@ class RequestData:
         return embed
 
     def create_link(self) -> str:
-        return pnwutils.Link.bank("w", self.resources, self.nation_name, self.note)
+        return pnwutils.Link.bank("w", self.resources, self.nation_name, self.note if self.note else self.reason)
 
     def create_withdrawal_embed(self) -> discord.Embed:
         return withdrawal_embed(self.nation_name, self.nation_id, self.reason, self.resources)
@@ -60,6 +60,7 @@ class RequestData:
     def from_dict(cls, d: dict[str, Any]) -> 'RequestData':
         d['resources'] = pnwutils.Resources(**d['resources']) 
         return cls(**d)
+
 
 class LoanDataDict(TypedDict):
     due_date: str
@@ -134,7 +135,7 @@ def withdrawal_embed(name: str, nation_id: str, reason: str, resources: pnwutils
 
 class WithdrawalButton(discord.ui.Button['WithdrawalView']):
     def __init__(self):
-        super().__init__(row=0, custom_id='Withdrawal Button', label = 'Sent')
+        super().__init__(row=0, custom_id='Withdrawal Button', label='Sent')
 
     async def callback(self, interaction: discord.Interaction):
         self.style = discord.ButtonStyle.success
