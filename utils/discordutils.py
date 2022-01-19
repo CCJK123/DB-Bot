@@ -67,7 +67,7 @@ class DBHelpCommand(commands.HelpCommand):
 
 # Setup discord bot configuration variables
 class Config:
-    token: str = ''  # os.environ['bot_token']
+    token: str = os.environ['bot_token']
     timeout: float = 300
     gov_role_id: int = 595155137274839040
 
@@ -159,9 +159,6 @@ class CallbackPersistentView(discord.ui.View, metaclass=abc.ABCMeta):
     def _new_uninitialised(cls) -> 'CallbackPersistentView':
         return cls.__new__(cls)
 
-    def __getstate__(self) -> tuple:
-        return 0, self.key, *self.get_state()
-
     def __setstate__(self, state: tuple) -> None:
         if state[0] == 0:
             self.__init__(*state[1:])
@@ -170,7 +167,7 @@ class CallbackPersistentView(discord.ui.View, metaclass=abc.ABCMeta):
 
     def __reduce_ex__(self, protocol: int):
         if protocol == 0:
-            return self._new_uninitialised, ()
+            return self._new_uninitialised, (), (0, self.key, *self.get_state())
         else:
             raise pickle.UnpicklingError(f'Unsupported reduce protocol {protocol} for CallbackPersistentView')
 
