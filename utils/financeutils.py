@@ -126,7 +126,7 @@ class RequestChoices(discordutils.CallbackPersistentView):
             self.add_item(RequestChoice(c))
 
     def get_state(self) -> tuple:
-        return self.data,
+        return self.key, self.data
 
 
 def withdrawal_embed(name: str, nation_id: str, reason: str, resources: pnwutils.Resources) -> discord.Embed:
@@ -152,13 +152,13 @@ class WithdrawalButton(discord.ui.Button['WithdrawalView']):
 
 class WithdrawalView(discordutils.CallbackPersistentView):
     def __init__(self, callback_key: str, link: str, *args):
-        super().__init__(timeout=None, key=callback_key)
+        super().__init__(key=callback_key, timeout=None)
         self.args = args
         self.add_item(discordutils.LinkButton('Withdrawal Link', link))
         self.add_item(WithdrawalButton())
 
     def get_state(self) -> tuple:
-        return self.children[0].url, *self.args  # type: ignore
+        return self.key, self.children[0].url, *self.args  # type: ignore
 
 
 class ResourceSelector(discord.ui.Select['ResourceSelectView']):

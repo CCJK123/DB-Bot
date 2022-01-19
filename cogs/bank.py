@@ -287,7 +287,7 @@ class BankCog(discordutils.CogBase):
                                  embed=financeutils.withdrawal_embed(name, nation_id, reason, req_resources),
                                  allowed_mentions=discord.AllowedMentions.none(),
                                  view=view)
-        self.bot.add_view(view, message_id=msg.id)
+        await self.bot.add_view(view, message_id=msg.id)
 
         res = resources - req_resources
         await self.balances[nation_id].set(res.to_dict())

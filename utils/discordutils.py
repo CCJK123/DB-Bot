@@ -124,7 +124,7 @@ class LinkView(discord.ui.View):
 
 
 class PersistentView(discord.ui.View, metaclass=abc.ABCMeta):
-    bot: dbbot.DBBot | None = None
+    bot: 'dbbot.DBBot | None' = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -144,6 +144,7 @@ class PersistentView(discord.ui.View, metaclass=abc.ABCMeta):
             raise pickle.UnpicklingError(f'Unsupported state tuple version {state[0]} for CallbackPersistentView')
 
     def __reduce_ex__(self, protocol: int):
+        print(f'pickling {self}, {self.get_state()}')
         return self._new_uninitialised, (), (0, *self.get_state())
 
     async def remove(self) -> None:
@@ -291,7 +292,7 @@ class AsyncProperty(Generic[T], metaclass=abc.ABCMeta):
 class BotProperty(AsyncProperty[T]):
     __slots__ = ('bot',)
 
-    def __init__(self, bot: dbbot.DBBot, key: str):
+    def __init__(self, bot: 'dbbot.DBBot', key: str):
         super().__init__(key)
         self.bot = bot
 
@@ -306,6 +307,8 @@ V = TypeVar('V', bound=CallbackPersistentView)
 
 
 class ViewStorage(BotProperty[list[V]]):
+    __slots__ = ()
+    
     async def get_(self) -> list[V]:
         return [pickle.loads(p_view) for p_view in await super().get_()]
 
@@ -315,6 +318,7 @@ class ViewStorage(BotProperty[list[V]]):
     async def append(self, v: V) -> None:
         self.value.append(v)
         lst = await super().get_()
+        print(v)
         lst.append(pickle.dumps(v, 5))
         await super().set_(lst)
 
@@ -395,7 +399,7 @@ class WrappedProperty(Generic[T, T1], SavedProperty[T]):
         self.transform_from = transform_from
 
     async def get_(self):
-        return await self.transform_to(super().get_())
+        return self.transform_to(await super().get_())
 
     async def set_(self, value: T) -> None:
         await super().set_(self.transform_from(value))

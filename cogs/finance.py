@@ -502,7 +502,7 @@ class FinanceCog(discordutils.CogBase):
                 allowed_mentions=discord.AllowedMentions.none(),
                 view=process_view
             )
-            self.bot.add_view(process_view, message_id=msg.id)
+            await self.bot.add_view(process_view, message_id=msg.id)
 
             return
 
@@ -612,7 +612,7 @@ def setup(bot: dbbot.DBBot) -> None:
                                          embed=req_data.create_withdrawal_embed(),
                                          view=withdrawal_view,
                                          allowed_mentions=discord.AllowedMentions.none())
-                cog.bot.add_view(withdrawal_view, message_id=msg.id)
+                await cog.bot.add_view(withdrawal_view, message_id=msg.id)
 
         else:
             await interaction.user.send(
