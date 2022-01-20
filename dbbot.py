@@ -25,7 +25,7 @@ class DBBot(commands.Bot):
 
     async def prep(self):
         if await self.views.get(None) is None:
-            await self.views.set([])
+            await self.views.set({})
         
         self.session = await aiohttp.ClientSession().__aenter__()
         self.database = await self.database.__aenter__()
@@ -48,7 +48,7 @@ class DBBot(commands.Bot):
     async def add_view(self, view: discordutils.PersistentView, *, message_id: int | None = None) -> None:
         super().add_view(view, message_id=message_id)
         view.bot = self
-        await self.views.append(view)
+        await self.views.add(view)
 
     async def on_ready(self):
         if not self.prepped:
@@ -59,8 +59,9 @@ class DBBot(commands.Bot):
             self.change_status.start()
 
         # add views
-        for view in await self.views.get():
-            self.add_view(view)
+        for view in await self.views.get_views():
+            print(view)
+            await self.add_view(view)
 
         self.on_ready_func()
 

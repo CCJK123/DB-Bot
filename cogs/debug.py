@@ -12,25 +12,30 @@ class DebugCog(discordutils.CogBase):
     @discordutils.gov_check
     @commands.command()
     async def get_keys(self, ctx: commands.Context):
-        await ctx.send(await self.bot.db.keys())
+        await ctx.send(await self.bot.database.keys())
 
     @discordutils.gov_check
     @commands.command()
     async def get_key(self, ctx: commands.Context, key: str):
-        print(a := await self.bot.db.get(key))        
+        print(a := await self.bot.database.get(key))        
         await ctx.send(a)
 
     @discordutils.gov_check
     @commands.command()
     async def del_key(self, ctx: commands.Context, key: str):
-        await self.bot.db.delete(key)
+        await self.bot.database.delete(key)
         await ctx.send('done')
 
     @discordutils.gov_check
     @commands.command()
     async def set_key(self, ctx, key, val):
-        await self.bot.db.set(key, eval(val))
+        await self.bot.database.set(key, eval(val))
         await ctx.send(f'{key} set to {eval(val)}')
+    
+    @discordutils.gov_check
+    @commands.command()
+    async def cid(self, ctx):
+        await ctx.send(ctx.channel.id)
     
     @discordutils.gov_check
     @commands.command()

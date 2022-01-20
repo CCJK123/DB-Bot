@@ -582,6 +582,7 @@ def setup(bot: dbbot.DBBot) -> None:
                            interaction: discord.Interaction, req_data: RequestData) -> None:
         cog: FinanceCog = bot.get_cog(cog_name)  # type: ignore
         logger.info(f'processing {status} request: {req_data}')
+        req_data.set_requester(bot)
         if status == RequestStatus.ACCEPTED:
             if req_data.kind == 'Loan':
                 data = LoanData(datetime.datetime.now() + datetime.timedelta(days=30), req_data.resources)
@@ -642,7 +643,7 @@ def setup(bot: dbbot.DBBot) -> None:
 
     @WithdrawalView.register_callback('request_on_sent')
     async def on_sent(req_data):
-        await bot.get_user(req_data.requester_id).send(
+        await req_data.set_requester(bot).send(
             f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} '
             'has been sent to your nation!'
         )

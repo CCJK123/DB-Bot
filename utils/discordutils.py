@@ -148,7 +148,7 @@ class PersistentView(discord.ui.View, metaclass=abc.ABCMeta):
         return self._new_uninitialised, (), (0, *self.get_state())
 
     async def remove(self) -> None:
-        await self.bot.views.remove(self)
+        await self.bot.views.pop(self)
 
 
 Callback = Callable[..., Awaitable[None]]
@@ -300,30 +300,33 @@ class BotProperty(AsyncProperty[T]):
         return await self.bot.database.get(self.key)
 
     async def set_(self, value: T) -> None:
+        print(value)
         await self.bot.database.set(self.key, value)
 
 
 V = TypeVar('V', bound=CallbackPersistentView)
 
 
-class ViewStorage(BotProperty[list[V]]):
+class ViewStorage(BotProperty[dict[V, str]]):
     __slots__ = ()
     
-    async def get_(self) -> list[V]:
-        return [pickle.loads(p_view) for p_view in await super().get_()]
+    async def get_(self) -> dict[V, str]:
+        return {pickle.loads(bytes.fromhex(p_view)): p_view for p_view in await super().get_()}
 
-    async def set_(self, value: list[V]) -> None:
-        await super().set_([pickle.dumps(view, 5) for view in value])
+    async def set_(self, value: dict[V, str]) -> None:
+        await super().set_(list(value.values()))
+    
+    async def get_views(self) -> tuple[V]:
+        return tuple((await self.get()).keys())
 
-    async def append(self, v: V) -> None:
-        self.value.append(v)
-        lst = await super().get_()
-        print(v)
-        lst.append(pickle.dumps(v, 5))
-        await super().set_(lst)
+    async def add(self, v: V) -> None:
+        if v in self.value:
+            return
+        self.value[v] = pickle.dumps(v, 5).hex()
+        await self.set_(self.value)
 
-    async def remove(self, v: V) -> None:
-        self.value.remove(v)
+    async def pop(self, v: V) -> None:
+        self.value.pop(v)
         await self.set_(self.value)
 
 

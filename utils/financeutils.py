@@ -49,7 +49,7 @@ class RequestData:
     def __getstate__(self) -> tuple:
         if self.requester_id is None:
             self.requester_id = self.requester.id
-        return (self.requester_id, self.nation_id, self.nation_name, self.kind, self.reason,
+        return (0, self.requester_id, self.nation_id, self.nation_name, self.kind, self.reason,
                 self.resources.to_dict(), self.note, self.additional_info)
 
     def __setstate__(self, state):
@@ -57,9 +57,13 @@ class RequestData:
             (_, self.requester_id, self.nation_id, self.nation_name, self.kind,
              self.reason, res_dict, self.note, self.additional_info) = state
             self.resources = pnwutils.Resources(**res_dict)
+            self.requester = None
         else:
             raise pickle.UnpicklingError(f'Unrecognised state version {state[0]} for RequestData')
 
+    def set_requester(self, bot: discord.Bot) -> discord.abc.User:
+        self.requester = bot.get_user(self.requester_id)
+        return self.requester
 
 class LoanDataDict(TypedDict):
     due_date: str
