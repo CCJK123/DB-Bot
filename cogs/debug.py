@@ -49,9 +49,9 @@ class DebugCog(discordutils.CogBase):
 
     @discordutils.gov_check
     @commands.command()
-    async def c(self, ctx):
+    async def d(self, ctx):
         import pickle
-        await ctx.send(pickle.loads(pickle.dumps(financeutils.WithdrawalView('a', 'bc'))).key)
+        await ctx.send(financeutils.WithdrawalView.callbacks)
 
 def setup(bot: dbbot.DBBot):
     bot.add_cog(DebugCog(bot))

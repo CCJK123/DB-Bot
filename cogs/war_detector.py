@@ -8,8 +8,7 @@ import discord
 
 from utils import discordutils, pnwutils
 from utils.queries import alliance_wars_query
-if TYPE_CHECKING:
-    import dbbot
+import dbbot
 
 
 class WarType(enum.Enum):

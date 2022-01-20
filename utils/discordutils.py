@@ -146,7 +146,6 @@ class PersistentView(discord.ui.View, metaclass=abc.ABCMeta):
             raise pickle.UnpicklingError(f'Unsupported state tuple version {state[0]} for CallbackPersistentView')
 
     def __reduce_ex__(self, protocol: int):
-        print(f'pickling {self}, {self.get_state()}')
         return self._new_uninitialised, (), (0, self.custom_id, *self.get_state())
 
     async def remove(self) -> None:
@@ -311,7 +310,6 @@ class BotProperty(AsyncProperty[T]):
         return await self.bot.database.get(self.key)
 
     async def set_(self, value: T) -> None:
-        print(value)
         await self.bot.database.set(self.key, value)
 
 
