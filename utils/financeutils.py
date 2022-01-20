@@ -108,8 +108,8 @@ RequestChosenCallback = Callable[[RequestStatus, discord.Interaction, RequestDat
 
 
 class RequestChoice(discord.ui.Button['RequestChoices']):
-    def __init__(self, label: RequestStatus):
-        super().__init__(row=0, label=label.value, custom_id=label.value)
+    def __init__(self, label: RequestStatus, custom_id: int):
+        super().__init__(row=0, label=label.value, custom_id=f'{label.value} {custom_id}')
 
     async def callback(self, interaction: discord.Interaction) -> None:
         self.style = discord.ButtonStyle.success
@@ -122,12 +122,13 @@ class RequestChoice(discord.ui.Button['RequestChoices']):
 
 
 class RequestChoices(discordutils.CallbackPersistentView):
-    def __init__(self, callback_key: str, data: RequestData):
-        # Callback would be called with 'Accepted', 'Rejected', or 'Sent'
+    def __init__(self, callback_key: str, data: RequestData, *, custom_id: int = None):
         super().__init__(timeout=None, key=callback_key)
+        self.custom_id = self.get_id() if custom_id is None else custom_id
+
         self.data = data
         for c in RequestStatus:
-            self.add_item(RequestChoice(c))
+            self.add_item(RequestChoice(c, self.custom_id))
 
     def get_state(self) -> tuple:
         return self.key, self.data
@@ -142,8 +143,8 @@ def withdrawal_embed(name: str, nation_id: str, reason: str, resources: pnwutils
 
 
 class WithdrawalButton(discord.ui.Button['WithdrawalView']):
-    def __init__(self):
-        super().__init__(row=0, custom_id='Withdrawal Button', label='Sent')
+    def __init__(self, custom_id: int):
+        super().__init__(row=0, custom_id=f'Withdrawal Button {custom_id}', label='Sent')
 
     async def callback(self, interaction: discord.Interaction):
         self.style = discord.ButtonStyle.success
@@ -155,11 +156,13 @@ class WithdrawalButton(discord.ui.Button['WithdrawalView']):
 
 
 class WithdrawalView(discordutils.CallbackPersistentView):
-    def __init__(self, callback_key: str, link: str, *args):
+    def __init__(self, callback_key: str, link: str, *args, custom_id: int = None):
         super().__init__(key=callback_key, timeout=None)
+        self.custom_id = self.get_id() if custom_id is None else custom_id
+
         self.args = args
         self.add_item(discordutils.LinkButton('Withdrawal Link', link))
-        self.add_item(WithdrawalButton())
+        self.add_item(WithdrawalButton(self.custom_id))
 
     def get_state(self) -> tuple:
         return self.key, self.children[0].url, *self.args  # type: ignore

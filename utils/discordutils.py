@@ -124,10 +124,12 @@ class LinkView(discord.ui.View):
 
 
 class PersistentView(discord.ui.View, metaclass=abc.ABCMeta):
+    last_id = -1
     bot: 'dbbot.DBBot | None' = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.custom_id = None
 
     @abc.abstractmethod
     def get_state(self) -> tuple:
@@ -139,16 +141,25 @@ class PersistentView(discord.ui.View, metaclass=abc.ABCMeta):
 
     def __setstate__(self, state: tuple) -> None:
         if state[0] == 0:
-            self.__init__(*state[1:])
+            self.__init__(*state[2:], custom_id=state[1])
         else:
             raise pickle.UnpicklingError(f'Unsupported state tuple version {state[0]} for CallbackPersistentView')
 
     def __reduce_ex__(self, protocol: int):
         print(f'pickling {self}, {self.get_state()}')
-        return self._new_uninitialised, (), (0, *self.get_state())
+        return self._new_uninitialised, (), (0, self.custom_id, *self.get_state())
 
     async def remove(self) -> None:
         await self.bot.views.pop(self)
+    
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__()
+        cls.last_id = -1
+    
+    @classmethod
+    def get_id(cls):
+        cls.last_id += 1
+        return cls.last_id
 
 
 Callback = Callable[..., Awaitable[None]]
