@@ -1,13 +1,15 @@
 import aiohttp
 import enum
 import operator
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from discord.ext import commands, tasks
 import discord
 
 from utils import discordutils, pnwutils
-import dbbot
+from utils.queries import alliance_wars_query
+if TYPE_CHECKING:
+    import dbbot
 
 
 class WarType(enum.Enum):
@@ -63,56 +65,8 @@ class WarDetectorCog(discordutils.CogBase):
 
     @tasks.loop(minutes=2)
     async def detect_wars(self) -> None:
-        new_wars_query_str = '''
-        query alliance_wars($alliance_id: [ID]){
-          wars(alliance_id: $alliance_id, days_ago: 6){
-            id
-            turnsleft
-            attid
-            defid
-            att_alliance_id
-            def_alliance_id
-            att_resistance
-            def_resistance
-            attpoints
-            defpoints
-            attacker {
-              nation_name
-              score
-              num_cities
-              warpolicy
-              soldiers
-              tanks
-              aircraft
-              ships
-              missiles
-              nukes
-              alliance_position
-              alliance {
-                name
-              }
-            }
-            defender {
-              nation_name
-              score
-              num_cities
-              warpolicy
-              soldiers
-              tanks
-              aircraft
-              ships
-              missiles
-              nukes
-              alliance_position
-              alliance {
-                name
-              }
-            }
-          }
-        }
-        '''
         async with aiohttp.ClientSession() as session:
-            data = await pnwutils.API.post_query(session, new_wars_query_str, {'alliance_id': pnwutils.Config.aa_id},
+            data = await pnwutils.API.post_query(session, alliance_wars_query, {'alliance_id': pnwutils.Config.aa_id},
                                                  'wars')
 
         war: dict[str, Any]

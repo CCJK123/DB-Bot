@@ -4,7 +4,7 @@ import asyncio
 import datetime
 import enum
 import pickle
-from typing import Any, Callable, Awaitable, Iterable, Optional, TypedDict
+from typing import Callable, Awaitable, Iterable, Optional, TypedDict
 from dataclasses import dataclass, field
 
 import discord
@@ -61,9 +61,10 @@ class RequestData:
         else:
             raise pickle.UnpicklingError(f'Unrecognised state version {state[0]} for RequestData')
 
-    def set_requester(self, bot: discord.Bot) -> discord.abc.User:
-        self.requester = bot.get_user(self.requester_id)
+    def set_requester(self, client: discord.Client) -> discord.abc.User:
+        self.requester = client.get_user(self.requester_id)
         return self.requester
+
 
 class LoanDataDict(TypedDict):
     due_date: str

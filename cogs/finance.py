@@ -9,6 +9,7 @@ from discord.ext import commands
 
 from utils import discordutils, pnwutils
 from utils.financeutils import RequestData, LoanData, RequestStatus, RequestChoices, ResourceSelectView, WithdrawalView
+from utils.queries import nation_query
 import dbbot
 
 logger = logging.getLogger(__name__)
@@ -57,56 +58,7 @@ class FinanceCog(discordutils.CogBase):
             await auth.send('Your nation id has not been set!')
             return
 
-        nation_query_str = '''
-        query nation_info($nation_id: [Int]) {
-            nations(id: $nation_id, first: 1) {
-                data {
-                    # Display Request, Withdrawal Link
-                    nation_name
-
-                    # Alliance Check
-                    alliance_id
-
-                    # City Grants, Project Grants & War Aid
-                    num_cities
-
-                    # City Grants & Project Grants 
-                    city_planning
-                    adv_city_planning
-
-                    # Project Grants
-                    cia
-                    propb
-
-                    # Project Grants & War Aid
-                    cfce
-
-                    # War Aid
-                    soldiers
-                    tanks
-                    aircraft
-                    ships
-                    beigeturns
-                    offensive_wars {
-                        turnsleft
-                    }
-                    defensive_wars {
-                        turnsleft
-                    }
-                    cities {
-                        barracks
-                        factory
-                        airforcebase
-                        drydock
-                        name
-                        infrastructure
-                    }
-                    adv_engineering_corps
-                }
-            }
-        }
-        '''
-        data = await pnwutils.API.post_query(self.bot.session, nation_query_str,
+        data = await pnwutils.API.post_query(self.bot.session, nation_query,
                                              {'nation_id': nation_id}, 'nations')
         data = data['data']
         if data:
@@ -516,7 +468,6 @@ class FinanceCog(discordutils.CogBase):
         if isinstance(error, commands.MaxConcurrencyReached):
             await ctx.send('You are already making a request!')
             return
-        # await discordutils.default_error_handler(ctx, error)
 
     @discordutils.gov_check
     @request.group(invoke_without_command=True)

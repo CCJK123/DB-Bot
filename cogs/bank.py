@@ -7,6 +7,7 @@ from discord.ext import commands
 import discord
 
 from utils import financeutils, discordutils, pnwutils
+from utils.queries import bank_transactions_query, bank_info_query, nation_name_query
 import dbbot
 
 
@@ -30,50 +31,7 @@ class BankCog(discordutils.CogBase):
         if entity_id is None and kind is not None:
             raise ValueError('Please provide entity id!')
 
-        transactions_query_str = '''
-        query bank_transactions($alliance_id: [Int]) {
-          alliances(id: $alliance_id, first: 1) {
-            data {
-              bankrecs {
-                # id
-                sid
-                stype
-                rid
-                rtype
-                # pid
-                date
-                money
-                coal
-                oil
-                uranium
-                iron
-                bauxite
-                lead
-                gasoline
-                munitions
-                steel
-                aluminum
-                food
-              }
-            }
-          }
-        }
-        '''
-        # some notes on the format of this data
-        # id: unique id of this transaction
-        # sid: id of the sender
-        # stype: type of the sender
-        #  - 1: nation
-        #  - 2: alliance
-        # rid: id of the receiver
-        # rtype: type of receiver
-        #  numbers mean the same as in stype
-        # pid: id of the banker (the person who initiated this transaction)
-        # note that if stype is 1 then rtype is 2 and if rtype is 1 then stype is 2
-        # but converse is not true due to the existence of inter-alliance transactions
-        # if stype/rtype is 2 then sid/rid is definitely the alliance id unless both stype/rtype is 2
-
-        data = await pnwutils.API.post_query(self.bot.session, transactions_query_str,
+        data = await pnwutils.API.post_query(self.bot.session, bank_transactions_query,
                                              {'alliance_id': pnwutils.Config.aa_id}, 'alliances')
 
         bank_recs = data['data'][0]['bankrecs']
@@ -267,17 +225,7 @@ class BankCog(discordutils.CogBase):
             await auth.send('You took too long to reply! Aborting.')
             return
 
-        name_query = '''
-        query nation_name($nation_id: [Int]) {
-          nations(id: $nation_id, first: 1) {
-            data {
-              nation_name
-            }
-          }
-        }
-        '''
-
-        data = await pnwutils.API.post_query(self.bot.session, name_query, {'nation_id': nation_id}, 'nations')
+        data = await pnwutils.API.post_query(self.bot.session, nation_name_query, {'nation_id': nation_id}, 'nations')
         name = data['data'][0]['nation_name']
         link = pnwutils.Link.bank('w', req_resources, name, 'Withdrawal from balance')
 
@@ -513,28 +461,8 @@ class BankCog(discordutils.CogBase):
     @discordutils.gov_check
     @bank.command(aliases=('check',))
     async def c(self, ctx: commands.Context):
-        bank_query_string = '''
-        query bank_info($alliance_id: [Int]) {
-          alliances(id: $alliance_id, first: 1) {
-            data {
-              money
-              food
-              aluminum
-              steel
-              munitions
-              gasoline
-              bauxite
-              iron
-              lead
-              uranium
-              oil
-              coal
-            }
-          }
-        }
-        '''
         data = await pnwutils.API.post_query(
-            self.bot.session, bank_query_string,
+            self.bot.session, bank_info_query,
             {'alliance_id': pnwutils.Config.aa_id},
             'alliances'
         )

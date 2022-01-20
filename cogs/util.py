@@ -6,6 +6,7 @@ import discord
 from discord.ext import commands
 
 from utils import discordutils, pnwutils
+from utils.queries import nation_alliance_query, alliance_member_res_query, alliance_activity_query
 import dbbot
 
 
@@ -16,7 +17,7 @@ class UtilCog(discordutils.CogBase):
 
     @commands.command()
     async def set_nation(self, ctx: commands.Context, nation_id: str = ''):
-        '''Use to manually add your nation to the database'''
+        """Use to manually add your nation to the database"""
         await self.nations.initialise()
         nations = await self.nations.get()
         if ctx.author.id in nations:
@@ -46,16 +47,7 @@ class UtilCog(discordutils.CogBase):
             await ctx.send("That isn't a number!")
             return
 
-        nation_query_str = '''
-        query nation_info($nation_id: [Int]) {
-            nations(id: $nation_id, first: 1) {
-                data {
-                    alliance_id
-                }
-            }
-        }
-        '''
-        data = await pnwutils.API.post_query(self.bot.session, nation_query_str,
+        data = await pnwutils.API.post_query(self.bot.session, nation_alliance_query,
                                              {'nation_id': nation_id},
                                              'nations')
         data = data['data']
@@ -80,7 +72,7 @@ class UtilCog(discordutils.CogBase):
     @discordutils.gov_check
     @commands.command()
     async def list_registered(self, ctx: commands.Context):
-        '''List all nations registered in our database. Be wary, this will fill the screen and more!'''
+        """List all nations registered in our database. Be wary, this will fill the screen and more!"""
         nations = await self.nations.get()
         if nations:
             strings = (f'<@{disc_id}> - {pnwutils.Link.nation(nation_id)}'
@@ -93,27 +85,9 @@ class UtilCog(discordutils.CogBase):
     @discordutils.gov_check
     @commands.command()
     async def check_ran_out(self, ctx: commands.Context):
-        '''Use to list all nations thart have run out of food or uranium in the alliance.'''
-        aa_query_str = '''
-        query alliance_res($alliance_id: [Int], $page: Int){
-          nations(alliance_id: $alliance_id, first: 500, page: $page){
-            paginatorInfo {
-              hasMorePages
-            }
-            data {
-              alliance_position
-              vmode
-              id
-              food
-              uranium
-              cities {
-                nuclearpower
-              }
-            }
-          }
-        }
-        '''
-        data = (await pnwutils.API.post_query(self.bot.session, aa_query_str, {'alliance_id': pnwutils.Config.aa_id},
+        """Use to list all nations that have run out of food or uranium in the alliance."""
+        data = (await pnwutils.API.post_query(self.bot.session, alliance_member_res_query,
+                                              {'alliance_id': pnwutils.Config.aa_id},
                                               'nations', True))['data']
         result = defaultdict(str)
         for nation in data:
@@ -144,22 +118,8 @@ class UtilCog(discordutils.CogBase):
     @commands.check_any(commands.has_role(383815082473291778), discordutils.gov_check)
     @commands.command()
     async def activity_check(self, ctx: commands.Context):
-        aa_query_str = '''
-        query alliance_activity($alliance_id: [Int], $page: Int){
-          nations(alliance_id: $alliance_id, first: 500, page: $page){
-            paginatorInfo {
-              hasMorePages
-            }
-            data {
-              alliance_position
-              vmode
-              id
-              last_active
-            }
-          }
-        }
-        '''
-        data = (await pnwutils.API.post_query(self.bot.session, aa_query_str, {'alliance_id': pnwutils.Config.aa_id},
+        data = (await pnwutils.API.post_query(self.bot.session, alliance_activity_query,
+                                              {'alliance_id': pnwutils.Config.aa_id},
                                               'nations', True))['data']
 
         inactives = set()
