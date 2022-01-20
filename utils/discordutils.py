@@ -192,6 +192,10 @@ class CallbackPersistentView(PersistentView, metaclass=abc.ABCMeta):
             raise KeyError('Callback key has not been set!')
         return self.callbacks[self.key]
 
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        cls.callbacks = {}
+
 
 async def get_member_from_context(ctx: commands.Context) -> discord.Member:
     """Returns replied member, otherwise message author from context's message"""
