@@ -278,7 +278,7 @@ class FinanceCog(discordutils.CogBase):
                     Defensive: {sum(w["turnsleft"] > 0 for w in data["defensive_wars"])}
                 '''
                 # fsr the value of turnsleft when war is over seems to be always -12? idk
-                # maybe its diff for wars that ended recently? didnt check
+                # maybe its diff for wars that ended recently? did not check
             }
 
             if war_aid_type == 'Buy Military Units':

@@ -21,8 +21,8 @@
         <li><a href='https://www.python.org/dev/peps/pep-0008/#maximum-line-length'>Maximum Line Length:</a> Haven't decided</li>
         <li><a href='https://www.python.org/dev/peps/pep-0008/#should-a-line-break-before-or-after-a-binary-operator'>Line Breaks with Binary Operators:</a> Break before binary</li>
         <li><a href='https://www.python.org/dev/peps/pep-0008/#blank-lines'>Blank lines (Adapted):</a><ul>
-            <li>Seperate imports, alongside top-level function and class definitions with three blank lines</li>
-            <li>Seperate method definitions inside a class are seperated by two blank lines</li>
+            <li>Separate imports, alongside top-level function and class definitions with three blank lines</li>
+            <li>Separate method definitions inside a class are separated by two blank lines</li>
             <li>Use blank lines in functions and class methods, sparingly, to indicate logical sections</li>
         </ul></li>
         <li><a href='https://www.python.org/dev/peps/pep-0008/#source-file-encoding'> Source File Encoding:</a> UTF-8</li>
@@ -98,7 +98,7 @@
 
 - discord.py
     - [Official Releases](https://pypi.org/project/discord.py/)
-    - [Development Verison](https://github.com/Rapptz/discord.py)
+    - [Development Version](https://github.com/Rapptz/discord.py)
     - [discord.ui examples](https://github.com/Rapptz/discord.py/tree/45d498c1b76deaf3b394d17ccf56112fa691d160/examples/views)
 
 - repl.it

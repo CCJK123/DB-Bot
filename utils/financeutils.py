@@ -35,7 +35,7 @@ class RequestData:
         embed.add_field(name='Nation', value=f'[{self.nation_name}]({self.nation_link})')
         embed.add_field(name='Request Type', value=self.kind)
         embed.add_field(name='Reason', value=self.reason)
-        embed.add_field(name='Requested Resources', value=self.resources)
+        embed.add_field(name='Requested Resources', value=str(self.resources))
         for n, v in self.additional_info.items():
             embed.add_field(name=n, value=v)
         return embed
@@ -107,6 +107,7 @@ RequestChosenCallback = Callable[[RequestStatus, discord.Interaction, RequestDat
                                  Awaitable[None]]
 
 
+# noinspection PyAttributeOutsideInit
 class RequestChoice(discord.ui.Button['RequestChoices']):
     def __init__(self, label: RequestStatus, custom_id: int):
         super().__init__(row=0, label=label.value, custom_id=f'{label.value} {custom_id}')
@@ -138,10 +139,11 @@ def withdrawal_embed(name: str, nation_id: str, reason: str, resources: pnwutils
     embed = discord.Embed()
     embed.add_field(name='Nation', value=f'[{name}]({pnwutils.Link.nation(nation_id)})')
     embed.add_field(name='Reason', value=reason)
-    embed.add_field(name='Requested Resources', value=resources)
+    embed.add_field(name='Requested Resources', value=str(resources))
     return embed
 
 
+# noinspection PyAttributeOutsideInit
 class WithdrawalButton(discord.ui.Button['WithdrawalView']):
     def __init__(self, custom_id: int):
         super().__init__(row=0, custom_id=f'Withdrawal Button {custom_id}', label='Sent')
@@ -168,6 +170,7 @@ class WithdrawalView(discordutils.CallbackPersistentView):
         return self.key, self.children[0].url, *self.args  # type: ignore
 
 
+# noinspection PyAttributeOutsideInit
 class ResourceSelector(discord.ui.Select['ResourceSelectView']):
     def __init__(self, res: Iterable[str]):
         options = [discord.SelectOption(label=s) for s in res]

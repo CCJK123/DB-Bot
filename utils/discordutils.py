@@ -73,6 +73,7 @@ class Config:
 
 
 # Setup buttons for user to make choices
+# noinspection PyAttributeOutsideInit
 class Choice(discord.ui.Button['Choices']):
     def __init__(self, label: str, disabled: bool = False):
         super().__init__(disabled=disabled, label=label)
