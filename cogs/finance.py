@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 class FinanceCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
-        self.has_war_aid = discordutils.SavedProperty[bool](self, 'has_war_aid')
-        self.infra_rebuild_cap = discordutils.SavedProperty[int](self, 'infra_rebuild_cap')
+        self.has_war_aid = discordutils.CogProperty[bool](self, 'has_war_aid')
+        self.infra_rebuild_cap = discordutils.CogProperty[int](self, 'infra_rebuild_cap')
         self.process_channel = discordutils.ChannelProperty(self, 'process_channel')
         self.send_channel = discordutils.ChannelProperty(self, 'send_channel')
         self.loans = discordutils.MappingProperty[int, dict[str, Any]](self, 'loans')

@@ -20,7 +20,7 @@ class WarType(enum.Enum):
 class WarDetectorCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
-        self.check_losing = discordutils.SavedProperty[bool](self, 'check_losing')
+        self.check_losing = discordutils.CogProperty[bool](self, 'check_losing')
         self.att_channel = discordutils.ChannelProperty(self, 'att_channel')
         self.def_channel = discordutils.ChannelProperty(self, 'def_channel')
         self.lose_channel = discordutils.ChannelProperty(self, 'lose_channel')

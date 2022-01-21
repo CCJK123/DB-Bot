@@ -17,7 +17,7 @@ from discord.ext import commands
 
 # Setup what is exported by default
 __all__ = ('Config', 'Choices', 'construct_embed', 'gov_check', 'CogBase',
-           'SavedProperty', 'WrappedProperty', 'ChannelProperty', 'MappingProperty')
+           'CogProperty', 'WrappedProperty', 'ChannelProperty', 'MappingProperty')
 
 
 class DBHelpCommand(commands.HelpCommand):
@@ -216,6 +216,7 @@ def construct_embed(fields: Mapping[str, str], /, **kwargs: str) -> discord.Embe
 
 
 def get_msg_chk(ctx: commands.Context) -> Callable[[discord.Message], bool]:
+    """gets a function used as a check in bot.wait_for such that the author and channel is the same as the context"""
     def msg_chk(m: discord.Message) -> bool:
         return m.author.id == ctx.author.id and m.channel.id == ctx.channel.id
 
@@ -223,6 +224,7 @@ def get_msg_chk(ctx: commands.Context) -> Callable[[discord.Message], bool]:
 
 
 def get_dm_msg_chk(auth_id: int) -> Callable[[discord.Message], bool]:
+    """gets a function used as a check in bot.wait_for such that it was sent in DMs from the author id given"""
     def msg_chk(m: discord.Message) -> bool:
         return m.author.id == auth_id and m.guild is None
 
@@ -270,7 +272,7 @@ DT = TypeVar('DT')
 _sentinel = object()
 
 
-class AsyncProperty(Generic[T], metaclass=abc.ABCMeta):
+class SavedProperty(Generic[T], metaclass=abc.ABCMeta):
     __slots__ = ('value', 'key')
 
     def __init__(self, key: str):
@@ -303,7 +305,7 @@ class AsyncProperty(Generic[T], metaclass=abc.ABCMeta):
         ...
 
 
-class BotProperty(AsyncProperty[T]):
+class BotProperty(SavedProperty[T]):
     __slots__ = ('bot',)
 
     def __init__(self, bot: 'dbbot.DBBot', key: str):
@@ -321,6 +323,7 @@ V = TypeVar('V', bound=CallbackPersistentView)
 
 
 class ViewStorage(BotProperty[dict[V, str]]):
+    """Stores persistent views for reloading upon bot restart"""
     __slots__ = ()
     
     async def get_(self) -> dict[V, str]:
@@ -343,7 +346,8 @@ class ViewStorage(BotProperty[dict[V, str]]):
         await self.set_(self.value)
 
 
-class SavedProperty(AsyncProperty[T]):
+class CogProperty(SavedProperty[T]):
+    """A generic property to be used in cogs"""
     __slots__ = ('owner',)
 
     def __init__(self, owner: CogBase, key: str):
@@ -387,7 +391,8 @@ class MappingPropertyItem(Generic[T, T1]):
         await self.mapping.set(m)
 
 
-class MappingProperty(Generic[T, T1], SavedProperty[dict[T, T1]]):
+class MappingProperty(Generic[T, T1], CogProperty[dict[T, T1]]):
+    """A property to access a mapping"""
     __slots__ = ()
 
     def __getitem__(self, key: T) -> MappingPropertyItem[T, T1]:
@@ -396,14 +401,15 @@ class MappingProperty(Generic[T, T1], SavedProperty[dict[T, T1]]):
     async def initialise(self) -> None:
         """
         Makes sure that the property is set to a dict before it is accessed
-        Should only actually do anything the first time, when nothing is set to self.key
+        Should only actually do anything the first time, when nothing is set at self.key
         """
         if await self.get(None) is None:
             print(f'Initialising key {self.key} from {self.owner.cog_name} to {{}}')
             await self.set({})
 
 
-class WrappedProperty(Generic[T, T1], SavedProperty[T]):
+class WrappedProperty(Generic[T, T1], CogProperty[T]):
+    """Property where the stored value is wrapped with functions to get the actual value"""
     __slots__ = ('transform_to', 'transform_from')
 
     def __init__(self, owner: CogBase, key: str,
@@ -422,6 +428,7 @@ class WrappedProperty(Generic[T, T1], SavedProperty[T]):
 
 
 class ChannelProperty(WrappedProperty[discord.TextChannel, int]):
+    """Property to store a discord.TextChannel across bot restarts"""
     __slots__ = ()
 
     def __init__(self, owner: CogBase, key: str):

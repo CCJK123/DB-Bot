@@ -15,8 +15,8 @@ class BankCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
         self.balances = discordutils.MappingProperty[str, pnwutils.ResourceDict](self, 'balances')
-        self.prices = discordutils.SavedProperty[dict[str, int]](self, 'prices')
-        self.market_open = discordutils.SavedProperty[bool](self, 'market.open')
+        self.prices = discordutils.CogProperty[dict[str, int]](self, 'prices')
+        self.market_open = discordutils.CogProperty[bool](self, 'market.open')
 
     @property
     def nations(self) -> discordutils.MappingProperty[int, str]:
