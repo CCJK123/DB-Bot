@@ -460,7 +460,7 @@ class BankCog(discordutils.CogBase):
             resources = pnwutils.Resources(**resources)
 
         for res in await res_select_view.result():
-            await ctx.send(f'What would you like to set {res} to?')
+            await author.send(f'What would you like to set {res} to?')
             while True:
                 try:
                     amt = (await self.bot.wait_for('message', check=msg_chk, timeout=config.timeout)
