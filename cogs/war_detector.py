@@ -97,8 +97,10 @@ class WarDetectorCog(discordutils.CogBase):
                 await (await self.channels[WarType.LOSE].get()).send(embeds=await self.war_embed(war, WarType.LOSE))
                 self.done_wars.append(war['id'])
 
-    war_detector = commands.SlashCommandGroup('war detector', 'A module that keeps track of wars!',
-                                              guild_ids=config.guild_ids)
+    war = commands.SlashCommandGroup('war')
+
+    war_detector = commands.SlashCommandGroup('detector', 'A module that keeps track of wars!',
+                                              guild_ids=config.guild_ids, parent=war)
 
     @war_detector.command(guild_id=config.guild_id)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)

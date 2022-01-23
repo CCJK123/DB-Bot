@@ -99,7 +99,7 @@ class DBHelpCommand(cmds.HelpCommand):
 
         await self.get_destination().send(embeds=embeds)
 
-    def create_cog_embed(self, cog: commands.Cog, cog_commands: list[commands.ApplicationCommand]):
+    def create_cog_embed(self, cog: discord.Cog, cog_commands: list[commands.ApplicationCommand]):
         embed = discord.Embed(title=cog.qualified_name,
                               description=cog.description)
 
@@ -110,11 +110,11 @@ class DBHelpCommand(cmds.HelpCommand):
 
         return embed
 
-    async def send_cog_help(self, cog: commands.Cog):
+    async def send_cog_help(self, cog: discord.Cog):
         embed = self.create_cog_embed(cog, await self.filter_commands(cog.get_commands()))
         await self.get_destination().send(embed=embed)
 
-    async def send_group_help(self, group: commands.Group):
+    async def send_group_help(self, group: cmds.Group):
         embed = discord.Embed(
             title=self.get_command_signature(group),
             description=group.description
@@ -125,7 +125,7 @@ class DBHelpCommand(cmds.HelpCommand):
                             inline=False)
         await self.get_destination().send(embed=embed)
 
-    async def send_command_help(self, command: commands.command):
+    async def send_command_help(self, command: commands.ApplicationCommand):
         await self.get_destination().send(embed=discord.Embed(
             title=self.get_command_signature(command),
             description=command.description or command.short_doc
