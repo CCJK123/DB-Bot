@@ -11,11 +11,13 @@ from discord.ext import tasks
 from utils import discordutils
 
 
+# pycharm complains about sync_commands not being written,
+# cause in the library they have not written it and it just raises NotImplemented
+# noinspection PyAbstractClass
 class DBBot(discord.Bot):
     def __init__(self, db_url: str, on_ready_func: Callable[[], None]):
         intents = discord.Intents(guilds=True, messages=True, members=True)
         super().__init__(command_prefix=os.environ['command_prefix'],
-                         help_command=DBHelpCommand(),
                          intents=intents)
 
         self.on_ready_func = on_ready_func
@@ -83,6 +85,8 @@ class DBBot(discord.Bot):
             await super().on_command_error(ctx, exception)
 
 
+# the new bot doesnt seem to have a help command, the help command has not been ported over to slash yet i believe
+# we will see if this class gets use in the future
 class DBHelpCommand(discord.ext.commands.HelpCommand):
     d_desc = 'No description found'
 

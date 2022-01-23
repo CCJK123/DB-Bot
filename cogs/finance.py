@@ -31,7 +31,7 @@ class FinanceCog(discordutils.CogBase):
 
     # Main request command
     @commands.command(guild_ids=config.guild_ids)
-    @discord.ext.commands.max_concurrency(1, commands.BucketType.user)
+    @discord.ext.commands.max_concurrency(1, discord.ext.commands.BucketType.user)
     async def request(self, ctx: discord.ApplicationContext) -> None:
         await self.loans.initialise()
         # Command Run Validity Check
@@ -461,8 +461,8 @@ class FinanceCog(discordutils.CogBase):
 
     @request.error
     async def request_error(self, ctx: discord.ApplicationContext,
-                            error: commands.CommandError) -> None:
-        if isinstance(error, commands.MaxConcurrencyReached):
+                            error: discord.ApplicationCommandError) -> None:
+        if isinstance(error, discord.ext.commands.MaxConcurrencyReached):
             await ctx.respond('You are already making a request!')
             return
         await discordutils.default_error_handler(ctx, error)
@@ -471,44 +471,28 @@ class FinanceCog(discordutils.CogBase):
 
     @set.command(guild_ids=config.guild_ids)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def process(self, ctx: commands.Context) -> None:
+    async def process(self, ctx: discord.ApplicationContext) -> None:
         await self.process_channel.set(ctx.channel)
-        await ctx.send('Process channel set!')
+        await ctx.respond('Process channel set!')
 
     @set.command(guild_ids=config.guild_ids)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def send(self, ctx: commands.Context):
+    async def send(self, ctx: discord.ApplicationContext):
         await self.send_channel.set(ctx.channel)
-        await ctx.send('Send channel set!')
+        await ctx.respond('Send channel set!')
 
     @set.command(guild_ids=config.guild_ids)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def war_aid(self, ctx: commands.Context) -> None:
+    async def war_aid(self, ctx: discord.ApplicationContext) -> None:
         await self.has_war_aid.transform(operator.not_)
-        await ctx.send(
-            f'War Aid is now {(not await self.has_war_aid.get()) * "not "}available!')
+        await ctx.respond(f'War Aid is now {(not await self.has_war_aid.get()) * "not "}available!')
 
     @set.command(name='infra rebuild cap', guild_ids=config.guild_ids)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def infra_rebuild_cap(self, ctx: commands.Context, cap: int) -> None:
-        await self.infra_rebuild_cap.set(max(0, 50 * round(cap / 50)))
-        await ctx.send(
-            f'The infrastructure rebuild cap has been set to {await self.infra_rebuild_cap.get()}.'
-        )
-
-    @infra_rebuild_cap.error
-    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def infra_cap_set_error(self, ctx: discord.ApplicationContext,
-                                  error: commands.CommandError) -> None:
-        if isinstance(error, commands.MissingRequiredArgument):
-            await ctx.respond(
-                'Usage: `request set_infra_rebuild_cap 2000`, where `2000` is your desired cap.'
-            )
-            return
-        if isinstance(error, commands.BadArgument):
-            await ctx.respond('Please provide a whole number to set the cap to!')
-            return
-        await discordutils.default_error_handler(ctx, error)
+    async def infra_rebuild_cap(self, ctx: discord.ApplicationContext,
+                                cap: commands.Option(int, 'What level to provide aid up to', min_value=0)) -> None:
+        await self.infra_rebuild_cap.set(50 * round(cap / 50))
+        await ctx.respond(f'The infrastructure rebuild cap has been set to {await self.infra_rebuild_cap.get()}.')
 
 
 # Setup Finance Cog as an extension

@@ -53,6 +53,7 @@ def split_blocks(joiner: str, items: Iterable[str], limit: int) -> Iterable[str]
         yield s
     return
 
+
 async def default_error_handler(context: discord.ApplicationContext,
                                 exception: discord.ApplicationCommandError) -> None:
     print(f'Ignoring exception in command {context.command}:', file=sys.stderr)
