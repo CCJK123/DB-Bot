@@ -90,7 +90,7 @@ class DBBot(discord.Bot):
 class DBHelpCommand(cmds.HelpCommand):
     d_desc = 'No description found'
 
-    async def send_bot_help(self, mapping: Mapping[commands.Cog | None, list[commands.command]]):
+    async def send_bot_help(self, mapping: Mapping[discord.Cog | None, list[commands.ApplicationCommand]]):
         embeds = []
         for k in mapping:
             filtered = await self.filter_commands(mapping[k])
@@ -99,7 +99,7 @@ class DBHelpCommand(cmds.HelpCommand):
 
         await self.get_destination().send(embeds=embeds)
 
-    def create_cog_embed(self, cog: commands.Cog, cog_commands: list[commands.command]):
+    def create_cog_embed(self, cog: commands.Cog, cog_commands: list[commands.ApplicationCommand]):
         embed = discord.Embed(title=cog.qualified_name,
                               description=cog.description)
 
