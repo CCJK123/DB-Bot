@@ -121,12 +121,8 @@ class WarDetectorCog(discordutils.CogBase):
     async def losing(self, ctx: discord.ApplicationContext) -> None:
         await ctx.send(f'Losing wars will now {"not " * await self.check_losing.get()}be checked!')
         await self.check_losing.transform(operator.not_)
-    
 
-    set_channel = commands.SlashCommandGroup('channel',
-                                             'set the war detector channels!',
-                                             guild_ids=config.guild_ids,
-                                             parent=war_detector)
+    set_channel = war_detector.create_subgroup('channel', 'set the war detector channels!')
 
     @set_channel.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)

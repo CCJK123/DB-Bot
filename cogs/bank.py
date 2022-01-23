@@ -254,11 +254,7 @@ class BankCog(discordutils.CogBase):
 
         await discordutils.default_error_handler(ctx, error)
 
-    market = commands.SlashCommandGroup('market',
-                                        'A market to buy and sell resources from the bank',
-                                        guild_ids=config.guild_ids,
-                                        parent=bank,
-                                        hidden=True)
+    market = bank.create_subgroup('market', 'A market to buy and sell resources from the bank')
 
     @market.command(name='prices', guild_ids=config.guild_ids, hidden=True)
     async def _prices(self, ctx: discord.ApplicationContext):
@@ -348,9 +344,7 @@ class BankCog(discordutils.CogBase):
         s = 'open' if await self.market_open.get() else 'closed'
         await ctx.respond(f'The market is now {s}!')
 
-    loan = commands.SlashCommandGroup('loan', 'Commands related to loans',
-                                      guild_ids=config.guild_ids,
-                                      parent=bank)
+    loan = bank.create_subgroup('loan', 'Commands related to loans')
 
     @loan.command(name='return', guild_ids=config.guild_ids)
     async def _return(self, ctx: discord.ApplicationContext):
