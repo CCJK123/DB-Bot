@@ -82,7 +82,7 @@ class UtilCog(discordutils.CogBase):
         nations = await self.nations.get()
         if nations:
             nation_pages = []
-            for n in discord.utils.as_chunks(nations.items, 25):
+            for n in discord.utils.as_chunks(nations.items(), 25):
                 embed = discord.Embed()
                 for disc_id, nation_id in n:
                     embed.add_field(name=pnwutils.link.nation(nation_id), value=f'<@{disc_id}>')
@@ -142,9 +142,14 @@ class UtilCog(discordutils.CogBase):
 
         embed = discord.Embed(title='Ran Out Of...')
         for k, ns in result.items():
-            embed.add_field(name=k, value='\n'.join((f'<@{d_id}>' if (d_id := map_discord.get(na[0])) else
-                                                     f'[{na[1]}]({pnwutils.link.nation(ns[0])})') for na in ns))
-        await ctx.respond(embed=embed)
+            string = '\n'.join((f'<@{d_id}>' if (d_id := map_discord.get(na[0])) else
+                                f'[{na[1]}]({pnwutils.link.nation(ns[0])})') for na in ns)
+            if string:
+                embed.add_field(name=k, value=string)
+        if embed:
+            await ctx.respond(embed=embed)
+        else:
+            await ctx.respond('No one has ran out of food or uranium!')
 
     @check.command(name='activity', guild_ids=config.guild_ids)
     @commands.permissions.has_any_role(config.gov_role_id, 383815082473291778, guild_id=config.guild_id)
