@@ -14,7 +14,7 @@ class ApplicationCog(discordutils.CogBase):
     @commands.command()
     @commands.max_concurrency(1, commands.BucketType.user)
     async def start_interview(self, ctx: commands.Context) -> None:
-        if not ctx.channel.name.endswith('-application'):
+        if isinstance(ctx.channel, discord.DMChannel) or not ctx.channel.name.endswith('-application'):
             await ctx.send('This is not an interview channel!')
             return None
 

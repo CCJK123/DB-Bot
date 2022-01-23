@@ -29,18 +29,18 @@ class DBHelpCommand(commands.HelpCommand):
             filtered = await self.filter_commands(mapping[k])
             if filtered:
                 embeds.append(self.create_cog_embed(k, filtered))
-        
+
         await self.get_destination().send(embeds=embeds)
-    
+
     def create_cog_embed(self, cog: commands.Cog, cmds: list[commands.command]):
         embed = discord.Embed(title=cog.qualified_name,
                               description=cog.description)
-        
+
         for cmd in cmds:
             embed.add_field(name=cmd.name,
                             value=cmd.description or cmd.short_doc or self.d_desc,
                             inline=False)
-        
+
         return embed
 
     async def send_cog_help(self, cog: commands.Cog):
@@ -150,11 +150,11 @@ class PersistentView(discord.ui.View, metaclass=abc.ABCMeta):
 
     async def remove(self) -> None:
         await self.bot.views.pop(self)
-    
+
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__()
         cls.last_id = -1
-    
+
     @classmethod
     def get_id(cls):
         cls.last_id += 1
@@ -318,13 +318,13 @@ V = TypeVar('V', bound=CallbackPersistentView)
 
 class ViewStorage(BotProperty[dict[V, str]]):
     __slots__ = ()
-    
+
     async def get_(self) -> dict[V, str]:
         return {pickle.loads(bytes.fromhex(p_view)): p_view for p_view in await super().get_()}
 
     async def set_(self, value: dict[V, str]) -> None:
         await super().set_(list(value.values()))
-    
+
     async def get_views(self) -> tuple[V]:
         return tuple((await self.get()).keys())
 
@@ -352,7 +352,7 @@ class SavedProperty(AsyncProperty[T]):
 
     async def get_(self) -> T:
         return await self.owner.bot.database.get(self.full_key)
-    
+
     async def set_(self, value: T) -> None:
         await self.owner.bot.database.set(self.full_key, value)
 
@@ -366,7 +366,7 @@ class MappingPropertyItem(Generic[T, T1]):
 
     async def get(self, default: Union[object, DT] = _sentinel) -> Union[T1, DT]:
         try:
-            return (await self.mapping.get())[self.key]
+            return (await self.mapping.get())[str(self.key)]
         except KeyError:
             if default is _sentinel:
                 raise

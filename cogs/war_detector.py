@@ -1,7 +1,7 @@
 import aiohttp
 import enum
 import operator
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
 from discord.ext import commands, tasks
 import discord
@@ -72,7 +72,7 @@ class WarDetectorCog(discordutils.CogBase):
         for war in data:
             if war['id'] in self.done_wars:
                 continue
-            
+
             kind, kind_str = (WarType.ATT, 'attacker') if war['att_alliance_id'] == pnwutils.Config.aa_id else (
                 WarType.DEF, 'defender')
             if war[kind_str]['alliance_position'] == 'APPLICANT':

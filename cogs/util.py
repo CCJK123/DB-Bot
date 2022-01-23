@@ -13,7 +13,7 @@ import dbbot
 class UtilCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
-        self.nations: discordutils.MappingProperty[int, str] = discordutils.MappingProperty[int, str](self, 'nations')
+        self.nations: discordutils.MappingProperty[str, str] = discordutils.MappingProperty[str, str](self, 'nations')
 
     @commands.command()
     async def set_nation(self, ctx: commands.Context, nation_id: str = ''):
@@ -23,7 +23,7 @@ class UtilCog(discordutils.CogBase):
         if ctx.author.id in nations:
             await ctx.send('You are already registered!')
             return
-        
+
         if nation_id == '':
             if '/' in ctx.author.display_name:
                 try:
@@ -170,7 +170,7 @@ class UtilCog(discordutils.CogBase):
     async def nation(self, ctx: commands.Context, member: discord.Member = None):
         if member is None:
             member = await discordutils.get_member_from_context(ctx)
-        
+
         nation_id = await self.nations[member.id].get(None)
         if nation_id is None:
             await ctx.send('This user does not have their nation registered!')

@@ -278,7 +278,7 @@ class FinanceCog(discordutils.CogBase):
                     Defensive: {sum(w["turnsleft"] > 0 for w in data["defensive_wars"])}
                 '''
                 # fsr the value of turnsleft when war is over seems to be always -12? idk
-                # maybe its diff for wars that ended recently? didnt check
+                # maybe its diff for wars that ended recently? did not check
             }
 
             if war_aid_type == 'Buy Military Units':
@@ -298,7 +298,7 @@ class FinanceCog(discordutils.CogBase):
                 # Calculate resources needed to buy needed military units
                 req_data.resources = pnwutils.Resources(
                     money=5 * needed_units['soldiers'] + 60 * needed_units['tanks'] + 4000 * needed_units['aircraft']
-                          + 50000 * needed_units['ships'],
+                    + 50000 * needed_units['ships'],
                     steel=int(0.5 * (needed_units['tanks']) + 1) + 30 * needed_units['ships'],
                     aluminum=5 * needed_units['aircraft']
                 )
@@ -327,10 +327,9 @@ class FinanceCog(discordutils.CogBase):
                 # Calculate resources needed to buy needed military improvements
                 req_data.resources = pnwutils.Resources(
                     money=3000 * needed_improvements['barracks'] + 15000 * needed_improvements['factory'] +
-                          100000 * needed_improvements['airforcebase'] + 250000 * needed_improvements['drydock'],
+                    100000 * needed_improvements['airforcebase'] + 250000 * needed_improvements['drydock'],
                     steel=10 * needed_improvements['airforcebase'],
-                    aluminum=5 * needed_improvements['factory'] +
-                             20 * needed_improvements['drydock'])
+                    aluminum=5 * needed_improvements['factory'] + 20 * needed_improvements['drydock'])
 
                 req_data.reason = 'Rebuild to Max Military Improvements'
                 req_data.note = f'War Aid to {req_data.reason}'
