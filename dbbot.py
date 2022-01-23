@@ -6,7 +6,7 @@ from typing import Callable, Mapping
 
 import discord
 from discord import commands
-from discord.ext import tasks
+from discord.ext import tasks, commands as cmds
 
 from utils import discordutils
 
@@ -77,9 +77,9 @@ class DBBot(discord.Bot):
         await ctx.respond(str(exception))
 
         ignored = (
-            commands.CommandNotFound,
-            commands.MissingRole,
-            commands.MissingRequiredArgument
+            cmds.CommandNotFound,
+            cmds.MissingRole,
+            cmds.MissingRequiredArgument
         )
         if not isinstance(exception, ignored):
             await super().on_command_error(ctx, exception)
@@ -87,7 +87,7 @@ class DBBot(discord.Bot):
 
 # the new bot doesnt seem to have a help command, the help command has not been ported over to slash yet i believe
 # we will see if this class gets use in the future
-class DBHelpCommand(discord.ext.commands.HelpCommand):
+class DBHelpCommand(cmds.HelpCommand):
     d_desc = 'No description found'
 
     async def send_bot_help(self, mapping: Mapping[commands.Cog | None, list[commands.command]]):
@@ -99,11 +99,11 @@ class DBHelpCommand(discord.ext.commands.HelpCommand):
 
         await self.get_destination().send(embeds=embeds)
 
-    def create_cog_embed(self, cog: commands.Cog, cmds: list[commands.command]):
+    def create_cog_embed(self, cog: commands.Cog, cog_commands: list[commands.command]):
         embed = discord.Embed(title=cog.qualified_name,
                               description=cog.description)
 
-        for cmd in cmds:
+        for cmd in cog_commands:
             embed.add_field(name=cmd.name,
                             value=cmd.description or cmd.short_doc or self.d_desc,
                             inline=False)

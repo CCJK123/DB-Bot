@@ -3,7 +3,7 @@ import datetime
 
 import discord
 from discord import commands
-from discord.ext import pages
+from discord.ext import pages, commands as cmds
 
 from utils import discordutils, pnwutils, config
 from utils.queries import nation_alliance_query, alliance_member_res_query, alliance_activity_query
@@ -193,7 +193,7 @@ class UtilCog(discordutils.CogBase):
         """Reload the given cog"""
         try:
             self.bot.reload_extension(f'cogs.{extension}')
-        except discord.ext.commands.ExtensionNotLoaded:
+        except cmds.ExtensionNotLoaded:
             await ctx.respond(f'The extension {extension} was not previously loaded!')
             return
         await ctx.respond(f'Extension {extension} reloaded!')

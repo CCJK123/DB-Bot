@@ -3,8 +3,9 @@ import datetime
 import operator
 from typing import Any, Optional
 
-from discord import commands
 import discord
+from discord import commands
+from discord.ext import commands as cmds
 
 from utils import financeutils, discordutils, pnwutils, config
 from utils.queries import bank_transactions_query, bank_info_query, nation_name_query
@@ -101,7 +102,7 @@ class BankCog(discordutils.CogBase):
         )
 
     @bank.command(guild_ids=config.guild_ids)
-    @discord.ext.commands.max_concurrency(1, discord.ext.commands.BucketType.user)
+    @cmds.max_concurrency(1, cmds.BucketType.user)
     async def deposit(self, ctx: discord.ApplicationContext):
         """Deposit resources"""
         nation_id = await self.nations[ctx.author.id].get(None)
@@ -146,7 +147,7 @@ class BankCog(discordutils.CogBase):
         await author.send('You did not deposit any resources! Aborting!')
 
     @bank.command(guild_ids=config.guild_ids)
-    @discord.ext.commands.max_concurrency(1, discord.ext.commands.BucketType.user)
+    @cmds.max_concurrency(1, cmds.BucketType.user)
     async def withdraw(self, ctx: discord.ApplicationContext):
         """Withdraw resources"""
         nation_id = await self.nations[ctx.author.id].get(None)
@@ -246,7 +247,7 @@ class BankCog(discordutils.CogBase):
     @withdraw.error
     async def on_error(self, ctx: discord.ApplicationContext,
                        error: discord.ApplicationCommandError) -> None:
-        if isinstance(error, discord.ext.commands.MaxConcurrencyReached):
+        if isinstance(error, cmds.MaxConcurrencyReached):
             await ctx.respond('You are already trying to withdraw/deposit!')
             return None
         await ctx.defer()

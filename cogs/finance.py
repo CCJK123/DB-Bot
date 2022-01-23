@@ -6,6 +6,7 @@ from typing import Any
 
 import discord
 from discord import commands
+from discord.ext import commands as cmds
 
 from utils import discordutils, pnwutils, config
 from utils.financeutils import RequestData, LoanData, RequestStatus, RequestChoices, ResourceSelectView, WithdrawalView
@@ -19,8 +20,8 @@ logger = logging.getLogger(__name__)
 class FinanceCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
-        self.has_war_aid = discordutils.SavedProperty[bool](self, 'has_war_aid')
-        self.infra_rebuild_cap = discordutils.SavedProperty[int](self, 'infra_rebuild_cap')
+        self.has_war_aid = discordutils.CogProperty[bool](self, 'has_war_aid')
+        self.infra_rebuild_cap = discordutils.CogProperty[int](self, 'infra_rebuild_cap')
         self.process_channel = discordutils.ChannelProperty(self, 'process_channel')
         self.send_channel = discordutils.ChannelProperty(self, 'send_channel')
         self.loans = discordutils.MappingProperty[int, dict[str, Any]](self, 'loans')
@@ -31,7 +32,7 @@ class FinanceCog(discordutils.CogBase):
 
     # Main request command
     @commands.command(guild_ids=config.guild_ids)
-    @discord.ext.commands.max_concurrency(1, discord.ext.commands.BucketType.user)
+    @cmds.max_concurrency(1, cmds.BucketType.user)
     async def request(self, ctx: discord.ApplicationContext) -> None:
         await self.loans.initialise()
         # Command Run Validity Check
@@ -462,7 +463,7 @@ class FinanceCog(discordutils.CogBase):
     @request.error
     async def request_error(self, ctx: discord.ApplicationContext,
                             error: discord.ApplicationCommandError) -> None:
-        if isinstance(error, discord.ext.commands.MaxConcurrencyReached):
+        if isinstance(error, cmds.MaxConcurrencyReached):
             await ctx.respond('You are already making a request!')
             return
         await discordutils.default_error_handler(ctx, error)

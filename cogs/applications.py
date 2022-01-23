@@ -2,6 +2,7 @@ import asyncio
 
 import discord
 from discord import commands
+from discord.ext import commands as cmds
 
 from utils import discordutils, pnwutils, queries, config
 import dbbot
@@ -12,7 +13,7 @@ class ApplicationCog(discordutils.CogBase):
         super().__init__(bot, __name__)
 
     @commands.command(guild_ids=config.guild_ids)
-    @discord.ext.commands.max_concurrency(1, discord.ext.commands.BucketType.user)
+    @cmds.max_concurrency(1, cmds.BucketType.user)
     async def start_interview(self, ctx: discord.ApplicationContext, q_num: int = 0) -> None:
         """Gives you interview questions for you to respond to."""
         if not ctx.channel.name.endswith('-application'):
