@@ -50,8 +50,7 @@ class DebugCog(discordutils.CogBase):
     @discordutils.gov_check
     @commands.command()
     async def d(self, ctx):
-        import pickle
-        await ctx.send(financeutils.WithdrawalView.callbacks)
+        await ctx.send(embed=discordutils.construct_embed({'F': ctx.author.mention}))
 
 def setup(bot: dbbot.DBBot):
     bot.add_cog(DebugCog(bot))

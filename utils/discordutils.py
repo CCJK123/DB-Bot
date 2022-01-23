@@ -366,7 +366,7 @@ class MappingPropertyItem(Generic[T, T1]):
 
     async def get(self, default: Union[object, DT] = _sentinel) -> Union[T1, DT]:
         try:
-            return (await self.mapping.get())[self.key]
+            return (await self.mapping.get())[str(self.key)]
         except KeyError:
             if default is _sentinel:
                 raise

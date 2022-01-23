@@ -229,7 +229,7 @@ class BankCog(discordutils.CogBase):
         name = data['data'][0]['nation_name']
         link = pnwutils.Link.bank('w', req_resources, name, 'Withdrawal from balance')
 
-        view = financeutils.WithdrawalView(link, 'withdrawal_on_sent', auth, req_resources)
+        view = financeutils.WithdrawalView('withdrawal_on_sent', link, auth.id, req_resources)
 
         msg = await channel.send(f'Withdrawal Request from {auth.mention}',
                                  embed=financeutils.withdrawal_embed(name, nation_id, reason, req_resources),
@@ -290,7 +290,7 @@ class BankCog(discordutils.CogBase):
     @market.command()
     async def buy(self, ctx: commands.Context, res_name: str, amt: int):
         """Purchase some amount of a resource for money"""
-        if not await self.market_open.get():
+        if await self.market_open.get(None) is None:
             await ctx.send('The market is currently closed!')
             return
 
@@ -459,8 +459,8 @@ class BankCog(discordutils.CogBase):
                        allowed_mentions=discord.AllowedMentions.none())
 
     @discordutils.gov_check
-    @bank.command(aliases=('check',))
-    async def c(self, ctx: commands.Context):
+    @bank.command(aliases=('c',))
+    async def contents(self, ctx: commands.Context):
         data = await pnwutils.API.post_query(
             self.bot.session, bank_info_query,
             {'alliance_id': pnwutils.Config.aa_id},
@@ -475,11 +475,11 @@ class BankCog(discordutils.CogBase):
         pass
 
 
-@financeutils.WithdrawalView.register_callback('withdrawal_on_sent')
-async def on_sent(requester: Union[discord.User, discord.Member], req_res: pnwutils.Resources):
-    await requester.send('Your withdrawal request has been sent to your nation!',
-                         embed=req_res.create_embed(title='Withdrawn Resources'))
-
-
 def setup(bot: dbbot.DBBot):
     bot.add_cog(BankCog(bot))
+
+    @financeutils.WithdrawalView.register_callback('withdrawal_on_sent')
+    async def on_sent(requester_id: int, req_res: pnwutils.Resources):
+        await bot.get_user(requester_id).send(
+            'Your withdrawal request has been sent to your nation!',
+            embed=req_res.create_embed(title='Withdrawn Resources'))
