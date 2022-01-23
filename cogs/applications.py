@@ -73,12 +73,8 @@ class ApplicationCog(discordutils.CogBase):
     @commands.user_command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_any_role(config.gov_role_id, guild_id=config.guild_id)
     async def accept(self, ctx: discord.ApplicationContext, member: discord.Member):
-        try:
-            await member.add_roles(*map(discord.Object, config.on_accepted_added_roles),
-                                   reason=f'Accepted into {config.alliance_name}!')
-        except discord.ApplicationCommandInvokeError:
-            await ctx.respond('I do not have permissions to add roles!')
-            return
+        await member.add_roles(*map(discord.Object, config.on_accepted_added_roles),
+                               reason=f'Accepted into {config.alliance_name}!')
         util_cog = self.bot.get_cog('UtilCog')
         if '/' in member.display_name:
             try:
@@ -95,6 +91,13 @@ class ApplicationCog(discordutils.CogBase):
                 f'Nation ID: {nation_id}, Discord User ID: {member.id})', ephemeral=True)
         else:
             await ctx.respond('Error in getting nation id!')
+
+    @accept.error
+    async def accept_on_error(self, ctx: discord.ApplicationContext, error: discord.ApplicationCommandError):
+        if isinstance(error, discord.Forbidden):
+            await ctx.respond('I do not have the permissions to add roles!')
+            return
+        await discordutils.default_error_handler(ctx, error)
 
 
 def setup(bot: dbbot.DBBot) -> None:
