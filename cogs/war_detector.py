@@ -1,7 +1,7 @@
 import aiohttp
 import enum
 import operator
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
 from discord.ext import commands, tasks
 import discord
@@ -20,7 +20,7 @@ class WarType(enum.Enum):
 class WarDetectorCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
-        self.check_losing = discordutils.CogProperty[bool](self, 'check_losing')
+        self.check_losing = discordutils.SavedProperty[bool](self, 'check_losing')
         self.att_channel = discordutils.ChannelProperty(self, 'att_channel')
         self.def_channel = discordutils.ChannelProperty(self, 'def_channel')
         self.lose_channel = discordutils.ChannelProperty(self, 'lose_channel')
@@ -72,7 +72,7 @@ class WarDetectorCog(discordutils.CogBase):
         for war in data:
             if war['id'] in self.done_wars:
                 continue
-            
+
             kind, kind_str = (WarType.ATT, 'attacker') if war['att_alliance_id'] == pnwutils.Config.aa_id else (
                 WarType.DEF, 'defender')
             if war[kind_str]['alliance_position'] == 'APPLICANT':

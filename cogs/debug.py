@@ -1,7 +1,8 @@
+import discord
 from discord.ext import commands
 
+from utils import discordutils, financeutils
 import dbbot
-from utils import discordutils
 
 
 class DebugCog(discordutils.CogBase):
@@ -30,6 +31,26 @@ class DebugCog(discordutils.CogBase):
     async def set_key(self, ctx, key, val):
         await self.bot.database.set(key, eval(val))
         await ctx.send(f'{key} set to {eval(val)}')
+
+    @discordutils.gov_check
+    @commands.command()
+    async def cid(self, ctx):
+        await ctx.send(ctx.channel.id)
+
+    @discordutils.gov_check
+    @commands.command()
+    async def a(self, ctx):
+        await ctx.send(self.bot._connection._view_store.persistent_views)
+
+    @discordutils.gov_check
+    @commands.command()
+    async def b(self, ctx):
+        await ctx.send(list(view.is_dispatching() for view in self.bot._connection._view_store.persistent_views))
+
+    @discordutils.gov_check
+    @commands.command()
+    async def d(self, ctx):
+        await ctx.send(embed=discordutils.construct_embed({'F': ctx.author.mention}))
 
 
 def setup(bot: dbbot.DBBot):
