@@ -48,7 +48,7 @@ class BankCog(discordutils.CogBase):
 
         return transactions
 
-    bank = commands.SlashCommandGroup('bank', 'bank related commands!', config.guild_ids)
+    bank = commands.SlashCommandGroup('bank', 'Bank related commands!', guild_ids=config.guild_ids)
 
     @bank.command()
     async def balance(self, ctx: discord.ApplicationContext):
