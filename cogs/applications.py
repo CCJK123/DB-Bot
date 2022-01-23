@@ -94,7 +94,7 @@ class ApplicationCog(discordutils.CogBase):
 
     @accept.error
     async def accept_on_error(self, ctx: discord.ApplicationContext, error: discord.ApplicationCommandError):
-        if isinstance(error, discord.Forbidden):
+        if isinstance(error, discord.ApplicationCommandInvokeError):
             await ctx.respond('I do not have the permissions to add roles!')
             return
         await discordutils.default_error_handler(ctx, error)
