@@ -5,9 +5,9 @@ import datetime
 from typing import Any
 
 import discord
-from discord.ext import commands
+from discord import commands
 
-from utils import discordutils, pnwutils
+from utils import discordutils, pnwutils, config
 from utils.financeutils import RequestData, LoanData, RequestStatus, RequestChoices, ResourceSelectView, WithdrawalView
 from utils.queries import nation_query
 import dbbot
@@ -30,51 +30,49 @@ class FinanceCog(discordutils.CogBase):
         return self.bot.get_cog('UtilCog').nations  # type: ignore
 
     # Main request command
-    @commands.group(invoke_without_command=True, aliases=('req',))
-    @commands.max_concurrency(1, commands.BucketType.user)
-    async def request(self, ctx: commands.Context) -> None:
+    @commands.command(guild_ids=config.guild_ids)
+    @discord.ext.commands.max_concurrency(1, commands.BucketType.user)
+    async def request(self, ctx: discord.ApplicationContext) -> None:
         await self.loans.initialise()
         # Command Run Validity Check
         # Check if output channel has been set
         if await self.process_channel.get(None) is None or await self.send_channel.get(None) is None:
-            await ctx.send('Output channel has not been set! Aborting.')
+            await ctx.respond('Output channel has not been set! Aborting.')
             return
 
         if ctx.guild is not None:
-            await ctx.send('Please check your DMs!')
+            await ctx.respond('Please check your DMs!')
+        await ctx.defer()  # ?
 
-        auth = ctx.author
-        await auth.send(
+        author = ctx.author
+        await author.send(
             'Welcome to the DB Finance Request Interface. '
-            # 'Enter your nation id to continue.'
         )
 
         # Check that reply was sent from same author in DMs
-        def msg_chk(m: discord.Message) -> bool:
-            return m.author == auth and m.guild is None
+        msg_chk = discordutils.get_dm_msg_chk(author.id)
 
-        nation_id = await self.nations[ctx.author.id].get(None)
+        nation_id = await self.nations[author.id].get(None)
         if nation_id is None:
-            await auth.send('Your nation id has not been set!')
+            await author.send('Your nation id has not been set! Aborting...')
             return
 
-        data = await pnwutils.API.post_query(self.bot.session, nation_query,
-                                             {'nation_id': nation_id}, 'nations')
+        data = await pnwutils.api.post_query(self.bot.session, nation_query, {'nation_id': nation_id}, 'nations')
         data = data['data']
         if data:
             # Data contains a nation, hence nation with given id exists
             data = data.pop()
-            req_data = RequestData(auth, nation_id, data['nation_name'])
+            req_data = RequestData(author, nation_id, data['nation_name'])
         else:
             # Data has no nation, hence no nation with given id exists
-            await auth.send(
+            await author.send(
                 "You do not have a valid nation id set!"
                 'Please set your nation id again.'
             )
             return
 
-        if data['alliance_id'] != pnwutils.Config.aa_id:
-            await auth.send(f'You are not in {pnwutils.Config.aa_name}!')
+        if data['alliance_id'] != config.alliance_id:
+            await author.send(f'You are not in {config.alliance_name}!')
             return
 
         # Get Request Type
@@ -83,22 +81,22 @@ class FinanceCog(discordutils.CogBase):
             req_types.append('War Aid')
 
         req_type_choice = discordutils.Choices(*req_types)
-        await auth.send('What kind of request is this?', view=req_type_choice)
+        await author.send('What kind of request is this?', view=req_type_choice)
         try:
             req_data.kind = await req_type_choice.result()
         except asyncio.TimeoutError:
-            await auth.send('You took too long to respond! Exiting...')
+            await author.send('You took too long to respond! Exiting...')
             return
 
         # Redirect Accordingly
         if req_data.kind == 'Grant':
             grant_type_choice = discordutils.Choices('City', 'Project', 'Other')
-            await auth.send('What type of grant do you want?',
-                            view=grant_type_choice)
+            await author.send('What type of grant do you want?',
+                              view=grant_type_choice)
             try:
                 grant_type = await grant_type_choice.result()
             except asyncio.TimeoutError:
-                await auth.send('You took too long to respond! Exiting...')
+                await author.send('You took too long to respond! Exiting...')
                 return
 
             if grant_type == 'City':
@@ -135,12 +133,12 @@ class FinanceCog(discordutils.CogBase):
                         disabled.add(label)
 
                 project_choice = discordutils.Choices(*project_field_names.keys(), disabled=disabled)
-                await auth.send('Which project do you want?', view=project_choice)
+                await author.send('Which project do you want?', view=project_choice)
 
                 try:
                     project = await project_choice.result()
                 except asyncio.TimeoutError:
-                    await auth.send('You took too long to respond! Exiting...')
+                    await author.send('You took too long to respond! Exiting...')
                     return
 
                 # Redirect accordingly
@@ -157,7 +155,7 @@ class FinanceCog(discordutils.CogBase):
                     req_data.resources = pnwutils.Resources(aluminum=1500, money=15000000)
                 elif project == 'Urban Planning':
                     if data['num_cities'] < 11:
-                        await auth.send(
+                        await author.send(
                             'The Urban Planning project requires 11 cities to build, however you only have '
                             f'{data["num_cities"]} cities. Please try again next time.'
                         )
@@ -171,13 +169,13 @@ class FinanceCog(discordutils.CogBase):
                                                                 food=1000000)
                 elif project == 'Advanced Urban Planning':
                     if not data['city_planning']:
-                        await auth.send(
+                        await author.send(
                             'You have not built the Urban Planning project, which is needed to build the Advanced '
                             'Urban Planning project. Please try again next time.'
                         )
                         return None
                     elif data['num_cities'] < 16:
-                        await auth.send(
+                        await author.send(
                             'The Advanced Urban Planning project requires 16 cities to build, however you only have '
                             f'{data["num_cities"]} cities. Please try again next time.'
                         )
@@ -189,7 +187,7 @@ class FinanceCog(discordutils.CogBase):
                                                                 munitions=20000,
                                                                 food=2500000)
                 else:
-                    await auth.send(
+                    await author.send(
                         'Other projects are not eligible for grants. Kindly request for a loan.'
                     )
                     return None
@@ -198,51 +196,51 @@ class FinanceCog(discordutils.CogBase):
                 return None
 
             else:
-                await auth.send(
+                await author.send(
                     'Other Grants have not been implemented! Please try again next time.'
                 )
                 return None
 
         elif req_data.kind == 'Loan':
             if await self.loans[req_data.nation_id].get(False):
-                await auth.send('You already have an active loan! Repay that before requesting another.')
+                await author.send('You already have an active loan! Repay that before requesting another.')
                 return
-            await auth.send('What are you requesting a loan for?')
+            await author.send('What are you requesting a loan for?')
             try:
                 # Wait for user to input loan request
                 req_data.reason = (await self.bot.wait_for(
                     'message',
                     check=msg_chk,
-                    timeout=discordutils.Config.timeout)).content
+                    timeout=config.timeout)).content
             except asyncio.TimeoutError:
-                await auth.send('You took too long to reply. Aborting request!'
-                                )
+                await author.send('You took too long to reply. Aborting request!'
+                                  )
                 return None
 
             res_select_view = ResourceSelectView()
-            await auth.send('What resources are you requesting?', view=res_select_view)
+            await author.send('What resources are you requesting?', view=res_select_view)
             try:
                 selected_res = await res_select_view.result()
             except asyncio.TimeoutError:
-                await auth.send('You took too long to respond! Exiting...')
+                await author.send('You took too long to respond! Exiting...')
                 return
             for res_name in selected_res:
-                await auth.send(f'How much {res_name} are you requesting?')
+                await author.send(f'How much {res_name} are you requesting?')
                 while True:
                     try:
                         # Wait for user to input how much of each res they want
                         res_amt = int((await self.bot.wait_for(
                             'message',
                             check=msg_chk,
-                            timeout=discordutils.Config.timeout)).content)
+                            timeout=config.timeout)).content)
                         if res_amt > 0:
                             req_data.resources[res_name] = res_amt
                         break
                     except ValueError:
-                        await auth.send('Kindly input a whole number.')
+                        await author.send('Kindly input a whole number.')
                         continue
                     except asyncio.TimeoutError:
-                        await auth.send('You took too long to reply. Aborting request!')
+                        await author.send('You took too long to reply. Aborting request!')
                         return
 
             # Ensure that user didn't request for nothing
@@ -252,7 +250,7 @@ class FinanceCog(discordutils.CogBase):
                 return
             else:
                 # No resources requested
-                await auth.send(
+                await author.send(
                     "You didn't request for any resources. Please run the command again and redo your request."
                 )
                 return
@@ -262,12 +260,12 @@ class FinanceCog(discordutils.CogBase):
                 'Buy Military Units', 'Rebuild Military Improvements',
                 'Rebuild Infrastructure', 'Various Resources'
             )
-            await auth.send('What type of war aid are you requesting?',
-                            view=war_aid_type_choice)
+            await author.send('What type of war aid are you requesting?',
+                              view=war_aid_type_choice)
             try:
                 war_aid_type = await war_aid_type_choice.result()
             except asyncio.TimeoutError:
-                await auth.send('You took too long to respond! Exiting...')
+                await author.send('You took too long to respond! Exiting...')
                 return
             print(data["offensive_wars"])
             print(data["defensive_wars"])
@@ -290,7 +288,7 @@ class FinanceCog(discordutils.CogBase):
                     'aircraft': 15 * 5 * data['num_cities'] - data['aircraft'],
                     'ships': 5 * 3 * data['num_cities'] - data['ships']
                 }
-                await auth.send(
+                await author.send(
                     f'To get to max military units, you will need an additional {needed_units["soldiers"]} soldiers, '
                     f'{needed_units["tanks"]} tanks, {needed_units["aircraft"]} aircraft and '
                     f'{needed_units["ships"]} ships.'
@@ -298,7 +296,7 @@ class FinanceCog(discordutils.CogBase):
                 # Calculate resources needed to buy needed military units
                 req_data.resources = pnwutils.Resources(
                     money=5 * needed_units['soldiers'] + 60 * needed_units['tanks'] + 4000 * needed_units['aircraft']
-                          + 50000 * needed_units['ships'],
+                    + 50000 * needed_units['ships'],
                     steel=int(0.5 * (needed_units['tanks']) + 1) + 30 * needed_units['ships'],
                     aluminum=5 * needed_units['aircraft']
                 )
@@ -319,7 +317,7 @@ class FinanceCog(discordutils.CogBase):
                     for improvement in needed_improvements.keys():
                         needed_improvements[improvement] -= city[improvement]
 
-                await auth.send(
+                await author.send(
                     f'To get to max military improvements, you require an additional {needed_improvements["barracks"]} '
                     f'barracks, {needed_improvements["factory"]} factories, {needed_improvements["airforcebase"]} '
                     f'hangars and {needed_improvements["drydock"]} drydocks.'
@@ -327,10 +325,9 @@ class FinanceCog(discordutils.CogBase):
                 # Calculate resources needed to buy needed military improvements
                 req_data.resources = pnwutils.Resources(
                     money=3000 * needed_improvements['barracks'] + 15000 * needed_improvements['factory'] +
-                          100000 * needed_improvements['airforcebase'] + 250000 * needed_improvements['drydock'],
+                    100000 * needed_improvements['airforcebase'] + 250000 * needed_improvements['drydock'],
                     steel=10 * needed_improvements['airforcebase'],
-                    aluminum=5 * needed_improvements['factory'] +
-                             20 * needed_improvements['drydock'])
+                    aluminum=5 * needed_improvements['factory'] + 20 * needed_improvements['drydock'])
 
                 req_data.reason = 'Rebuild to Max Military Improvements'
                 req_data.note = f'War Aid to {req_data.reason}'
@@ -339,7 +336,7 @@ class FinanceCog(discordutils.CogBase):
 
             elif war_aid_type == 'Rebuild Infrastructure':
                 irc = await self.infra_rebuild_cap.get()
-                await auth.send(
+                await author.send(
                     f'The current infrastructure rebuild cap is set at {irc}. '
                     f'This means that money will only be provided to rebuild infrastructure below {irc} up to that '
                     'amount. The amount calculated assumes that domestic policy is set to Urbanisation.'
@@ -354,7 +351,7 @@ class FinanceCog(discordutils.CogBase):
                 req_data.resources.money = int(req_data.resources.money + 0.5)
                 # Check if infrastructure in any city under cap
                 if req_data.resources.money == 0:
-                    await auth.send(
+                    await author.send(
                         'Since all your cities have an infrastructure level above '
                         f'the current infrastructure rebuild cap ({irc}), you are '
                         'not eligible for war aid to rebuild infrastructure.'
@@ -366,41 +363,41 @@ class FinanceCog(discordutils.CogBase):
                 await self.on_request_fixed(req_data)
                 return
             else:
-                await auth.send('Why are you requesting these various resources?')
+                await author.send('Why are you requesting these various resources?')
                 try:
                     # Wait for user to input loan request
                     req_data.reason = (await self.bot.wait_for(
                         'message',
                         check=msg_chk,
-                        timeout=discordutils.Config.timeout)).content
+                        timeout=config.timeout)).content
                 except asyncio.TimeoutError:
-                    await auth.send('You took too long to reply. Aborting request!')
+                    await author.send('You took too long to reply. Aborting request!')
                     return
 
                 res_select_view = ResourceSelectView()
-                await auth.send('What resources are you requesting?', view=res_select_view)
+                await author.send('What resources are you requesting?', view=res_select_view)
                 try:
                     selected_res = await res_select_view.result()
                 except asyncio.TimeoutError:
-                    await auth.send('You took too long to respond! Exiting...')
+                    await author.send('You took too long to respond! Exiting...')
                     return
                 for res_name in selected_res:
-                    await auth.send(f'How much {res_name} are you requesting?')
+                    await author.send(f'How much {res_name} are you requesting?')
                     while True:
                         try:
                             # Wait for user to input how much of each res they want
                             res_amt = int((await self.bot.wait_for(
                                 'message',
                                 check=msg_chk,
-                                timeout=discordutils.Config.timeout)).content)
+                                timeout=config.timeout)).content)
                             if res_amt > 0:
                                 req_data.resources[res_name] = res_amt
                             break
                         except ValueError:
-                            await auth.send('Kindly input a whole number.')
+                            await author.send('Kindly input a whole number.')
                             continue
                         except asyncio.TimeoutError:
-                            await auth.send(
+                            await author.send(
                                 'You took too long to reply. Aborting request!')
                             return
 
@@ -411,7 +408,7 @@ class FinanceCog(discordutils.CogBase):
                     return
                 else:
                     # No resources requested
-                    await auth.send(
+                    await author.send(
                         "You didn't request for any resources. Please run the command again and redo your request."
                     )
                     return
@@ -463,38 +460,36 @@ class FinanceCog(discordutils.CogBase):
         )
 
     @request.error
-    async def request_error(self, ctx: commands.Context,
+    async def request_error(self, ctx: discord.ApplicationContext,
                             error: commands.CommandError) -> None:
         if isinstance(error, commands.MaxConcurrencyReached):
-            await ctx.send('You are already making a request!')
+            await ctx.respond('You are already making a request!')
             return
+        await discordutils.default_error_handler(ctx, error)
 
-    @discordutils.gov_check
-    @request.group(invoke_without_command=True)
-    async def set(self, ctx: commands.Context) -> None:
-        await ctx.send_help(self.set)
+    set = commands.SlashCommandGroup('request set', 'Set values for request!', guild_ids=config.guild_ids)
 
-    @discordutils.gov_check
-    @set.command()
+    @set.command(guild_ids=config.guild_ids)
+    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def process(self, ctx: commands.Context) -> None:
         await self.process_channel.set(ctx.channel)
         await ctx.send('Process channel set!')
 
-    @discordutils.gov_check
-    @set.command()
+    @set.command(guild_ids=config.guild_ids)
+    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def send(self, ctx: commands.Context):
         await self.send_channel.set(ctx.channel)
         await ctx.send('Send channel set!')
 
-    @discordutils.gov_check
-    @set.command(aliases=('aid',))
+    @set.command(guild_ids=config.guild_ids)
+    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def war_aid(self, ctx: commands.Context) -> None:
         await self.has_war_aid.transform(operator.not_)
         await ctx.send(
             f'War Aid is now {(not await self.has_war_aid.get()) * "not "}available!')
 
-    @discordutils.gov_check
-    @set.command(aliases=('infra_cap', 'cap'))
+    @set.command(name='infra rebuild cap', guild_ids=config.guild_ids)
+    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def infra_rebuild_cap(self, ctx: commands.Context, cap: int) -> None:
         await self.infra_rebuild_cap.set(max(0, 50 * round(cap / 50)))
         await ctx.send(
@@ -502,26 +497,18 @@ class FinanceCog(discordutils.CogBase):
         )
 
     @infra_rebuild_cap.error
-    async def infra_cap_set_error(self, ctx: commands.Context,
+    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
+    async def infra_cap_set_error(self, ctx: discord.ApplicationContext,
                                   error: commands.CommandError) -> None:
         if isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send(
+            await ctx.respond(
                 'Usage: `request set_infra_rebuild_cap 2000`, where `2000` is your desired cap.'
             )
             return
         if isinstance(error, commands.BadArgument):
-            await ctx.send('Please provide a whole number to set the cap to!')
+            await ctx.respond('Please provide a whole number to set the cap to!')
             return
         await discordutils.default_error_handler(ctx, error)
-
-    @discordutils.gov_check
-    @commands.command()
-    async def all_loans(self, ctx: commands.Context):
-        loans = await self.loans.get()
-        print(loans)
-        await ctx.send('\n'.join(
-            f'Loan of [{pnwutils.Resources(**loan["resources"])}] due on {loan["due_date"]}'
-            for n, loan in loans.items()) or 'There are no active loans!')
 
 
 # Setup Finance Cog as an extension
@@ -578,7 +565,7 @@ def setup(bot: dbbot.DBBot) -> None:
             try:
                 reject_reason: str = (await cog.bot.wait_for(
                     'message', check=msg_chk,
-                    timeout=discordutils.Config.timeout)).content
+                    timeout=config.timeout)).content
             except asyncio.TimeoutError():
                 await interaction.user.send('You took too long to respond! Default rejection reason set.')
                 reject_reason = 'not given'

@@ -1,12 +1,13 @@
 import aiohttp
 import enum
 import operator
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
-from discord.ext import commands, tasks
 import discord
+from discord import commands
+from discord.ext import tasks
 
-from utils import discordutils, pnwutils
+from utils import discordutils, pnwutils, config
 from utils.queries import alliance_wars_query
 import dbbot
 
@@ -20,12 +21,20 @@ class WarType(enum.Enum):
 class WarDetectorCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
+        self.running = discordutils.CogProperty[bool](self, 'running')
         self.check_losing = discordutils.CogProperty[bool](self, 'check_losing')
         self.att_channel = discordutils.ChannelProperty(self, 'att_channel')
         self.def_channel = discordutils.ChannelProperty(self, 'def_channel')
         self.lose_channel = discordutils.ChannelProperty(self, 'lose_channel')
         self.channels = {WarType.ATT: self.att_channel, WarType.DEF: self.def_channel, WarType.LOSE: self.lose_channel}
         self.done_wars: list[str] = []
+
+    async def on_ready(self):
+        if await self.running.get(None) is None:
+            await self.running.set(False)
+
+        if await self.running.get():
+            self.detect_wars.start()
 
     @staticmethod
     async def war_embed(data: dict[str, Any], kind: WarType) -> tuple[discord.Embed, discord.Embed]:
@@ -36,14 +45,14 @@ class WarDetectorCog(discordutils.CogBase):
         else:
             title = 'Losing War!'
 
-        embeds = discord.Embed(title=title, description=f'[War Page]({pnwutils.Link.war(data["id"])})'), discord.Embed()
+        embeds = discord.Embed(title=title, description=f'[War Page]({pnwutils.link.war(data["id"])})'), discord.Embed()
         for name, nation, prefix, n in ('Attacker', data['attacker'], 'att', 0), (
                 'Defender', data['defender'], 'def', 1):
             embeds[n].add_field(name=name,
-                                value=f'[{nation["nation_name"]}]({pnwutils.Link.nation(data[f"{prefix}id"])})',
+                                value=f'[{nation["nation_name"]}]({pnwutils.link.nation(data[f"{prefix}id"])})',
                                 inline=False)
             aa_text = 'None' if nation['alliance'] is None else \
-                f'[{nation["alliance"]["name"]}]({pnwutils.Link.alliance(data[f"{prefix}_alliance_id"])})'
+                f'[{nation["alliance"]["name"]}]({pnwutils.link.alliance(data[f"{prefix}_alliance_id"])})'
             embeds[n].add_field(name='Alliance', value=aa_text, inline=False)
             embeds[n].add_field(name='Score', value=nation['score'])
             r = pnwutils.war_range(nation['score'])
@@ -65,22 +74,22 @@ class WarDetectorCog(discordutils.CogBase):
     @tasks.loop(minutes=2)
     async def detect_wars(self) -> None:
         async with aiohttp.ClientSession() as session:
-            data = await pnwutils.API.post_query(session, alliance_wars_query, {'alliance_id': pnwutils.Config.aa_id},
+            data = await pnwutils.api.post_query(session, alliance_wars_query, {'alliance_id': config.alliance_id},
                                                  'wars')
 
         war: dict[str, Any]
         for war in data:
             if war['id'] in self.done_wars:
                 continue
-            
-            kind, kind_str = (WarType.ATT, 'attacker') if war['att_alliance_id'] == pnwutils.Config.aa_id else (
+
+            kind, kind_str = (WarType.ATT, 'attacker') if war['att_alliance_id'] == config.alliance_id else (
                 WarType.DEF, 'defender')
             if war[kind_str]['alliance_position'] == 'APPLICANT':
                 self.done_wars.append(war['id'])
                 continue
             if war['turnsleft'] == 60:
                 # new war
-                kind = WarType.ATT if war['att_alliance_id'] == pnwutils.Config.aa_id else WarType.DEF
+                kind = WarType.ATT if war['att_alliance_id'] == config.alliance_id else WarType.DEF
                 await (await self.channels[kind].get()).send(embeds=await self.war_embed(war, kind))
                 self.done_wars.append(war['id'])
                 continue
@@ -88,52 +97,49 @@ class WarDetectorCog(discordutils.CogBase):
                 await (await self.channels[WarType.LOSE].get()).send(embeds=await self.war_embed(war, WarType.LOSE))
                 self.done_wars.append(war['id'])
 
-    @discordutils.gov_check
-    @commands.group(aliases=('detector',), invoke_without_command=True)
-    async def war_detector(self, ctx: commands.Context) -> None:
-        await ctx.send('Use `war_detector start` to start the detector and `war_detector stop` to stop it')
+    war_detector = commands.SlashCommandGroup('war detector', 'A module that keeps track of wars!',
+                                              guild_ids=config.guild_ids)
 
-    @discordutils.gov_check
-    @war_detector.command(aliases=('run',))
-    async def running(self, ctx: commands.Context) -> None:
+    @war_detector.command(guild_id=config.guild_id)
+    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
+    async def run(self, ctx: discord.ApplicationContext) -> None:
         if any(await c.get(None) is None for c in self.channels.values()):
-            await ctx.send('Not all of the defensive, offensive and losing wars channels have been set! '
-                           'Set them with `war_detector set att`, `war_detector set def`, and `war_detector set lose`'
-                           'in the respective channels.')
+            await ctx.respond('Not all of the defensive, offensive and losing wars channels have been set! '
+                              'Set them with `war_detector set att`, `war_detector set def`, '
+                              'and `war_detector set lose` in the respective channels.')
             return
 
         if self.detect_wars.is_running():
             self.detect_wars.stop()
-            await ctx.send('War detector stopped!')
+            await ctx.respond('War detector stopped!')
             return
         self.detect_wars.start()
-        await ctx.send('War detector is now running!')
+        await ctx.respond('War detector is now running!')
 
-    @discordutils.gov_check
-    @war_detector.command()
+    @war_detector.command(guild_ids=config.guild_ids)
+    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def losing(self, ctx: commands.Context) -> None:
         await ctx.send(f'Losing wars will now {"not " * await self.check_losing.get()}be checked!')
         await self.check_losing.transform(operator.not_)
 
-    @discordutils.gov_check
-    @war_detector.group(aliases=('set',), invoke_without_command=True)
-    async def set_channel(self, ctx: commands.Context) -> None:
-        await ctx.send('Provide one of `att`, `def`, or `lose` to set the channel to!')
+    set_channel = commands.SlashCommandGroup('set channel',
+                                             'set the war detector channels!',
+                                             guild_ids=config.guild_ids)
 
-    @discordutils.gov_check
-    @set_channel.command(aliases=('att',))
-    async def a(self, ctx: commands.Context) -> None:
+    @set_channel.command(guild_ids=config.guild_ids)
+    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
+    async def attack(self, ctx: commands.Context) -> None:
         await self.att_channel.set(ctx.channel)
         await ctx.send('Offensive wars channel set!')
 
-    @discordutils.gov_check
-    @set_channel.command(aliases=('def',))
-    async def d(self, ctx: commands.Context) -> None:
+    @set_channel.command(guild_ids=config.guild_ids)
+    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
+    async def defend(self, ctx: commands.Context) -> None:
         await self.def_channel.set(ctx.channel)
         await ctx.send('Defensive wars channel set!')
 
-    @discordutils.gov_check
-    @set_channel.command(aliases=('l',))
+    @set_channel.command(guild_ids=config.guild_ids)
+    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def lose(self, ctx: commands.Context) -> None:
         await self.lose_channel.set(ctx.channel)
         await ctx.send('Losing wars channel set!')

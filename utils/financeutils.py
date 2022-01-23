@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 
 import discord
 
-from . import discordutils, pnwutils
+from . import discordutils, pnwutils, config
 
 __all__ = ('RequestData', 'LoanData', 'RequestStatus', 'RequestChoices', 'ResourceSelectView', 'WithdrawalView')
 
@@ -192,7 +192,7 @@ class ResourceSelector(discord.ui.Select['ResourceSelectView']):
 
 class ResourceSelectView(discord.ui.View):
     def __init__(self, user_id: Optional[int] = None, res: Iterable[str] | None = None,
-                 timeout: float = discordutils.Config.timeout):
+                 timeout: float = config.timeout):
         super().__init__(timeout=timeout)
         
         if res:

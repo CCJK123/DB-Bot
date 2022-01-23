@@ -8,7 +8,7 @@ from flask import Flask
 from replit import db
 
 import dbbot
-from utils import discordutils
+from utils import config
 
 cog_logger = logging.getLogger('cogs')
 cog_logger.addHandler(logging.FileHandler('logs.txt'))
@@ -50,4 +50,4 @@ if __name__ == '__main__':
 
     atexit.register(on_stop)
 
-    bot.run(discordutils.Config.token)
+    bot.run(config.token)
