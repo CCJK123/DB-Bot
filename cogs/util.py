@@ -3,7 +3,7 @@ import datetime
 
 import discord
 from discord import commands
-from discord.ext import pages, commands as cmds
+from discord.ext import pages
 
 from utils import discordutils, pnwutils, config
 from utils.queries import nation_alliance_query, alliance_member_res_query, alliance_activity_query
@@ -17,10 +17,10 @@ class UtilCog(discordutils.CogBase):
 
     register = commands.SlashCommandGroup('register', 'Commands related to the user to nation registry the bot keeps!',
                                           guild_ids=config.guild_ids)
-    
+
     @register.command(guild_ids=config.guild_ids)
     async def nation(self, ctx: discord.ApplicationContext,
-                       nation_id: commands.Option(str, 'Your nation id or link', default='')):
+                     nation_id: commands.Option(str, 'Your nation id or link', default='')):
         """Use to manually add your nation to the database"""
         await self.nations.initialise()
         if self.nations.contains_key(ctx.author.id):
@@ -75,7 +75,7 @@ class UtilCog(discordutils.CogBase):
         else:
             await ctx.respond('Aborting!')
 
-    @register.command(name='list', guild_ids=config.guild_ids)
+    @register.command(name='list', guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def register_list(self, ctx: discord.ApplicationContext):
         """List all nations registered in our database."""
@@ -91,7 +91,7 @@ class UtilCog(discordutils.CogBase):
             return
         await ctx.respond('There are no registrations!')
 
-    @register.command(name='update', guild_ids=config.guild_ids)
+    @register.command(name='update', guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_any_role(config.gov_role_id, config.staff_role_id, guild_id=config.guild_id)
     async def register_update(self, ctx: discord.ApplicationContext):
         """Update registry using the / separated nation ids"""
@@ -111,7 +111,7 @@ class UtilCog(discordutils.CogBase):
 
     check = commands.SlashCommandGroup('check', 'Various checks on members of the alliance', guild_ids=config.guild_ids)
 
-    @check.command(name='ran_out', guild_ids=config.guild_ids)
+    @check.command(name='ran_out', guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_any_role(config.gov_role_id, config.staff_role_id, guild_id=config.guild_id)
     async def check_ran_out(self, ctx: discord.ApplicationContext):
         """List all nations that have run out of food or uranium in the alliance."""
@@ -151,7 +151,7 @@ class UtilCog(discordutils.CogBase):
         else:
             await ctx.respond('No one has ran out of food or uranium!')
 
-    @check.command(name='activity', guild_ids=config.guild_ids)
+    @check.command(name='activity', guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_any_role(config.gov_role_id, 383815082473291778, guild_id=config.guild_id)
     async def activity_check(self, ctx: discord.ApplicationContext,
                              days: commands.Option(int, 'How many days inactive', default=3)):
@@ -195,7 +195,7 @@ class UtilCog(discordutils.CogBase):
                           view=discordutils.LinkView('Nation link', pnwutils.link.nation(nation_id)),
                           allowed_mentions=discord.AllowedMentions.none())
 
-    @commands.command(guild_ids=config.guild_ids)
+    @commands.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def reload(self, ctx: discord.ApplicationContext, extension: str) -> None:
         """Reload the given cog"""

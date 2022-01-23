@@ -70,7 +70,8 @@ class ApplicationCog(discordutils.CogBase):
                           'and will get back to you as soon as possible (1 - 4 hours). '
                           'They will respond to your queries and may ask follow up questions.')
 
-    @commands.user_command(guild_ids=config.guild_ids)
+    @commands.user_command(guild_ids=config.guild_ids, default_permission=False)
+    @commands.permissions.has_any_role(config.gov_role_id, guild_id=config.guild_id)
     async def accept(self, ctx: discord.ApplicationContext, member: discord.Member):
         await member.add_roles(*map(discord.Object, config.on_accepted_added_roles),
                                reason=f'Accepted into {config.alliance_name}!')

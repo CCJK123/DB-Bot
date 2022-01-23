@@ -470,25 +470,25 @@ class FinanceCog(discordutils.CogBase):
 
     set = commands.SlashCommandGroup('request_options', 'Set options for request!', guild_ids=config.guild_ids)
 
-    @set.command(guild_ids=config.guild_ids)
+    @set.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def process(self, ctx: discord.ApplicationContext) -> None:
         await self.process_channel.set(ctx.channel)
         await ctx.respond('Process channel set!')
 
-    @set.command(guild_ids=config.guild_ids)
+    @set.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def send(self, ctx: discord.ApplicationContext):
         await self.send_channel.set(ctx.channel)
         await ctx.respond('Send channel set!')
 
-    @set.command(guild_ids=config.guild_ids)
+    @set.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def war_aid(self, ctx: discord.ApplicationContext) -> None:
         await self.has_war_aid.transform(operator.not_)
         await ctx.respond(f'War Aid is now {(not await self.has_war_aid.get()) * "not "}available!')
 
-    @set.command(guild_ids=config.guild_ids)
+    @set.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def infra_rebuild_cap(self, ctx: discord.ApplicationContext,
                                 cap: commands.Option(int, 'What level to provide aid up to', min_value=0)) -> None:

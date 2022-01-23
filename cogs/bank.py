@@ -77,7 +77,8 @@ class BankCog(discordutils.CogBase):
                 f'You have a loan due in <t:{int(datetime.datetime.fromisoformat(loan["due_date"]).timestamp())}:R>',
                 embed=pnwutils.Resources(**loan['resources']).create_embed(title='Loaned Resources'))
 
-    @commands.user_command(name='check balance', guild_ids=config.guild_ids)
+    @commands.user_command(name='check balance', guild_ids=config.guild_ids, default_permission=False)
+    @commands.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def bal_check(self, ctx: discord.ApplicationContext, member: discord.Member):
         """check balance of this member"""
         nation_id = await self.nations[member.id].get(None)
@@ -319,7 +320,7 @@ class BankCog(discordutils.CogBase):
         await ctx.respond('Transaction complete!', embed=res.create_balance_embed(ctx.author.name))
         return
 
-    @market.command(name='set', guild_ids=config.guild_ids)
+    @market.command(name='set', guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def _set(self, ctx: discord.ApplicationContext,
                    res: commands.Option(str, 'Choose resource to set price', choices=pnwutils.constants.all_res),
@@ -339,7 +340,7 @@ class BankCog(discordutils.CogBase):
 
         await ctx.respond(f"{res} isn't a valid resource!")
 
-    @market.command(guild_ids=config.guild_ids)
+    @market.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def open(self, ctx: discord.ApplicationContext):
         """Open or close the market"""
@@ -379,7 +380,7 @@ class BankCog(discordutils.CogBase):
             return
         await ctx.respond(embed=financeutils.LoanData(**loan).to_embed())
 
-    @loan.command(name='list', default_permission=False, guild_ids=config.guild_ids)
+    @loan.command(name='list', guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def loan_list(self, ctx: discord.ApplicationContext):
         loans = await self.loans.get()
@@ -387,7 +388,7 @@ class BankCog(discordutils.CogBase):
             f'Loan of [{pnwutils.Resources(**loan["resources"])}] due on {loan["due_date"]}'
             for n, loan in loans.items()) or 'There are no active loans!')
 
-    @commands.user_command(name='bank adjust', default_permission=False, guild_ids=config.guild_ids)
+    @commands.user_command(name='bank adjust', guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def adjust(self, ctx: discord.ApplicationContext, member: discord.Member):
         """Manually adjust the resource values of someone's balance"""
@@ -433,7 +434,7 @@ class BankCog(discordutils.CogBase):
                           embed=resources.create_balance_embed(member.name),
                           allowed_mentions=discord.AllowedMentions.none())
 
-    @commands.user_command(name='bank set', default_permission=False, guild_ids=config.guild_ids)
+    @commands.user_command(name='bank set', guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def set(self, ctx: discord.ApplicationContext, member: discord.Member):
         """Manually set the resource values of someone's balance"""
@@ -478,7 +479,7 @@ class BankCog(discordutils.CogBase):
                           embed=resources.create_balance_embed(member.name),
                           allowed_mentions=discord.AllowedMentions.none())
 
-    @bank.command(name='contents', default_permission=False, guild_ids=config.guild_ids)
+    @bank.command(name='contents', guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def bank_contents(self, ctx: discord.ApplicationContext):
         """Check the contents of the bank"""
@@ -490,7 +491,7 @@ class BankCog(discordutils.CogBase):
         resources = pnwutils.Resources(**data['data'].pop())
         await ctx.respond(embed=resources.create_embed(), ephemeral=True)
 
-    @commands.command(default_permission=False, guild_ids=config.guild_ids)
+    @commands.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def offshore(self, ctx: discord.ApplicationContext):
         await ctx.respond('not implemented')
