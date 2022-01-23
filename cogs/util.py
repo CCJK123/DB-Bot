@@ -142,8 +142,7 @@ class UtilCog(discordutils.CogBase):
 
         embed = discord.Embed(title='Ran Out Of...')
         for k, ns in result.items():
-            embed.add_field(name=k, value='\n'.join(f'<@{d_id}>' if (d_id := map_discord.get(na[0])) else
-                                                    f'[{na[1]}]({pnwutils.link.nation(ns[0])})' for na in ns)
+            embed.add_field(name=k, value='\n'.join((f'<@{d_id}>' if (d_id := map_discord.get(na[0])) else f'[{na[1]}]({pnwutils.link.nation(ns[0])})') for na in ns)
         await ctx.respond(embed=embed)
 
     @check.command(name='activity', guild_ids=config.guild_ids)
