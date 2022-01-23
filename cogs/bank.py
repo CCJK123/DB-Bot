@@ -292,9 +292,7 @@ class BankCog(discordutils.CogBase):
         res[res_name.lower()] += amt
         await bal.set(res.to_dict())
         await self.stocks[res_name.capitalize()].transform(lambda s: s - amt)
-        await ctx.respond('Transaction complete!',
-                          embed=res.create_balance_embed(ctx.author.name)
-                          )
+        await ctx.respond('Transaction complete!', embed=res.create_balance_embed(ctx.author.name))
         return
 
     @market.command(guild_ids=config.guild_ids)
@@ -317,9 +315,7 @@ class BankCog(discordutils.CogBase):
         res.money += amt * p
         await bal.set(res.to_dict())
         await self.stocks[res_name.capitalize()].transform(lambda s: s + amt)
-        await ctx.respond('Transaction complete!',
-                          embed=res.create_balance_embed(ctx.author.name)
-                          )
+        await ctx.respond('Transaction complete!', embed=res.create_balance_embed(ctx.author.name))
         return
 
     @market.command(name='set', guild_ids=config.guild_ids)

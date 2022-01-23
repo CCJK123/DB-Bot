@@ -28,7 +28,7 @@ class RequestData:
 
     @property
     def nation_link(self):
-        return pnwutils.Link.nation(self.nation_id)
+        return pnwutils.link.nation(self.nation_id)
 
     def create_embed(self, **kwargs: str) -> discord.Embed:
         embed = discord.Embed(**kwargs)
@@ -41,7 +41,7 @@ class RequestData:
         return embed
 
     def create_link(self) -> str:
-        return pnwutils.Link.bank("w", self.resources, self.nation_name, self.note if self.note else self.reason)
+        return pnwutils.link.bank("w", self.resources, self.nation_name, self.note if self.note else self.reason)
 
     def create_withdrawal_embed(self) -> discord.Embed:
         return withdrawal_embed(self.nation_name, self.nation_id, self.reason, self.resources)
@@ -137,7 +137,7 @@ class RequestChoices(discordutils.CallbackPersistentView):
 
 def withdrawal_embed(name: str, nation_id: str, reason: str, resources: pnwutils.Resources) -> discord.Embed:
     embed = discord.Embed()
-    embed.add_field(name='Nation', value=f'[{name}]({pnwutils.Link.nation(nation_id)})')
+    embed.add_field(name='Nation', value=f'[{name}]({pnwutils.link.nation(nation_id)})')
     embed.add_field(name='Reason', value=reason)
     embed.add_field(name='Requested Resources', value=str(resources))
     return embed
@@ -197,9 +197,9 @@ class ResourceSelectView(discord.ui.View):
         
         if res:
             res = set(res)
-            assert res <= pnwutils.Constants.all_res
+            assert res <= pnwutils.constants.all_res
         else:
-            res = pnwutils.Constants.all_res
+            res = pnwutils.constants.all_res
         self._fut = asyncio.get_event_loop().create_future()
         self.user_id = user_id
         self.add_item(ResourceSelector(res))
