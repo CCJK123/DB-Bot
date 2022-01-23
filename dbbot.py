@@ -33,6 +33,7 @@ class DBBot(discord.Bot):
 
         self.change_status.start()
         war_detector_cog = self.get_cog('WarDetectorCog')
+        await war_detector_cog.on_ready()
 
     async def cleanup(self):
         await self.session.__aexit__(None, None, None)
