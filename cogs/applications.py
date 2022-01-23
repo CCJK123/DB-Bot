@@ -73,8 +73,12 @@ class ApplicationCog(discordutils.CogBase):
     @commands.user_command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_any_role(config.gov_role_id, guild_id=config.guild_id)
     async def accept(self, ctx: discord.ApplicationContext, member: discord.Member):
-        await member.add_roles(*map(discord.Object, config.on_accepted_added_roles),
-                               reason=f'Accepted into {config.alliance_name}!')
+        try:
+            await member.add_roles(*map(discord.Object, config.on_accepted_added_roles),
+                                   reason=f'Accepted into {config.alliance_name}!')
+        except discord.ApplicationCommandInvokeError:
+            await ctx.respond('I do not have permissions to add roles!')
+            return
         util_cog = self.bot.get_cog('UtilCog')
         if '/' in member.display_name:
             try:
