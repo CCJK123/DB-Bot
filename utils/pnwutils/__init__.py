@@ -1,5 +1,3 @@
-import api
-import constants
-from data_classes import *
-from misc import *
-import link
+from .data_classes import *
+from .misc import *
+from . import api, constants, link
