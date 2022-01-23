@@ -71,7 +71,7 @@ class BankCog(discordutils.CogBase):
 
         await ctx.respond(f"{ctx.author.mention}'s Balance",
                           embed=resources.create_balance_embed(ctx.author.name),
-                          allowed_mentions=discord.AllowedMentions.none(),)
+                          allowed_mentions=discord.AllowedMentions.none(), )
         if loan is not None:
             await ctx.respond(
                 f'You have a loan due in <t:{int(datetime.datetime.fromisoformat(loan["due_date"]).timestamp())}:R>',
@@ -266,7 +266,7 @@ class BankCog(discordutils.CogBase):
     async def _stocks(self, ctx: discord.ApplicationContext):
         """List out the stocks of resources"""
         await self.stocks.initialise()
-        await ctx.respond(embed=discordutils.construct_embed(await self.stocks.get(), title='Bank Trading Prices'))
+        await ctx.respond(embed=discordutils.construct_embed(await self.stocks.get(), title='Bank Stocks'))
 
     @market.command(guild_ids=config.guild_ids)
     async def buy(self, ctx: discord.ApplicationContext,
@@ -317,25 +317,29 @@ class BankCog(discordutils.CogBase):
         await ctx.respond('Transaction complete!', embed=res.create_balance_embed(ctx.author.name))
         return
 
-    @market.command(name='set', guild_ids=config.guild_ids, default_permission=False)
+    @market.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def _set(self, ctx: discord.ApplicationContext,
-                   res: commands.Option(str, 'Choose resource to set price', choices=pnwutils.constants.all_res),
-                   price: commands.Option(int, 'Resource price', min_value=0)):
+    async def set_price(self, ctx: discord.ApplicationContext,
+                        res: commands.Option(str, 'Choose resource to set price', choices=pnwutils.constants.all_res),
+                        price: commands.Option(int, 'Resource price', min_value=0)):
         """Set the buying/selling price of a resource"""
         if (await self.prices.get(None)) is None:
             await self.prices.set({})
 
-        if price <= 0:
-            await ctx.respond('Price must be positive!')
-            return
+        await self.prices[res.capitalize()].set(price)
+        await ctx.respond(f'The price of {res} has been set to {price} ppu.')
 
-        if res.lower() in pnwutils.constants.all_res:
-            await self.prices[res.capitalize()].set(price)
-            await ctx.respond(f'The price of {res} has been set to {price} ppu.')
-            return
+    @market.command(guild_ids=config.guild_ids, default_permission=False)
+    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
+    async def set_stock(self, ctx: discord.ApplicationContext,
+                        res: commands.Option(str, 'Choose resource to set price', choices=pnwutils.constants.all_res),
+                        stock: commands.Option(int, 'Resource stock', min_value=0)):
+        """Set the stocks of a resource"""
+        if (await self.stocks.get(None)) is None:
+            await self.stocks.set({})
 
-        await ctx.respond(f"{res} isn't a valid resource!")
+        await self.stocks[res.capitalize()].set(stock)
+        await ctx.respond(f'The stock of {res} has been set to {stock} tons.')
 
     @market.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
