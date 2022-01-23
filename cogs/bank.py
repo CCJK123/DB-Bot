@@ -1,16 +1,18 @@
 import asyncio
 import datetime
 import operator
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 from discord.ext import commands
 import discord
 
 from utils import financeutils, discordutils, pnwutils
+from utils.queries import bank_transactions_query, bank_info_query, nation_name_query
+import dbbot
 
 
 class BankCog(discordutils.CogBase):
-    def __init__(self, bot: discordutils.DBBot):
+    def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
         self.balances = discordutils.MappingProperty[str, pnwutils.ResourceDict](self, 'balances')
         self.prices = discordutils.SavedProperty[dict[str, int]](self, 'prices')
@@ -29,50 +31,7 @@ class BankCog(discordutils.CogBase):
         if entity_id is None and kind is not None:
             raise ValueError('Please provide entity id!')
 
-        transactions_query_str = '''
-        query bank_transactions($alliance_id: [Int]) {
-          alliances(id: $alliance_id, first: 1) {
-            data {
-              bankrecs {
-                # id
-                sid
-                stype
-                rid
-                rtype
-                # pid
-                date
-                money
-                coal
-                oil
-                uranium
-                iron
-                bauxite
-                lead
-                gasoline
-                munitions
-                steel
-                aluminum
-                food
-              }
-            }
-          }
-        }
-        '''
-        # some notes on the format of this data
-        # id: unique id of this transaction
-        # sid: id of the sender
-        # stype: type of the sender
-        #  - 1: nation
-        #  - 2: alliance
-        # rid: id of the receiver
-        # rtype: type of receiver
-        #  numbers mean the same as in stype
-        # pid: id of the banker (the person who initiated this transaction)
-        # note that if stype is 1 then rtype is 2 and if rtype is 1 then stype is 2
-        # but converse is not true due to the existence of inter-alliance transactions
-        # if stype/rtype is 2 then sid/rid is definitely the alliance id unless both stype/rtype is 2
-
-        data = await pnwutils.API.post_query(self.bot.session, transactions_query_str,
+        data = await pnwutils.API.post_query(self.bot.session, bank_transactions_query,
                                              {'alliance_id': pnwutils.Config.aa_id}, 'alliances')
 
         bank_recs = data['data'][0]['bankrecs']
@@ -94,7 +53,7 @@ class BankCog(discordutils.CogBase):
     @bank.group(invoke_without_command=True, aliases=('bal',))
     async def balance(self, ctx: commands.Context):
         """Check your balance"""
-        
+
         await self.balances.initialise()
         nation_id = await self.nations[ctx.author.id].get(None)
         if nation_id is None:
@@ -124,7 +83,7 @@ class BankCog(discordutils.CogBase):
     async def check(self, ctx: commands.Context, member: discord.Member = None):
         if member is None:
             member = await discordutils.get_member_from_context(ctx)
-        
+
         nation_id = await self.nations[member.id].get(None)
         if nation_id is None:
             await ctx.send(f'{member.mention} nation id has not been set!',
@@ -266,37 +225,22 @@ class BankCog(discordutils.CogBase):
             await auth.send('You took too long to reply! Aborting.')
             return
 
-        name_query = '''
-        query nation_name($nation_id: [Int]) {
-          nations(id: $nation_id, first: 1) {
-            data {
-              nation_name
-            }
-          }
-        }
-        '''
-
-        data = await pnwutils.API.post_query(self.bot.session, name_query, {'nation_id': nation_id}, 'nations')
+        data = await pnwutils.API.post_query(self.bot.session, nation_name_query, {'nation_id': nation_id}, 'nations')
         name = data['data'][0]['nation_name']
         link = pnwutils.Link.bank('w', req_resources, name, 'Withdrawal from balance')
 
-        view = financeutils.WithdrawalView(link, self.on_sent, auth, req_resources)
+        view = financeutils.WithdrawalView('withdrawal_on_sent', link, auth.id, req_resources)
 
         msg = await channel.send(f'Withdrawal Request from {auth.mention}',
                                  embed=financeutils.withdrawal_embed(name, nation_id, reason, req_resources),
                                  allowed_mentions=discord.AllowedMentions.none(),
                                  view=view)
-        self.bot.add_view(view, message_id=msg.id)
+        await self.bot.add_view(view, message_id=msg.id)
 
         res = resources - req_resources
         await self.balances[nation_id].set(res.to_dict())
         await auth.send('Your withdrawal request has been sent. '
                         'It will be sent to your nation shortly.')
-
-    @staticmethod
-    async def on_sent(requester: Union[discord.User, discord.Member], req_res: pnwutils.Resources):
-        await requester.send('Your withdrawal request has been sent to your nation!',
-                             embed=req_res.create_embed(title='Withdrawn Resources'))
 
     @deposit.error
     @withdraw.error
@@ -346,7 +290,7 @@ class BankCog(discordutils.CogBase):
     @market.command()
     async def buy(self, ctx: commands.Context, res_name: str, amt: int):
         """Purchase some amount of a resource for money"""
-        if not await self.market_open.get():
+        if await self.market_open.get(None) is None:
             await ctx.send('The market is currently closed!')
             return
 
@@ -515,30 +459,10 @@ class BankCog(discordutils.CogBase):
                        allowed_mentions=discord.AllowedMentions.none())
 
     @discordutils.gov_check
-    @bank.command(aliases=('check',))
-    async def c(self, ctx: commands.Context):
-        bank_query_string = '''
-        query bank_info($alliance_id: [Int]) {
-          alliances(id: $alliance_id, first: 1) {
-            data {
-              money
-              food
-              aluminum
-              steel
-              munitions
-              gasoline
-              bauxite
-              iron
-              lead
-              uranium
-              oil
-              coal
-            }
-          }
-        }
-        '''
+    @bank.command(aliases=('c',))
+    async def contents(self, ctx: commands.Context):
         data = await pnwutils.API.post_query(
-            self.bot.session, bank_query_string,
+            self.bot.session, bank_info_query,
             {'alliance_id': pnwutils.Config.aa_id},
             'alliances'
         )
@@ -551,5 +475,11 @@ class BankCog(discordutils.CogBase):
         pass
 
 
-def setup(bot: discordutils.DBBot):
+def setup(bot: dbbot.DBBot):
     bot.add_cog(BankCog(bot))
+
+    @financeutils.WithdrawalView.register_callback('withdrawal_on_sent')
+    async def on_sent(requester_id: int, req_res: pnwutils.Resources):
+        await bot.get_user(requester_id).send(
+            'Your withdrawal request has been sent to your nation!',
+            embed=req_res.create_embed(title='Withdrawn Resources'))

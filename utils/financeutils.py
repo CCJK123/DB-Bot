@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import datetime
 import enum
+import pickle
 from typing import Callable, Awaitable, Iterable, Optional, TypedDict
 from dataclasses import dataclass, field
 
@@ -15,14 +16,15 @@ __all__ = ('RequestData', 'LoanData', 'RequestStatus', 'RequestChoices', 'Resour
 
 @dataclass(slots=True)
 class RequestData:
-    requester: discord.abc.User
-    nation_id: str
-    nation_name: str
+    requester: discord.abc.User | None = None
+    nation_id: str = ''
+    nation_name: str = ''
     kind: str = ''
     reason: str = ''
     resources: pnwutils.Resources = field(default_factory=pnwutils.Resources)
     note: str = ''
-    additional_info: Optional[dict[str, str]] = field(default_factory=dict)
+    additional_info: dict[str, str] = field(default_factory=dict)
+    requester_id: int | None = None
 
     @property
     def nation_link(self):
@@ -33,16 +35,35 @@ class RequestData:
         embed.add_field(name='Nation', value=f'[{self.nation_name}]({self.nation_link})')
         embed.add_field(name='Request Type', value=self.kind)
         embed.add_field(name='Reason', value=self.reason)
-        embed.add_field(name='Requested Resources', value=self.resources)
+        embed.add_field(name='Requested Resources', value=str(self.resources))
         for n, v in self.additional_info.items():
             embed.add_field(name=n, value=v)
         return embed
 
     def create_link(self) -> str:
-        return pnwutils.Link.bank("w", self.resources, self.nation_name, self.note)
+        return pnwutils.Link.bank("w", self.resources, self.nation_name, self.note if self.note else self.reason)
 
     def create_withdrawal_embed(self) -> discord.Embed:
         return withdrawal_embed(self.nation_name, self.nation_id, self.reason, self.resources)
+
+    def __getstate__(self) -> tuple:
+        if self.requester_id is None:
+            self.requester_id = self.requester.id
+        return (0, self.requester_id, self.nation_id, self.nation_name, self.kind, self.reason,
+                self.resources.to_dict(), self.note, self.additional_info)
+
+    def __setstate__(self, state):
+        if state[0] == 0:
+            (_, self.requester_id, self.nation_id, self.nation_name, self.kind,
+             self.reason, res_dict, self.note, self.additional_info) = state
+            self.resources = pnwutils.Resources(**res_dict)
+            self.requester = None
+        else:
+            raise pickle.UnpicklingError(f'Unrecognised state version {state[0]} for RequestData')
+
+    def set_requester(self, client: discord.Client) -> discord.abc.User:
+        self.requester = client.get_user(self.requester_id)
+        return self.requester
 
 
 class LoanDataDict(TypedDict):
@@ -86,65 +107,73 @@ RequestChosenCallback = Callable[[RequestStatus, discord.Interaction, RequestDat
                                  Awaitable[None]]
 
 
+# noinspection PyAttributeOutsideInit
 class RequestChoice(discord.ui.Button['RequestChoices']):
-    def __init__(self, label: RequestStatus):
-        super().__init__(row=0, custom_id=label.value)
-        self.label = label.value
+    def __init__(self, label: RequestStatus, custom_id: int):
+        super().__init__(row=0, label=label.value, custom_id=f'{label.value} {custom_id}')
 
     async def callback(self, interaction: discord.Interaction) -> None:
         self.style = discord.ButtonStyle.success
         for child in self.view.children:
             child.disabled = True
         self.view.stop()
+        await self.view.remove()
         await interaction.response.edit_message(view=self.view)
         await self.view.callback(RequestStatus(self.label), interaction, self.view.data)
 
 
-class RequestChoices(discord.ui.View):
-    def __init__(self, callback: RequestChosenCallback, data: RequestData):
-        # Callback would be called with 'Accepted', 'Rejected', or 'Sent'
-        super().__init__(timeout=None)
+class RequestChoices(discordutils.CallbackPersistentView):
+    def __init__(self, callback_key: str, data: RequestData, *, custom_id: int = None):
+        super().__init__(timeout=None, key=callback_key)
+        self.custom_id = self.get_id() if custom_id is None else custom_id
+
         self.data = data
-        self.callback = callback
         for c in RequestStatus:
-            self.add_item(RequestChoice(c))
+            self.add_item(RequestChoice(c, self.custom_id))
+
+    def get_state(self) -> tuple:
+        return self.key, self.data
 
 
 def withdrawal_embed(name: str, nation_id: str, reason: str, resources: pnwutils.Resources) -> discord.Embed:
     embed = discord.Embed()
     embed.add_field(name='Nation', value=f'[{name}]({pnwutils.Link.nation(nation_id)})')
     embed.add_field(name='Reason', value=reason)
-    embed.add_field(name='Requested Resources', value=resources)
+    embed.add_field(name='Requested Resources', value=str(resources))
     return embed
 
 
+# noinspection PyAttributeOutsideInit
 class WithdrawalButton(discord.ui.Button['WithdrawalView']):
-    def __init__(self):
-        super().__init__(row=0, custom_id='Withdrawal Button')
-        self.label = 'Sent'
+    def __init__(self, custom_id: int):
+        super().__init__(row=0, custom_id=f'Withdrawal Button {custom_id}', label='Sent')
 
     async def callback(self, interaction: discord.Interaction):
         self.style = discord.ButtonStyle.success
         self.disabled = True
         self.view.stop()
+        await self.view.remove()
         await interaction.response.edit_message(view=self.view)
         await self.view.callback(*self.view.args)
 
 
-class WithdrawalView(discord.ui.View):
-    def __init__(self, link: str, callback: Callable[..., Awaitable[None]], *args):
-        super().__init__(timeout=None)
-        self.callback = callback
+class WithdrawalView(discordutils.CallbackPersistentView):
+    def __init__(self, callback_key: str, link: str, *args, custom_id: int = None):
+        super().__init__(key=callback_key, timeout=None)
+        self.custom_id = self.get_id() if custom_id is None else custom_id
+
         self.args = args
         self.add_item(discordutils.LinkButton('Withdrawal Link', link))
-        self.add_item(WithdrawalButton())
+        self.add_item(WithdrawalButton(self.custom_id))
+
+    def get_state(self) -> tuple:
+        return self.key, self.children[0].url, *self.args  # type: ignore
 
 
+# noinspection PyAttributeOutsideInit
 class ResourceSelector(discord.ui.Select['ResourceSelectView']):
     def __init__(self, res: Iterable[str]):
-        options = [
-            discord.SelectOption(label=s) for s in res
-        ]
+        options = [discord.SelectOption(label=s) for s in res]
         super().__init__(placeholder='Choose the resources you want',
                          min_values=1,
                          max_values=len(options),

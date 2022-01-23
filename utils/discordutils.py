@@ -1,15 +1,19 @@
-import random
-import aiohttp
-from replit.database import AsyncDatabase
+import abc
 import asyncio
+import functools
 import operator
+import pickle
 import sys
 import traceback
 import os  # For env variables
-from typing import Any, Awaitable, Callable, Generic, Iterable, Mapping, Optional, TypeVar, Union
+from typing import (Awaitable, Callable, Generic, Iterable,
+                    Mapping, TypeVar, Union, TYPE_CHECKING)
+
+if TYPE_CHECKING:
+    import dbbot
 
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 
 # Setup what is exported by default
 __all__ = ('Config', 'Choices', 'construct_embed', 'gov_check', 'CogBase',
@@ -19,31 +23,31 @@ __all__ = ('Config', 'Choices', 'construct_embed', 'gov_check', 'CogBase',
 class DBHelpCommand(commands.HelpCommand):
     d_desc = 'No description found'
 
-    async def send_bot_help(self, mapping):
+    async def send_bot_help(self, mapping: Mapping[commands.Cog | None, list[commands.command]]):
         embeds = []
         for k in mapping:
             filtered = await self.filter_commands(mapping[k])
             if filtered:
                 embeds.append(self.create_cog_embed(k, filtered))
-        
+
         await self.get_destination().send(embeds=embeds)
-    
-    def create_cog_embed(self, cog, commands):
+
+    def create_cog_embed(self, cog: commands.Cog, cmds: list[commands.command]):
         embed = discord.Embed(title=cog.qualified_name,
                               description=cog.description)
-        
-        for cmd in commands:
+
+        for cmd in cmds:
             embed.add_field(name=cmd.name,
                             value=cmd.description or cmd.short_doc or self.d_desc,
                             inline=False)
-        
+
         return embed
 
-    async def send_cog_help(self, cog):
+    async def send_cog_help(self, cog: commands.Cog):
         embed = self.create_cog_embed(cog, await self.filter_commands(cog.get_commands()))
         await self.get_destination().send(embed=embed)
 
-    async def send_group_help(self, group):
+    async def send_group_help(self, group: commands.Group):
         embed = discord.Embed(
             title=self.get_command_signature(group),
             description=group.description
@@ -54,75 +58,11 @@ class DBHelpCommand(commands.HelpCommand):
                             inline=False)
         await self.get_destination().send(embed=embed)
 
-    async def send_command_help(self, command):
+    async def send_command_help(self, command: commands.command):
         await self.get_destination().send(embed=discord.Embed(
             title=self.get_command_signature(command),
             description=command.description or command.short_doc
         ))
-
-
-# Setup bot
-class DBBot(commands.Bot):
-    def __init__(self, db_url, on_ready_func: Callable[[], None]):
-        intents = discord.Intents(guilds=True, messages=True, members=True)
-        super().__init__(command_prefix=os.environ['command_prefix'],
-                         help_command=DBHelpCommand(),
-                         intents=intents)
-
-        self.on_ready_func = on_ready_func
-        self.session = None
-        self.database = AsyncDatabase(db_url)
-        self.prepped = False
-
-    async def prep(self):
-        self.session = await aiohttp.ClientSession().__aenter__()
-        self.database = await self.database.__aenter__()
-
-    async def cleanup(self):
-        await self.session.__aexit__(None, None, None)
-        await self.database.__aexit__(None, None, None)
-
-    # Change bot status (background task for 24/7 functionality)
-    status = (
-        *map(discord.Game, ("with Python", "with repl.it", "with the P&W API")),
-        discord.Activity(type=discord.ActivityType.listening, name="Spotify"),
-        discord.Activity(type=discord.ActivityType.watching, name="YouTube")
-    )
-
-    @tasks.loop(seconds=20)
-    async def change_status(self):
-        await self.change_presence(activity=random.choice(self.status))
-
-    async def on_ready(self):
-        if not self.prepped:
-            self.prepped = True
-            await self.prep()
-
-        if not self.change_status.is_running():
-            self.change_status.start()
-
-        self.on_ready_func()
-
-    async def on_command_error(self, ctx: commands.Context, exception):
-        command = ctx.command
-        if command and command.has_error_handler():
-            return
-
-        await ctx.send(str(exception))
-
-        p_ignore = (
-            commands.CommandNotFound,
-            commands.MissingRole,
-            commands.MissingRequiredArgument
-        )
-        if not isinstance(exception, p_ignore):
-            await super().on_command_error(ctx, exception)
-
-    def db_set(self, cog_name: str, key: str, val: Any) -> Awaitable[None]:
-        return self.database.set(f'{cog_name}.{key}', val)
-
-    def db_get(self, cog_name: str, key: str) -> Awaitable[Any]:
-        return self.database.get(f'{cog_name}.{key}')
 
 
 # Setup discord bot configuration variables
@@ -134,9 +74,8 @@ class Config:
 
 # Setup buttons for user to make choices
 class Choice(discord.ui.Button['Choices']):
-    def __init__(self, label: str):
-        super().__init__()
-        self.label = label
+    def __init__(self, label: str, disabled: bool = False):
+        super().__init__(disabled=disabled, label=label)
 
     async def callback(self, interaction: discord.Interaction) -> None:
         if self.view.user_id is not None and self.view.user_id != interaction.user.id:
@@ -154,12 +93,14 @@ class Choice(discord.ui.Button['Choices']):
 
 
 class Choices(discord.ui.View):
-    def __init__(self, *choices: str, user_id: Optional[int] = None):
+    def __init__(self, *choices: str, user_id: int | None = None, disabled: set[str] | None = None):
         super().__init__()
+        if disabled is None:
+            disabled = set()
         self.user_id = user_id
         self._fut = asyncio.get_event_loop().create_future()
         for c in choices:
-            self.add_item(Choice(c))
+            self.add_item(Choice(c, c in disabled))
 
     def set_result(self, r: str) -> None:
         self._fut.set_result(r)
@@ -180,6 +121,76 @@ class LinkView(discord.ui.View):
     def __init__(self, label: str, url: str):
         super().__init__()
         self.add_item(LinkButton(label, url))
+
+
+class PersistentView(discord.ui.View, metaclass=abc.ABCMeta):
+    last_id = -1
+    bot: 'dbbot.DBBot | None' = None
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.custom_id = None
+
+    @abc.abstractmethod
+    def get_state(self) -> tuple:
+        ...
+
+    @classmethod
+    def _new_uninitialised(cls) -> 'PersistentView':
+        return cls.__new__(cls)
+
+    def __setstate__(self, state: tuple) -> None:
+        if state[0] == 0:
+            self.__init__(*state[2:], custom_id=state[1])
+        else:
+            raise pickle.UnpicklingError(f'Unsupported state tuple version {state[0]} for CallbackPersistentView')
+
+    def __reduce_ex__(self, protocol: int):
+        return self._new_uninitialised, (), (0, self.custom_id, *self.get_state())
+
+    async def remove(self) -> None:
+        await self.bot.views.pop(self)
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__()
+        cls.last_id = -1
+
+    @classmethod
+    def get_id(cls):
+        cls.last_id += 1
+        return cls.last_id
+
+
+Callback = Callable[..., Awaitable[None]]
+
+
+class CallbackPersistentView(PersistentView, metaclass=abc.ABCMeta):
+    callbacks: dict[str, Callback] = {}
+
+    def __init__(self, *args, key: str | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if key in self.callbacks:
+            self.key = key
+        else:
+            raise ValueError(f'Key {key} has not been registered!')
+
+    @classmethod
+    def register_callback(cls, key: str | None = None, cog_name: str | None = None) -> Callable[[Callback], Callback]:
+        def register(func: Callback):
+            nonlocal key
+            if key is None:
+                key = func.__name__
+
+            cls.callbacks[key] = functools.partial(func, cog_name) if cog_name else func
+            return func
+
+        return register
+
+    @property
+    def callback(self) -> Callback:
+        if self.key is None:
+            raise KeyError('Callback key has not been set!')
+        return self.callbacks[self.key]
 
 
 async def get_member_from_context(ctx: commands.Context) -> discord.Member:
@@ -243,7 +254,7 @@ async def default_error_handler(context: commands.Context, exception: commands.C
 
 
 class CogBase(commands.Cog):
-    def __init__(self, bot: DBBot, name: str):
+    def __init__(self, bot: "dbbot.DBBot", name: str):
         self.bot = bot
         self.cog_name = name
 
@@ -255,18 +266,17 @@ DT = TypeVar('DT')
 _sentinel = object()
 
 
-class SavedProperty(Generic[T]):
-    __slots__ = ('value', 'key', 'owner')
+class AsyncProperty(Generic[T], metaclass=abc.ABCMeta):
+    __slots__ = ('value', 'key')
 
-    def __init__(self, owner: CogBase, key: str):
+    def __init__(self, key: str):
         self.value: Union[object, T] = _sentinel
         self.key = key
-        self.owner = owner
 
     async def get(self, default: Union[object, DT] = _sentinel) -> Union[T, DT]:
         if self.value is _sentinel:
             try:
-                self.value = await self.owner.bot.db_get(self.owner.cog_name, self.key)
+                self.value = await self.get_()
             except KeyError:
                 if default is _sentinel:
                     raise
@@ -275,13 +285,76 @@ class SavedProperty(Generic[T]):
 
     async def set(self, value: T) -> None:
         self.value = value
-        await self.update()
-    
-    async def update(self) -> None:
-        await self.owner.bot.db_set(self.owner.cog_name, self.key, self.value)
+        await self.set_(value)
 
     async def transform(self, func: Callable[[T], T]) -> None:
         await self.set(func(await self.get()))
+
+    @abc.abstractmethod
+    async def get_(self) -> T:
+        ...
+
+    @abc.abstractmethod
+    async def set_(self, value: T) -> None:
+        ...
+
+
+class BotProperty(AsyncProperty[T]):
+    __slots__ = ('bot',)
+
+    def __init__(self, bot: 'dbbot.DBBot', key: str):
+        super().__init__(key)
+        self.bot = bot
+
+    async def get_(self) -> T:
+        return await self.bot.database.get(self.key)
+
+    async def set_(self, value: T) -> None:
+        await self.bot.database.set(self.key, value)
+
+
+V = TypeVar('V', bound=CallbackPersistentView)
+
+
+class ViewStorage(BotProperty[dict[V, str]]):
+    __slots__ = ()
+
+    async def get_(self) -> dict[V, str]:
+        return {pickle.loads(bytes.fromhex(p_view)): p_view for p_view in await super().get_()}
+
+    async def set_(self, value: dict[V, str]) -> None:
+        await super().set_(list(value.values()))
+
+    async def get_views(self) -> tuple[V]:
+        return tuple((await self.get()).keys())
+
+    async def add(self, v: V) -> None:
+        if v in self.value:
+            return
+        self.value[v] = pickle.dumps(v, 5).hex()
+        await self.set_(self.value)
+
+    async def pop(self, v: V) -> None:
+        self.value.pop(v)
+        await self.set_(self.value)
+
+
+class SavedProperty(AsyncProperty[T]):
+    __slots__ = ('owner',)
+
+    def __init__(self, owner: CogBase, key: str):
+        super().__init__(key)
+        self.owner = owner
+
+    @property
+    def full_key(self) -> str:
+        return f'{self.owner.cog_name}.{self.key}'
+
+    async def get_(self) -> T:
+        return await self.owner.bot.database.get(self.full_key)
+
+    async def set_(self, value: T) -> None:
+        await self.owner.bot.database.set(self.full_key, value)
 
 
 class MappingPropertyItem(Generic[T, T1]):
@@ -293,7 +366,7 @@ class MappingPropertyItem(Generic[T, T1]):
 
     async def get(self, default: Union[object, DT] = _sentinel) -> Union[T1, DT]:
         try:
-            return (await self.mapping.get())[self.key]
+            return (await self.mapping.get())[str(self.key)]
         except KeyError:
             if default is _sentinel:
                 raise
@@ -337,20 +410,11 @@ class WrappedProperty(Generic[T, T1], SavedProperty[T]):
         self.transform_to = transform_to
         self.transform_from = transform_from
 
-    async def get(self, default: Union[object, DT] = _sentinel) -> Union[T, DT]:
-        if self.value is _sentinel:
-            try:
-                self.value = self.transform_to(await self.owner.bot.db_get(
-                    self.owner.cog_name, self.key))
-            except KeyError:
-                if default is _sentinel:
-                    raise
-                return default
-        return self.value
+    async def get_(self):
+        return self.transform_to(await super().get_())
 
-    async def update(self) -> None:
-        await self.owner.bot.db_set(self.owner.cog_name, self.key,
-                                    self.transform_from(self.value))
+    async def set_(self, value: T) -> None:
+        await super().set_(self.transform_from(value))
 
 
 class ChannelProperty(WrappedProperty[discord.TextChannel, int]):

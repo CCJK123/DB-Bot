@@ -7,6 +7,8 @@ from discord.ext import commands, tasks
 import discord
 
 from utils import discordutils, pnwutils
+from utils.queries import alliance_wars_query
+import dbbot
 
 
 class WarType(enum.Enum):
@@ -16,7 +18,7 @@ class WarType(enum.Enum):
 
 
 class WarDetectorCog(discordutils.CogBase):
-    def __init__(self, bot: discordutils.DBBot):
+    def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
         self.check_losing = discordutils.SavedProperty[bool](self, 'check_losing')
         self.att_channel = discordutils.ChannelProperty(self, 'att_channel')
@@ -62,63 +64,15 @@ class WarDetectorCog(discordutils.CogBase):
 
     @tasks.loop(minutes=2)
     async def detect_wars(self) -> None:
-        new_wars_query_str = '''
-        query alliance_wars($alliance_id: [ID]){
-          wars(alliance_id: $alliance_id, days_ago: 6){
-            id
-            turnsleft
-            attid
-            defid
-            att_alliance_id
-            def_alliance_id
-            att_resistance
-            def_resistance
-            attpoints
-            defpoints
-            attacker {
-              nation_name
-              score
-              num_cities
-              warpolicy
-              soldiers
-              tanks
-              aircraft
-              ships
-              missiles
-              nukes
-              alliance_position
-              alliance {
-                name
-              }
-            }
-            defender {
-              nation_name
-              score
-              num_cities
-              warpolicy
-              soldiers
-              tanks
-              aircraft
-              ships
-              missiles
-              nukes
-              alliance_position
-              alliance {
-                name
-              }
-            }
-          }
-        }
-        '''
         async with aiohttp.ClientSession() as session:
-            data = await pnwutils.API.post_query(session, new_wars_query_str, {'alliance_id': pnwutils.Config.aa_id},
+            data = await pnwutils.API.post_query(session, alliance_wars_query, {'alliance_id': pnwutils.Config.aa_id},
                                                  'wars')
 
         war: dict[str, Any]
         for war in data:
             if war['id'] in self.done_wars:
                 continue
-            
+
             kind, kind_str = (WarType.ATT, 'attacker') if war['att_alliance_id'] == pnwutils.Config.aa_id else (
                 WarType.DEF, 'defender')
             if war[kind_str]['alliance_position'] == 'APPLICANT':
@@ -186,5 +140,5 @@ class WarDetectorCog(discordutils.CogBase):
 
 
 # Setup War Detector Cog as an extension
-def setup(bot: discordutils.DBBot) -> None:
+def setup(bot: dbbot.DBBot) -> None:
     bot.add_cog(WarDetectorCog(bot))

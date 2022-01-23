@@ -9,13 +9,15 @@ from discord.ext import commands
 
 from utils import discordutils, pnwutils
 from utils.financeutils import RequestData, LoanData, RequestStatus, RequestChoices, ResourceSelectView, WithdrawalView
+from utils.queries import nation_query
+import dbbot
 
 logger = logging.getLogger(__name__)
 
 
 # Create Finance Cog to group finance related commands
 class FinanceCog(discordutils.CogBase):
-    def __init__(self, bot: discordutils.DBBot):
+    def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
         self.has_war_aid = discordutils.SavedProperty[bool](self, 'has_war_aid')
         self.infra_rebuild_cap = discordutils.SavedProperty[int](self, 'infra_rebuild_cap')
@@ -56,56 +58,7 @@ class FinanceCog(discordutils.CogBase):
             await auth.send('Your nation id has not been set!')
             return
 
-        nation_query_str = '''
-        query nation_info($nation_id: [Int]) {
-            nations(id: $nation_id, first: 1) {
-                data {
-                    # Display Request, Withdrawal Link
-                    nation_name
-
-                    # Alliance Check
-                    alliance_id
-
-                    # City Grants, Project Grants & War Aid
-                    num_cities
-
-                    # City Grants & Project Grants 
-                    city_planning
-                    adv_city_planning
-
-                    # Project Grants
-                    cia
-                    propb
-
-                    # Project Grants & War Aid
-                    cfce
-
-                    # War Aid
-                    soldiers
-                    tanks
-                    aircraft
-                    ships
-                    beigeturns
-                    offensive_wars {
-                        turnsleft
-                    }
-                    defensive_wars {
-                        turnsleft
-                    }
-                    cities {
-                        barracks
-                        factory
-                        airforcebase
-                        drydock
-                        name
-                        infrastructure
-                    }
-                    adv_engineering_corps
-                }
-            }
-        }
-        '''
-        data = await pnwutils.API.post_query(self.bot.session, nation_query_str,
+        data = await pnwutils.API.post_query(self.bot.session, nation_query,
                                              {'nation_id': nation_id}, 'nations')
         data = data['data']
         if data:
@@ -167,18 +120,7 @@ class FinanceCog(discordutils.CogBase):
                 return None
 
             elif grant_type == 'Project':
-                project_choice = discordutils.Choices(
-                    'Center for Civil Engineering', 'Intelligence Agency',
-                    'Propaganda Bureau', 'Urban Planning',
-                    'Advanced Urban Planning', 'Other')
-                await auth.send('Which project do you want?',
-                                view=project_choice)
-                try:
-                    project = await project_choice.result()
-                except asyncio.TimeoutError:
-                    await auth.send('You took too long to respond! Exiting...')
-                    return
-                project_field_name = {
+                project_field_names = {
                     'Center for Civil Engineering': 'cfce',
                     'Intelligence Agency': 'cia',
                     'Propaganda Bureau': 'propb',
@@ -187,14 +129,22 @@ class FinanceCog(discordutils.CogBase):
                     'Other': 'other'
                 }
                 data['other'] = None
-                # Check if they already have project
-                if data[project_field_name[project]]:
-                    await auth.send(
-                        f'You already have the {project} project. Please try again with a different project.'
-                    )
+                disabled = set()
+                for label, field in project_field_names.items():
+                    if data[field]:
+                        disabled.add(label)
+
+                project_choice = discordutils.Choices(*project_field_names.keys(), disabled=disabled)
+                await auth.send('Which project do you want?', view=project_choice)
+
+                try:
+                    project = await project_choice.result()
+                except asyncio.TimeoutError:
+                    await auth.send('You took too long to respond! Exiting...')
                     return
-                # If not, then redirect accordingly
-                elif project == 'Center for Civil Engineering':
+
+                # Redirect accordingly
+                if project == 'Center for Civil Engineering':
                     req_data.resources = pnwutils.Resources(oil=1000,
                                                             iron=1000,
                                                             bauxite=1000,
@@ -328,7 +278,7 @@ class FinanceCog(discordutils.CogBase):
                     Defensive: {sum(w["turnsleft"] > 0 for w in data["defensive_wars"])}
                 '''
                 # fsr the value of turnsleft when war is over seems to be always -12? idk
-                # maybe its diff for wars that ended recently? didnt check
+                # maybe its diff for wars that ended recently? did not check
             }
 
             if war_aid_type == 'Buy Military Units':
@@ -348,7 +298,7 @@ class FinanceCog(discordutils.CogBase):
                 # Calculate resources needed to buy needed military units
                 req_data.resources = pnwutils.Resources(
                     money=5 * needed_units['soldiers'] + 60 * needed_units['tanks'] + 4000 * needed_units['aircraft']
-                          + 50000 * needed_units['ships'],
+                    + 50000 * needed_units['ships'],
                     steel=int(0.5 * (needed_units['tanks']) + 1) + 30 * needed_units['ships'],
                     aluminum=5 * needed_units['aircraft']
                 )
@@ -377,10 +327,9 @@ class FinanceCog(discordutils.CogBase):
                 # Calculate resources needed to buy needed military improvements
                 req_data.resources = pnwutils.Resources(
                     money=3000 * needed_improvements['barracks'] + 15000 * needed_improvements['factory'] +
-                          100000 * needed_improvements['airforcebase'] + 250000 * needed_improvements['drydock'],
+                    100000 * needed_improvements['airforcebase'] + 250000 * needed_improvements['drydock'],
                     steel=10 * needed_improvements['airforcebase'],
-                    aluminum=5 * needed_improvements['factory'] +
-                             20 * needed_improvements['drydock'])
+                    aluminum=5 * needed_improvements['factory'] + 20 * needed_improvements['drydock'])
 
                 req_data.reason = 'Rebuild to Max Military Improvements'
                 req_data.note = f'War Aid to {req_data.reason}'
@@ -496,7 +445,7 @@ class FinanceCog(discordutils.CogBase):
                 'Your request has been sent. Thank you for using the DB Finance Request Interface.'
             )
             embed.title = None
-            process_view = RequestChoices(self.on_processed, req_data)
+            process_view = RequestChoices('on_processed', req_data)
 
             msg = await (await self.process_channel.get()).send(
                 f'New Request from {auth.mention}',
@@ -504,80 +453,12 @@ class FinanceCog(discordutils.CogBase):
                 allowed_mentions=discord.AllowedMentions.none(),
                 view=process_view
             )
-            self.bot.add_view(process_view, message_id=msg.id)
+            await self.bot.add_view(process_view, message_id=msg.id)
 
             return
 
         await auth.send(
             'Exiting the DB Finance Request Interface. Please run the command again and redo your request.'
-        )
-
-    async def on_processed(self, status: RequestStatus,
-                           interaction: discord.Interaction, req_data: RequestData) -> None:
-        logger.info(f'processing {status} request: {req_data}')
-        if status == RequestStatus.ACCEPTED:
-            if req_data.kind == 'Loan':
-                data = LoanData(datetime.datetime.now() + datetime.timedelta(days=30), req_data.resources)
-                await req_data.requester.send(
-                    'The loan has been added to your bank balance. '
-                    'You will have to use `bank withdraw` to withdraw the loan from your bank balance to your nation. '
-                    'Kindly remember to return the requested resources by depositing it back into your bank balance '
-                    'and using `bank loan return` by '
-                    f'<t:{int(data.due_date.timestamp())}:R>. '
-                    'You can check your loan status with `bank loan status`.'
-                )
-                bal = self.bot.get_cog('BankCog').balances[req_data.nation_id]
-                await bal.set((pnwutils.Resources(**await bal.get()) + req_data.resources).to_dict())
-
-                await interaction.message.edit(embed=interaction.message.embeds[0].add_field(
-                    name='Return By',
-                    value=data.display_date,
-                    inline=True))
-                await self.loans[req_data.nation_id].set(data.to_dict())
-            else:
-                await req_data.requester.send(
-                    f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} '
-                    'has been accepted! The resources will be sent to you soon. '
-                )
-                channel = await self.send_channel.get()
-                withdrawal_view = WithdrawalView(req_data.create_link(), self.on_sent, req_data)
-                msg = await channel.send(f'Withdrawal Request from {req_data.requester.mention}',
-                                         embed=req_data.create_withdrawal_embed(),
-                                         view=withdrawal_view,
-                                         allowed_mentions=discord.AllowedMentions.none())
-                self.bot.add_view(withdrawal_view, message_id=msg.id)
-
-        else:
-            await interaction.user.send(
-                f'What was the reason for rejecting the {req_data.kind} request '
-                f'{"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason}?'
-            )
-
-            def msg_chk(m: discord.Message) -> bool:
-                return m.author == interaction.user and m.guild is None
-
-            try:
-                reject_reason: str = (await self.bot.wait_for(
-                    'message', check=msg_chk,
-                    timeout=discordutils.Config.timeout)).content
-            except asyncio.TimeoutError():
-                await interaction.user.send('You took too long to respond! Default rejection reason set.')
-                reject_reason = 'not given'
-            await req_data.requester.send(
-                f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} '
-                f'has been rejected!\nReason: {reject_reason}')
-            await interaction.message.edit(embed=interaction.message.embeds.pop().add_field(
-                name='Rejection Reason', value=reject_reason, inline=True))
-
-        await interaction.message.edit(
-            content=f'{status.value} Request from {req_data.requester.mention}',
-            allowed_mentions=discord.AllowedMentions.none())
-
-    @staticmethod
-    async def on_sent(req_data):
-        await req_data.requester.send(
-            f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} '
-            'has been sent to your nation!'
         )
 
     @request.error
@@ -586,7 +467,6 @@ class FinanceCog(discordutils.CogBase):
         if isinstance(error, commands.MaxConcurrencyReached):
             await ctx.send('You are already making a request!')
             return
-        # await discordutils.default_error_handler(ctx, error)
 
     @discordutils.gov_check
     @request.group(invoke_without_command=True)
@@ -644,5 +524,76 @@ class FinanceCog(discordutils.CogBase):
 
 
 # Setup Finance Cog as an extension
-def setup(bot: discordutils.DBBot) -> None:
+def setup(bot: dbbot.DBBot) -> None:
     bot.add_cog(FinanceCog(bot))
+
+    @RequestChoices.register_callback('on_processed', FinanceCog.__cog_name__)
+    async def on_processed(cog_name: str, status: RequestStatus,
+                           interaction: discord.Interaction, req_data: RequestData) -> None:
+        cog: FinanceCog = bot.get_cog(cog_name)  # type: ignore
+        logger.info(f'processing {status} request: {req_data}')
+        req_data.set_requester(bot)
+        if status == RequestStatus.ACCEPTED:
+            if req_data.kind == 'Loan':
+                data = LoanData(datetime.datetime.now() + datetime.timedelta(days=30), req_data.resources)
+                await req_data.requester.send(
+                    'The loan has been added to your bank balance. '
+                    'You will have to use `bank withdraw` to withdraw the loan from your bank balance to your nation. '
+                    'Kindly remember to return the requested resources by depositing it back into your bank balance '
+                    'and using `bank loan return` by '
+                    f'<t:{int(data.due_date.timestamp())}:R>. '
+                    'You can check your loan status with `bank loan status`.'
+                )
+                bal = cog.bot.get_cog('BankCog').balances[req_data.nation_id]
+                await bal.set((pnwutils.Resources(**await bal.get()) + req_data.resources).to_dict())
+
+                await interaction.message.edit(embed=interaction.message.embeds[0].add_field(
+                    name='Return By',
+                    value=data.display_date,
+                    inline=True))
+                await cog.loans[req_data.nation_id].set(data.to_dict())
+            else:
+                await req_data.requester.send(
+                    f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} '
+                    'has been accepted! The resources will be sent to you soon. '
+                )
+                channel = await cog.send_channel.get()
+                withdrawal_view = WithdrawalView('request_on_sent', req_data.create_link(), req_data)
+                msg = await channel.send(f'Withdrawal Request from {req_data.requester.mention}',
+                                         embed=req_data.create_withdrawal_embed(),
+                                         view=withdrawal_view,
+                                         allowed_mentions=discord.AllowedMentions.none())
+                await cog.bot.add_view(withdrawal_view, message_id=msg.id)
+
+        else:
+            await interaction.user.send(
+                f'What was the reason for rejecting the {req_data.kind} request '
+                f'{"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason}?'
+            )
+
+            def msg_chk(m: discord.Message) -> bool:
+                return m.author == interaction.user and m.guild is None
+
+            try:
+                reject_reason: str = (await cog.bot.wait_for(
+                    'message', check=msg_chk,
+                    timeout=discordutils.Config.timeout)).content
+            except asyncio.TimeoutError():
+                await interaction.user.send('You took too long to respond! Default rejection reason set.')
+                reject_reason = 'not given'
+            await req_data.requester.send(
+                f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} '
+                f'has been rejected!\nReason: {reject_reason}')
+            await interaction.message.edit(embed=interaction.message.embeds.pop().add_field(
+                name='Rejection Reason', value=reject_reason, inline=True))
+
+        await interaction.message.edit(
+            content=f'{status.value} Request from {req_data.requester.mention}',
+            allowed_mentions=discord.AllowedMentions.none())
+
+    @WithdrawalView.register_callback('request_on_sent')
+    async def on_sent(req_data):
+        await req_data.set_requester(bot).send(
+            f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} '
+            'has been sent to your nation!'
+        )

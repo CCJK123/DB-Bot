@@ -4,16 +4,17 @@ import discord
 from discord.ext import commands
 
 from utils import discordutils
+import dbbot
 
 
 class ApplicationCog(discordutils.CogBase):
-    def __init__(self, bot: discordutils.DBBot):
+    def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
 
     @commands.command()
     @commands.max_concurrency(1, commands.BucketType.user)
     async def start_interview(self, ctx: commands.Context) -> None:
-        if not ctx.channel.name.endswith('-application'):
+        if isinstance(ctx.channel, discord.DMChannel) or not ctx.channel.name.endswith('-application'):
             await ctx.send('This is not an interview channel!')
             return None
 
@@ -71,5 +72,5 @@ class ApplicationCog(discordutils.CogBase):
                        'They will respond to your queries and may ask follow up questions.')
 
 
-def setup(bot: discordutils.DBBot) -> None:
+def setup(bot: dbbot.DBBot) -> None:
     bot.add_cog(ApplicationCog(bot))

@@ -133,10 +133,10 @@ class Resources:
 
     def all_positive(self) -> bool:
         return all(a >= 0 for a in self.values())
-    
+
     def keys_nonzero(self) -> Iterable[str]:
         return (res_name for res_name in Constants.all_res if self[res_name])
-    
+
     def values_nonzero(self) -> Iterable[int]:
         return (amt for res_name in Constants.all_res if (amt := self[res_name]))
 
@@ -276,13 +276,13 @@ def war_range(score: Union[str, float]) -> tuple[float, float]:
 
 
 def infra_value(infra_lvl: float):
-    return 300 + abs(infra_lvl -  10) ** 2.2 / 710
+    return 300 + abs(infra_lvl - 10) ** 2.2 / 710
 
 
 def infra_price(start: float, end: float) -> float:
     if start == end:
         return 0
-    
+
     diff = end - start
     if diff < 0:
         return 150 * diff
