@@ -97,7 +97,7 @@ class WarDetectorCog(discordutils.CogBase):
                 await (await self.channels[WarType.LOSE].get()).send(embeds=await self.war_embed(war, WarType.LOSE))
                 self.done_wars.append(war['id'])
 
-    war = commands.SlashCommandGroup('war')
+    war = commands.SlashCommandGroup('war', 'Commands related to warring!', guild_ids=config.guild_ids)
 
     war_detector = commands.SlashCommandGroup('detector', 'A module that keeps track of wars!',
                                               guild_ids=config.guild_ids, parent=war)
@@ -123,8 +123,10 @@ class WarDetectorCog(discordutils.CogBase):
     async def losing(self, ctx: discord.ApplicationContext) -> None:
         await ctx.send(f'Losing wars will now {"not " * await self.check_losing.get()}be checked!')
         await self.check_losing.transform(operator.not_)
-
-    set_channel = commands.SlashCommandGroup('set channel',
+    
+    set = commands.SlashCommandGroup('set', 'Change options for the war detector!',
+                                     guild_ids=config.guild_ids)
+    set_channel = commands.SlashCommandGroup('channel',
                                              'set the war detector channels!',
                                              guild_ids=config.guild_ids)
 

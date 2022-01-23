@@ -15,8 +15,11 @@ class UtilCog(discordutils.CogBase):
         super().__init__(bot, __name__)
         self.nations: discordutils.MappingProperty[int, str] = discordutils.MappingProperty[int, str](self, 'nations')
 
-    @commands.command(guild_ids=config.guild_ids)
-    async def register(self, ctx: discord.ApplicationContext,
+    register = commands.SlashCommandGroup('register', 'Commands related to the user to nation registry the bot keeps!',
+                                          guild_ids=config.guild_ids)
+    
+    @register.command(guild_ids=config.guild_ids)
+    async def nation(self, ctx: discord.ApplicationContext,
                        nation_id: commands.Option(str, 'Your nation id or link', default='')):
         """Use to manually add your nation to the database"""
         await self.nations.initialise()
@@ -72,7 +75,7 @@ class UtilCog(discordutils.CogBase):
         else:
             await ctx.respond('Aborting!')
 
-    @commands.command(name='register list', guild_ids=config.guild_ids)
+    @register.command(name='list', guild_ids=config.guild_ids)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def register_list(self, ctx: discord.ApplicationContext):
         """List all nations registered in our database."""
@@ -88,7 +91,7 @@ class UtilCog(discordutils.CogBase):
             return
         await ctx.respond('There are no registrations!')
 
-    @commands.command(name='register update', guild_ids=config.guild_ids)
+    @register.command(name='update', guild_ids=config.guild_ids)
     @commands.permissions.has_any_role(config.gov_role_id, config.staff_role_id, guild_id=config.guild_id)
     async def register_update(self, ctx: discord.ApplicationContext):
         """Update registry using the / separated nation ids"""
@@ -108,7 +111,7 @@ class UtilCog(discordutils.CogBase):
 
     check = commands.SlashCommandGroup('check', 'Various checks on members of the alliance', guild_ids=config.guild_ids)
 
-    @check.command(name='ran out', guild_ids=config.guild_ids)
+    @check.command(name='ran_out', guild_ids=config.guild_ids)
     @commands.permissions.has_any_role(config.gov_role_id, config.staff_role_id, guild_id=config.guild_id)
     async def check_ran_out(self, ctx: discord.ApplicationContext):
         """List all nations that have run out of food or uranium in the alliance."""
@@ -139,8 +142,8 @@ class UtilCog(discordutils.CogBase):
 
         embed = discord.Embed(title='Ran Out Of...')
         for k, ns in result.items():
-            embed.add_field(name=k, value='\n'.join(f'<@{d_id}>' if (d_id := map_discord.get(ns[0])) else
-                                                    f'[{ns[1]}]({pnwutils.link.nation(ns[0])})'))
+            embed.add_field(name=k, value='\n'.join(f'<@{d_id}>' if (d_id := map_discord.get(na[0])) else
+                                                    f'[{na[1]}]({pnwutils.link.nation(ns[0])})' for na in ns)
         await ctx.respond(embed=embed)
 
     @check.command(name='activity', guild_ids=config.guild_ids)
@@ -193,7 +196,7 @@ class UtilCog(discordutils.CogBase):
         """Reload the given cog"""
         try:
             self.bot.reload_extension(f'cogs.{extension}')
-        except cmds.ExtensionNotLoaded:
+        except discord.ExtensionNotLoaded:
             await ctx.respond(f'The extension {extension} was not previously loaded!')
             return
         await ctx.respond(f'Extension {extension} reloaded!')

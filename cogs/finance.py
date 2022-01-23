@@ -468,7 +468,7 @@ class FinanceCog(discordutils.CogBase):
             return
         await discordutils.default_error_handler(ctx, error)
 
-    set = commands.SlashCommandGroup('request set', 'Set values for request!', guild_ids=config.guild_ids)
+    set = commands.SlashCommandGroup('request_options', 'Set options for request!', guild_ids=config.guild_ids)
 
     @set.command(guild_ids=config.guild_ids)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
@@ -488,7 +488,7 @@ class FinanceCog(discordutils.CogBase):
         await self.has_war_aid.transform(operator.not_)
         await ctx.respond(f'War Aid is now {(not await self.has_war_aid.get()) * "not "}available!')
 
-    @set.command(name='infra rebuild cap', guild_ids=config.guild_ids)
+    @set.command(guild_ids=config.guild_ids)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def infra_rebuild_cap(self, ctx: discord.ApplicationContext,
                                 cap: commands.Option(int, 'What level to provide aid up to', min_value=0)) -> None:
