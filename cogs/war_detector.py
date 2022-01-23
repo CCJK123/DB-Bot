@@ -97,8 +97,7 @@ class WarDetectorCog(discordutils.CogBase):
                 await (await self.channels[WarType.LOSE].get()).send(embeds=await self.war_embed(war, WarType.LOSE))
                 self.done_wars.append(war['id'])
 
-    war_detector = commands.SlashCommandGroup('war_detector', 'A module that keeps track of wars!',
-                                              guild_ids=config.guild_ids)
+    war_detector = commands.SlashCommandGroup('war_detector', 'A module that keeps track of wars!', guild_ids=config.guild_ids)
 
     @war_detector.command(guild_id=config.guild_id, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
@@ -123,6 +122,7 @@ class WarDetectorCog(discordutils.CogBase):
         await self.check_losing.transform(operator.not_)
 
     set_channel = war_detector.create_subgroup('channel', 'set the war detector channels!')
+    set_channel.guild_ids = config.guild_ids
 
     @set_channel.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)

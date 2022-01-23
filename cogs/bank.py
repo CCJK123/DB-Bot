@@ -255,6 +255,7 @@ class BankCog(discordutils.CogBase):
         await discordutils.default_error_handler(ctx, error)
 
     market = bank.create_subgroup('market', 'A market to buy and sell resources from the bank')
+    market.guild_ids = config.guild_ids
 
     @market.command(name='prices', guild_ids=config.guild_ids, hidden=True)
     async def _prices(self, ctx: discord.ApplicationContext):
@@ -345,6 +346,7 @@ class BankCog(discordutils.CogBase):
         await ctx.respond(f'The market is now {s}!')
 
     loan = bank.create_subgroup('loan', 'Commands related to loans')
+    loan.guild_ids = config.guild_ids
 
     @loan.command(name='return', guild_ids=config.guild_ids)
     async def _return(self, ctx: discord.ApplicationContext):
