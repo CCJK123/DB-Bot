@@ -41,14 +41,13 @@ class FinanceCog(discordutils.CogBase):
             await ctx.respond('Output channel has not been set! Aborting.')
             return
 
-        if ctx.guild is not None:
-            await ctx.respond('Please check your DMs!')
-        await ctx.defer()  # ?
-
         author = ctx.author
-        await author.send(
-            'Welcome to the DB Finance Request Interface. '
-        )
+
+        if ctx.guild is None:
+            await ctx.respond('Welcome to the DB Finance Request Interface.')
+        else:
+            await ctx.respond('Please check your DMs!')
+            await author.send('Welcome to the DB Finance Request Interface.')
 
         # Check that reply was sent from same author in DMs
         msg_chk = discordutils.get_dm_msg_chk(author.id)

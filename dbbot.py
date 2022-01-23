@@ -71,7 +71,6 @@ class DBBot(discord.Bot):
     async def on_command_error(self, ctx: discord.ApplicationContext, exception):
         command = ctx.command
         if command and command.has_error_handler():
-            await ctx.defer()
             return
 
         await ctx.respond(str(exception))

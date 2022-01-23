@@ -161,10 +161,10 @@ class BankCog(discordutils.CogBase):
             await ctx.respond('Output channel has not been set! Aborting...')
             return None
 
-        if ctx.guild is not None:
-            await ctx.respond('Please check your DMs!')
+        if ctx.guild is None:
+            await ctx.respond('Hey!')
         else:
-            await ctx.defer()
+            await ctx.respond('Please check your DMs!')
         author = ctx.author
 
         resources = await self.balances[nation_id].get(None)
@@ -250,8 +250,8 @@ class BankCog(discordutils.CogBase):
                        error: discord.ApplicationCommandError) -> None:
         if isinstance(error, cmds.MaxConcurrencyReached):
             await ctx.respond('You are already trying to withdraw/deposit!')
-            return None
-        await ctx.defer()
+            return
+
         await discordutils.default_error_handler(ctx, error)
 
     market = commands.SlashCommandGroup('market',
@@ -397,8 +397,7 @@ class BankCog(discordutils.CogBase):
             await ctx.respond(f"{member.mention}'s nation id has not been set!",
                               allowed_mentions=discord.AllowedMentions.none())
             return
-        await ctx.defer()
-
+        await ctx.respond('Please check your DMs!')
         author = ctx.author
         res_select_view = financeutils.ResourceSelectView(author.id)
         msg_chk = discordutils.get_dm_msg_chk(author.id)
@@ -443,7 +442,7 @@ class BankCog(discordutils.CogBase):
             await ctx.respond(f"{member.mention}'s nation id has not been set!",
                               allowed_mentions=discord.AllowedMentions.none())
             return
-        await ctx.defer()
+        await ctx.respond('Please check your DMs!')
 
         author = ctx.author
         res_select_view = financeutils.ResourceSelectView(author.id)

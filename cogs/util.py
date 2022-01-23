@@ -175,14 +175,13 @@ class UtilCog(discordutils.CogBase):
             if n in inactives:
                 inactives_discord[n] = i
 
-        await ctx.defer()
-        await ctx.send('Inactives:')
+        await ctx.respond('Inactives:')
         for m in discordutils.split_blocks('\n', (f'<@{d_id}>' for d_id in inactives_discord.values()), 2000):
-            await ctx.send(m)
+            await ctx.respond(m)
         for m in discordutils.split_blocks('\n',
                                            (pnwutils.link.nation(n) for n in inactives - inactives_discord.keys()),
                                            2000):
-            await ctx.send(m)
+            await ctx.respond(m)
 
     @commands.user_command(guild_ids=config.guild_ids)
     async def nation(self, ctx: discord.ApplicationContext, member: discord.Member):
