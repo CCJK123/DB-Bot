@@ -118,7 +118,7 @@ class WarDetectorCog(discordutils.CogBase):
 
     @war_detector.command(guild_ids=config.guild_ids)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def losing(self, ctx: commands.Context) -> None:
+    async def losing(self, ctx: discord.ApplicationContext) -> None:
         await ctx.send(f'Losing wars will now {"not " * await self.check_losing.get()}be checked!')
         await self.check_losing.transform(operator.not_)
 
@@ -128,21 +128,21 @@ class WarDetectorCog(discordutils.CogBase):
 
     @set_channel.command(guild_ids=config.guild_ids)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def attack(self, ctx: commands.Context) -> None:
+    async def attack(self, ctx: discord.ApplicationContext) -> None:
         await self.att_channel.set(ctx.channel)
-        await ctx.send('Offensive wars channel set!')
+        await ctx.respond('Offensive wars channel set!')
 
     @set_channel.command(guild_ids=config.guild_ids)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def defend(self, ctx: commands.Context) -> None:
+    async def defend(self, ctx: discord.ApplicationContext) -> None:
         await self.def_channel.set(ctx.channel)
-        await ctx.send('Defensive wars channel set!')
+        await ctx.respond('Defensive wars channel set!')
 
     @set_channel.command(guild_ids=config.guild_ids)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def lose(self, ctx: commands.Context) -> None:
+    async def lose(self, ctx: discord.ApplicationContext) -> None:
         await self.lose_channel.set(ctx.channel)
-        await ctx.send('Losing wars channel set!')
+        await ctx.respond('Losing wars channel set!')
 
 
 # Setup War Detector Cog as an extension

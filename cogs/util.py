@@ -193,7 +193,7 @@ class UtilCog(discordutils.CogBase):
         """Reload the given cog"""
         try:
             self.bot.reload_extension(f'cogs.{extension}')
-        except commands.ExtensionNotLoaded:
+        except discord.ext.commands.ExtensionNotLoaded:
             await ctx.respond(f'The extension {extension} was not previously loaded!')
             return
         await ctx.respond(f'Extension {extension} reloaded!')
