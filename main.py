@@ -8,7 +8,7 @@ from flask import Flask
 from replit import db
 
 import dbbot
-from utils import discordutils
+from utils import config
 
 cog_logger = logging.getLogger('cogs')
 cog_logger.addHandler(logging.FileHandler('logs.txt'))
@@ -39,7 +39,8 @@ if __name__ == '__main__':
     for ext in cogs:
         bot.load_extension(f'cogs.{ext}')
 
-    bot.help_command.cog = bot.get_cog('UtilCog')
+    # bot.help_command.cog = bot.get_cog('UtilCog')
+    # the new bot doesnt seem to have a help command, the help command has not been ported over to slash yet i believe
 
 
     def on_stop():
@@ -50,4 +51,4 @@ if __name__ == '__main__':
 
     atexit.register(on_stop)
 
-    bot.run(discordutils.Config.token)
+    bot.run(config.token)

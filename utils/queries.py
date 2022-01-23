@@ -138,13 +138,14 @@ query nation_info($nation_id: [Int]) {
 '''
 
 alliance_member_res_query = '''
-query alliance_members_res($alliance_id: [Int], $page: Int){
-    nations(alliance_id: $alliance_id, first: 500, page: $page){
+query alliance_members_res($alliance_id: [Int], $page: Int) {
+    nations(alliance_id: $alliance_id, first: 500, page: $page) {
         paginatorInfo {
             hasMorePages
         }
         data {
             alliance_position
+            nation_name
             vmode
             id
             food
@@ -158,8 +159,8 @@ query alliance_members_res($alliance_id: [Int], $page: Int){
 '''
 
 alliance_activity_query = '''
-query alliance_activity($alliance_id: [Int], $page: Int){
-    nations(alliance_id: $alliance_id, first: 500, page: $page){
+query alliance_activity($alliance_id: [Int], $page: Int) {
+    nations(alliance_id: $alliance_id, first: 500, page: $page) {
         paginatorInfo {
             hasMorePages
         }
@@ -176,8 +177,8 @@ query alliance_activity($alliance_id: [Int], $page: Int){
 # war_detector.py
 
 alliance_wars_query = '''
-query alliance_wars($alliance_id: [ID]){
-    wars(alliance_id: $alliance_id, days_ago: 6){
+query alliance_wars($alliance_id: [ID]) {
+    wars(alliance_id: $alliance_id, days_ago: 6) {
         id
         turnsleft
         attid
@@ -219,6 +220,18 @@ query alliance_wars($alliance_id: [ID]){
             alliance {
                 name
             }
+        }
+    }
+}
+'''
+
+
+acceptance_query = '''
+query acceptance_data($nation_id: [Int]) {
+    nations(id: $nation_id, first: 1) {
+        data {
+            nation_name
+            leader_name
         }
     }
 }
