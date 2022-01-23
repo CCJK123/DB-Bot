@@ -51,13 +51,14 @@ class BankCog(discordutils.CogBase):
     bank = commands.SlashCommandGroup('bank', 'bank related commands!', config.guild_ids)
 
     @bank.command()
-    async def balance(self, ctx: discord.ApplicationContext):
+    async def balance(self, ctx: discord.ApplicationContext,
+                      private: commands.Option(bool, 'Whether to hide your balance from others', default=True)):
         """Check your balance"""
 
         await self.balances.initialise()
         nation_id = await self.nations[ctx.author.id].get(None)
         if nation_id is None:
-            await ctx.send('Your nation id has not been set!')
+            await ctx.respond('Your nation id has not been set!')
             return
 
         resources = await self.balances[nation_id].get(None)
@@ -69,13 +70,15 @@ class BankCog(discordutils.CogBase):
 
         loan = await self.loans[nation_id].get(None)
 
-        await ctx.send(f"{ctx.author.mention}'s Balance",
-                       embed=resources.create_balance_embed(ctx.author.name),
-                       allowed_mentions=discord.AllowedMentions.none())
+        await ctx.respond(f"{ctx.author.mention}'s Balance",
+                          embed=resources.create_balance_embed(ctx.author.name),
+                          allowed_mentions=discord.AllowedMentions.none(),
+                          ephemeral=private)
         if loan is not None:
             await ctx.respond(
                 f'You have a loan due in <t:{int(datetime.datetime.fromisoformat(loan["due_date"]).timestamp())}:R>',
-                embed=pnwutils.Resources(**loan['resources']).create_embed(title='Loaned Resources'))
+                embed=pnwutils.Resources(**loan['resources']).create_embed(title='Loaned Resources'),
+                ephemeral=private)
 
     @commands.user_command(name='check balance', guild_ids=config.guild_ids, default_permission=False)
     @commands.has_role(config.gov_role_id, guild_id=config.guild_id)
