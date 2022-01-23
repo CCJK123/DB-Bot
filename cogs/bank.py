@@ -51,8 +51,7 @@ class BankCog(discordutils.CogBase):
     bank = commands.SlashCommandGroup('bank', 'bank related commands!', config.guild_ids)
 
     @bank.command()
-    async def balance(self, ctx: discord.ApplicationContext,
-                      private: commands.Option(bool, 'Whether to hide your balance from others', default=True)):
+    async def balance(self, ctx: discord.ApplicationContext):
         """Check your balance"""
 
         await self.balances.initialise()
@@ -72,13 +71,11 @@ class BankCog(discordutils.CogBase):
 
         await ctx.respond(f"{ctx.author.mention}'s Balance",
                           embed=resources.create_balance_embed(ctx.author.name),
-                          allowed_mentions=discord.AllowedMentions.none(),
-                          ephemeral=private)
+                          allowed_mentions=discord.AllowedMentions.none(),)
         if loan is not None:
             await ctx.respond(
                 f'You have a loan due in <t:{int(datetime.datetime.fromisoformat(loan["due_date"]).timestamp())}:R>',
-                embed=pnwutils.Resources(**loan['resources']).create_embed(title='Loaned Resources'),
-                ephemeral=private)
+                embed=pnwutils.Resources(**loan['resources']).create_embed(title='Loaned Resources'))
 
     @commands.user_command(name='check balance', guild_ids=config.guild_ids, default_permission=False)
     @commands.has_role(config.gov_role_id, guild_id=config.guild_id)
