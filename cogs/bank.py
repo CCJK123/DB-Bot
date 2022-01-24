@@ -259,19 +259,21 @@ class BankCog(discordutils.CogBase):
     @market.command(name='prices', guild_ids=config.guild_ids, hidden=True)
     async def _prices(self, ctx: discord.ApplicationContext):
         """List out the prices of resources"""
-        if self.market_values.get(None) is None:
+        if await self.market_values.get(None) is None:
             await self.market_values.set([[0] * len(pnwutils.constants.all_res)] * 3)
+        values = await self.market_values.get()
         await ctx.respond(embeds=(
-            discordutils.construct_embed(await self.market_values.get()[0], pnwutils.constants.all_res,
+            discordutils.construct_embed(pnwutils.constants.all_res, values[0],
                                          title='Bank Trading Prices'),
-            discordutils.construct_embed(await self.market_values.get()[1], pnwutils.constants.all_res)
+            discordutils.construct_embed(pnwutils.constants.all_res, values[1])
         ))
 
     @market.command(name='stocks', guild_ids=config.guild_ids)
     async def _stocks(self, ctx: discord.ApplicationContext):
         """List out the stocks of resources"""
-        await ctx.respond(embed=discordutils.construct_embed(await self.market_values.get()[2],
-                                                             pnwutils.constants.all_res, title='Bank Stocks'))
+        await ctx.respond(embed=discordutils.construct_embed(pnwutils.constants.all_res,
+                                                             (await self.market_values.get())[2],
+                                                             title='Bank Stocks'))
 
     @market.command(guild_ids=config.guild_ids)
     async def buy(self, ctx: discord.ApplicationContext,
