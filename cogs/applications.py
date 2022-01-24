@@ -16,7 +16,7 @@ class ApplicationCog(discordutils.CogBase):
     @cmds.max_concurrency(1, cmds.BucketType.user)
     async def start_interview(self, ctx: discord.ApplicationContext,
                               q_num: commands.Option(int, 'Do not provide this parameter unless asked to',
-                                                     name='question number', default=1, min_value=1,
+                                                     name='question_number', default=1, min_value=1,
                                                      max_value=len(config.interview_questions))
                               ) -> None:
         """Gives you interview questions for you to respond to."""
