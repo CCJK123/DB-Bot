@@ -336,9 +336,9 @@ class BankCog(discordutils.CogBase):
                         price: commands.Option(int, 'Resource price', min_value=0)):
         """Set the buying/selling price of a resource"""
         values = await self.market_values.get()
-        values[b_s == 'Selling'][pnwutils.constants.market_res.index(res_name)] = price
+        values[b_s == 'selling'][pnwutils.constants.market_res.index(res_name)] = price
         await self.market_values.set(values)
-        await ctx.respond(f'The {b_s.lower()} price of {res_name} has been set to {price} ppu.')
+        await ctx.respond(f'The {b_s} price of {res_name} has been set to {price} ppu.')
 
     @market.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
