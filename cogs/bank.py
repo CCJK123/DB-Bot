@@ -259,7 +259,8 @@ class BankCog(discordutils.CogBase):
     @market.command(name='prices', guild_ids=config.guild_ids, hidden=True)
     async def _prices(self, ctx: discord.ApplicationContext):
         """List out the prices of resources"""
-        await self.market_values.initialise()
+        if self.market_values.get(None) is None:
+            await self.market_values.set([[0] * len(pnwutils.constants.all_res)] * 3)
         await ctx.respond(embeds=(
             discordutils.construct_embed(await self.market_values.get()[0], pnwutils.constants.all_res,
                                          title='Bank Trading Prices'),
