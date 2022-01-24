@@ -337,6 +337,7 @@ class BankCog(discordutils.CogBase):
         """Set the buying/selling price of a resource"""
         values = await self.market_values.get()
         values[b_s == 'Selling'][pnwutils.constants.market_res.index(res_name)] = price
+        await self.market_values.set(values)
         await ctx.respond(f'The {b_s.lower()} price of {res_name} has been set to {price} ppu.')
 
     @market.command(guild_ids=config.guild_ids, default_permission=False)
@@ -347,6 +348,7 @@ class BankCog(discordutils.CogBase):
         """Set the stocks of a resource"""
         values = await self.market_values.get()
         values[2][pnwutils.constants.market_res.index(res_name)] = stock
+        await self.market_values.set(values)
         await ctx.respond(f'The stock of {res_name} has been set to {stock} tons.')
 
     @market.command(guild_ids=config.guild_ids, default_permission=False)
