@@ -94,7 +94,7 @@ class UtilCog(discordutils.CogBase):
     @register.command(name='update', guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_any_role(config.gov_role_id, config.staff_role_id, guild_id=config.guild_id)
     async def register_update(self, ctx: discord.ApplicationContext):
-        """Update registry using the / separated nation ids"""
+        """Update registry using the / separated nation ids in nicknames"""
         count = 0
         nations = await self.nations.get()
         for member in ctx.guild.members:
@@ -155,7 +155,7 @@ class UtilCog(discordutils.CogBase):
     @commands.permissions.has_any_role(config.gov_role_id, 383815082473291778, guild_id=config.guild_id)
     async def activity_check(self, ctx: discord.ApplicationContext,
                              days: commands.Option(int, 'How many days inactive', default=3)):
-        """Lists nations that have not been active in the last n days"""
+        """Lists nations that have not been active in the last n days (defaults to 3 days)"""
         data = (await pnwutils.api.post_query(self.bot.session, alliance_activity_query,
                                               {'alliance_id': config.alliance_id},
                                               'nations', True))['data']
@@ -198,6 +198,9 @@ class UtilCog(discordutils.CogBase):
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def reload(self, ctx: discord.ApplicationContext, extension: str) -> None:
         """Reload the given cog"""
+        await ctx.respond('At the moment, pycord has a bug wherein trying to unload a cog raises an error. '
+                          'As a result, this command currently does not work.')
+
         try:
             self.bot.reload_extension(f'cogs.{extension}')
         except discord.ExtensionNotLoaded:

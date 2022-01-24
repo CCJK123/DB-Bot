@@ -27,7 +27,7 @@ class DBBot(discord.Bot):
 
     async def prep(self):
         if await self.views.get(None) is None:
-            await self.views.set({})
+            await self.views.options({})
         
         self.session = await aiohttp.ClientSession().__aenter__()
         self.database = await self.database.__aenter__()

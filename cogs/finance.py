@@ -23,7 +23,7 @@ class FinanceCog(discordutils.CogBase):
         self.has_war_aid = discordutils.CogProperty[bool](self, 'has_war_aid')
         self.infra_rebuild_cap = discordutils.CogProperty[int](self, 'infra_rebuild_cap')
         self.process_channel = discordutils.ChannelProperty(self, 'process_channel')
-        self.send_channel = discordutils.ChannelProperty(self, 'send_channel')
+        self.withdrawal_channel = discordutils.ChannelProperty(self, 'withdraw_channel')
         self.loans = discordutils.MappingProperty[int, dict[str, Any]](self, 'loans')
 
     @property
@@ -34,10 +34,11 @@ class FinanceCog(discordutils.CogBase):
     @commands.command(guild_ids=config.guild_ids)
     @cmds.max_concurrency(1, cmds.BucketType.user)
     async def request(self, ctx: discord.ApplicationContext) -> None:
+        """Request for a grant, loan, or war aid (if enabled) from the bank."""
         await self.loans.initialise()
         # Command Run Validity Check
         # Check if output channel has been set
-        if await self.process_channel.get(None) is None or await self.send_channel.get(None) is None:
+        if await self.process_channel.get(None) is None or await self.withdrawal_channel.get(None) is None:
             await ctx.respond('Output channel has not been set! Aborting.')
             return
 
@@ -127,7 +128,7 @@ class FinanceCog(discordutils.CogBase):
                     'Other': 'other'
                 }
                 data['other'] = None
-                disabled = set()
+                disabled = options()
                 for label, field in project_field_names.items():
                     if data[field]:
                         disabled.add(label)
@@ -467,31 +468,33 @@ class FinanceCog(discordutils.CogBase):
             return
         await discordutils.default_error_handler(ctx, error)
 
-    set = commands.SlashCommandGroup('request_options', 'Set options for request!', guild_ids=config.guild_ids)
+    options = commands.SlashCommandGroup('request_options', 'Set options for request!', guild_ids=config.guild_ids)
 
-    @set.command(guild_ids=config.guild_ids, default_permission=False)
+    @options.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def process(self, ctx: discord.ApplicationContext) -> None:
-        await self.process_channel.set(ctx.channel)
-        await ctx.respond('Process channel set!')
+    async def channel(self, ctx: discord.ApplicationContext,
+                      kind: commands.Option(str, 'Channel type', name='type', choices=('process', 'withdraw'))
+                      ) -> None:
+        """Set this channel to either the process or the withdrawal channel"""
+        if kind == 'process':
+            await self.process_channel.set(ctx.channel)
+        else:
+            await self.withdrawal_channel.set(ctx.channel)
+        await ctx.respond(f'{kind.capitalize()} channel set!')
 
-    @set.command(guild_ids=config.guild_ids, default_permission=False)
-    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def send(self, ctx: discord.ApplicationContext):
-        await self.send_channel.set(ctx.channel)
-        await ctx.respond('Send channel set!')
-
-    @set.command(guild_ids=config.guild_ids, default_permission=False)
+    @options.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def war_aid(self, ctx: discord.ApplicationContext) -> None:
+        """Toggle the war aid option"""
         await self.has_war_aid.transform(operator.not_)
         await ctx.respond(f'War Aid is now {(not await self.has_war_aid.get()) * "not "}available!')
 
-    @set.command(guild_ids=config.guild_ids, default_permission=False)
+    @options.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def infra_rebuild_cap(self, ctx: discord.ApplicationContext,
                                 cap: commands.Option(int, 'What level to provide aid up to', min_value=0)) -> None:
-        await self.infra_rebuild_cap.set(50 * round(cap / 50))
+        """Set the infra rebuild cap for war aid"""
+        await self.infra_rebuild_cap.options(50 * round(cap / 50))
         await ctx.respond(f'The infrastructure rebuild cap has been set to {await self.infra_rebuild_cap.get()}.')
 
 
@@ -517,19 +520,19 @@ def setup(bot: dbbot.DBBot) -> None:
                     'You can check your loan status with `bank loan status`.'
                 )
                 bal = cog.bot.get_cog('BankCog').balances[req_data.nation_id]
-                await bal.set((pnwutils.Resources(**await bal.get()) + req_data.resources).to_dict())
+                await bal.options((pnwutils.Resources(**await bal.get()) + req_data.resources).to_dict())
 
                 await interaction.message.edit(embed=interaction.message.embeds[0].add_field(
                     name='Return By',
                     value=data.display_date,
                     inline=True))
-                await cog.loans[req_data.nation_id].set(data.to_dict())
+                await cog.loans[req_data.nation_id].options(data.to_dict())
             else:
                 await req_data.requester.send(
                     f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} '
                     'has been accepted! The resources will be sent to you soon. '
                 )
-                channel = await cog.send_channel.get()
+                channel = await cog.withdrawal_channel.get()
                 withdrawal_view = WithdrawalView('request_on_sent', req_data.create_link(), req_data)
                 msg = await channel.send(f'Withdrawal Request from {req_data.requester.mention}',
                                          embed=req_data.create_withdrawal_embed(),

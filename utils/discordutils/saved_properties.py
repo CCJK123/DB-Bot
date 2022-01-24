@@ -72,7 +72,7 @@ class BotProperty(SavedProperty[T]):
         return await self.bot.database.get(self.key)
 
     async def set_(self, value: T) -> None:
-        await self.bot.database.set(self.key, value)
+        await self.bot.database.options(self.key, value)
 
 
 V = TypeVar('V', bound=PersistentView)
@@ -118,7 +118,7 @@ class CogProperty(SavedProperty[T]):
         return await self.owner.bot.database.get(self.full_key)
 
     async def set_(self, value: T) -> None:
-        await self.owner.bot.database.set(self.full_key, value)
+        await self.owner.bot.database.options(self.full_key, value)
 
 
 class MappingPropertyItem(Generic[T, T1]):
