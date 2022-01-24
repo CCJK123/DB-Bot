@@ -286,7 +286,7 @@ class BankCog(discordutils.CogBase):
 
         values = await self.market_values.get()
         res_index = pnwutils.constants.market_res.index(res_name)
-        if await values[2][res_index] < amt:
+        if values[2][res_index] < amt:
             await ctx.respond('The stocks are too low to buy that much!')
             return
 
@@ -337,7 +337,7 @@ class BankCog(discordutils.CogBase):
         """Set the buying/selling price of a resource"""
         values = await self.market_values.get()
         values[b_s == 'Selling'][pnwutils.constants.market_res.index(res_name)] = price
-        await ctx.respond(f'The price of {res_name} has been set to {price} ppu.')
+        await ctx.respond(f'The {b_s.lower()} price of {res_name} has been set to {price} ppu.')
 
     @market.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
