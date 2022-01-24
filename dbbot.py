@@ -2,10 +2,9 @@ import os
 import random
 import aiohttp
 from replit.database import AsyncDatabase
-from typing import Callable, Mapping
+from typing import Callable
 
 import discord
-from discord import commands
 from discord.ext import tasks, commands as cmds
 
 from utils import discordutils
@@ -65,6 +64,7 @@ class DBBot(discord.Bot):
         # add views
         for view in await self.views.get_views():
             await self.add_view(view)
+            print(f'Adding a {type(view)} from storage!')
 
         self.on_ready_func()
 
@@ -86,6 +86,7 @@ class DBBot(discord.Bot):
 
 # the new bot doesnt seem to have a help command, the help command has not been ported over to slash yet i believe
 # we will see if this class gets use in the future
+"""
 class DBHelpCommand(cmds.HelpCommand):
     d_desc = 'No description found'
 
@@ -129,3 +130,4 @@ class DBHelpCommand(cmds.HelpCommand):
             title=self.get_command_signature(command),
             description=command.description or command.short_doc
         ))
+"""

@@ -1,7 +1,7 @@
 import abc
 import operator
 import pickle
-from typing import Callable, Generic, TypeVar, TYPE_CHECKING
+from typing import Any, Callable, Generic, TypeVar, TYPE_CHECKING
 
 import discord
 

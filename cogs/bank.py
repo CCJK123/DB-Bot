@@ -16,8 +16,7 @@ class BankCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
         self.balances = discordutils.MappingProperty[str, pnwutils.ResourceDict](self, 'balances')
-        self.prices = discordutils.MappingProperty[str, int](self, 'prices')
-        self.stocks = discordutils.MappingProperty[str, int](self, 'stocks')
+        self.market_values = discordutils.CogProperty[list[list[int]]](self, 'market.values')
         self.market_open = discordutils.CogProperty[bool](self, 'market.open')
 
     @property
@@ -260,13 +259,18 @@ class BankCog(discordutils.CogBase):
     @market.command(name='prices', guild_ids=config.guild_ids, hidden=True)
     async def _prices(self, ctx: discord.ApplicationContext):
         """List out the prices of resources"""
-        await ctx.respond(embed=discordutils.construct_embed(await self.prices.get(), title='Bank Trading Prices'))
+        await self.market_values.initialise()
+        await ctx.respond(embeds=(
+            discordutils.construct_embed(await self.market_values.get()[0], pnwutils.constants.all_res,
+                                         title='Bank Trading Prices'),
+            discordutils.construct_embed(await self.market_values.get()[1], pnwutils.constants.all_res)
+        ))
 
     @market.command(name='stocks', guild_ids=config.guild_ids)
     async def _stocks(self, ctx: discord.ApplicationContext):
         """List out the stocks of resources"""
-        await self.stocks.initialise()
-        await ctx.respond(embed=discordutils.construct_embed(await self.stocks.get(), title='Bank Stocks'))
+        await ctx.respond(embed=discordutils.construct_embed(await self.market_values.get()[2],
+                                                             pnwutils.constants.all_res, title='Bank Stocks'))
 
     @market.command(guild_ids=config.guild_ids)
     async def buy(self, ctx: discord.ApplicationContext,
@@ -277,20 +281,23 @@ class BankCog(discordutils.CogBase):
             await ctx.respond('The market is currently closed!')
             return
 
-        if await self.stocks[res_name.capitalize()].get() < amt:
+        values = await self.market_values.get()
+        res_index = pnwutils.constants.all_res.index(res_name)
+        if await values[2][res_index] < amt:
             await ctx.respond('The stocks are too low to buy that much!')
             return
 
-        p = await self.prices[res_name.capitalize()].get()
         bal = self.balances[await self.nations[ctx.author.id].get()]
         res = pnwutils.Resources(**await bal.get())
-        res.money -= amt * p
+        res.money -= amt * values[0][res_index]
         if res.money < 0:
             await ctx.respond('You do not have enough money deposited to do that!')
             return
-        res[res_name.lower()] += amt
+        res[res_name] += amt
         await bal.set(res.to_dict())
-        await self.stocks[res_name.capitalize()].transform(lambda s: s - amt)
+        values = await self.market_values.get()
+        values[2][res_index] -= amt
+        await self.market_values.set(values)
         await ctx.respond('Transaction complete!', embed=res.create_balance_embed(ctx.author.name))
         return
 
@@ -302,44 +309,42 @@ class BankCog(discordutils.CogBase):
         if not await self.market_open.get():
             await ctx.respond('The market is currently closed!')
             return
-
-        prices = await self.prices.get()
-        p = prices.get(res_name.capitalize())
+        values = await self.market_values.get()
+        res_index = pnwutils.constants.all_res.index(res_name)
         bal = self.balances[await self.nations[ctx.author.id].get()]
         res = pnwutils.Resources(**await bal.get())
         res[res_name.lower()] -= amt
         if res[res_name.lower()] < 0:
             await ctx.respond('You do not have enough money deposited to do that!')
             return
-        res.money += amt * p
+        res.money += amt * values[1][res_index]
         await bal.set(res.to_dict())
-        await self.stocks[res_name.capitalize()].transform(lambda s: s + amt)
+        values = await self.market_values.get()
+        values[2][res_index] += amt
+        await self.market_values.set(values)
         await ctx.respond('Transaction complete!', embed=res.create_balance_embed(ctx.author.name))
         return
 
     @market.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def set_price(self, ctx: discord.ApplicationContext,
-                        res: commands.Option(str, 'Choose resource to set price', choices=pnwutils.constants.all_res),
+                        b_s: commands.Option(str, 'Buying or Selling price?', choices=('buying', 'selling')),
+                        res_name: commands.Option(str, 'Resource to set price', choices=pnwutils.constants.all_res),
                         price: commands.Option(int, 'Resource price', min_value=0)):
         """Set the buying/selling price of a resource"""
-        if (await self.prices.get(None)) is None:
-            await self.prices.set({})
-
-        await self.prices[res.capitalize()].set(price)
-        await ctx.respond(f'The price of {res} has been set to {price} ppu.')
+        values = await self.market_values.get()
+        values[b_s == 'Selling'][pnwutils.constants.all_res.index(res_name)] = price
+        await ctx.respond(f'The price of {res_name} has been set to {price} ppu.')
 
     @market.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def set_stock(self, ctx: discord.ApplicationContext,
-                        res: commands.Option(str, 'Choose resource to set price', choices=pnwutils.constants.all_res),
+                        res_name: commands.Option(str, 'resource to set stock', choices=pnwutils.constants.all_res),
                         stock: commands.Option(int, 'Resource stock', min_value=0)):
         """Set the stocks of a resource"""
-        if (await self.stocks.get(None)) is None:
-            await self.stocks.set({})
-
-        await self.stocks[res.capitalize()].set(stock)
-        await ctx.respond(f'The stock of {res} has been set to {stock} tons.')
+        values = await self.market_values.get()
+        values[2][pnwutils.constants.all_res.index(res_name)] = stock
+        await ctx.respond(f'The stock of {res_name} has been set to {stock} tons.')
 
     @market.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
