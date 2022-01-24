@@ -260,24 +260,24 @@ class BankCog(discordutils.CogBase):
     async def _prices(self, ctx: discord.ApplicationContext):
         """List out the prices of resources"""
         if await self.market_values.get(None) is None:
-            await self.market_values.set([[0] * len(pnwutils.constants.all_res)] * 3)
+            await self.market_values.set([[0] * len(pnwutils.constants.market_res)] * 3)
         values = await self.market_values.get()
         await ctx.respond(embeds=(
-            discordutils.construct_embed(pnwutils.constants.all_res, values[0],
+            discordutils.construct_embed(pnwutils.constants.market_res, values[0],
                                          title='Bank Trading Prices'),
-            discordutils.construct_embed(pnwutils.constants.all_res, values[1])
+            discordutils.construct_embed(pnwutils.constants.market_res, values[1])
         ))
 
     @market.command(name='stocks', guild_ids=config.guild_ids)
     async def _stocks(self, ctx: discord.ApplicationContext):
         """List out the stocks of resources"""
-        await ctx.respond(embed=discordutils.construct_embed(pnwutils.constants.all_res,
+        await ctx.respond(embed=discordutils.construct_embed(pnwutils.constants.market_res,
                                                              (await self.market_values.get())[2],
                                                              title='Bank Stocks'))
 
     @market.command(guild_ids=config.guild_ids)
     async def buy(self, ctx: discord.ApplicationContext,
-                  res_name: commands.Option(str, 'Choose resource to buy', choices=pnwutils.constants.all_res),
+                  res_name: commands.Option(str, 'Choose resource to buy', choices=pnwutils.constants.market_res),
                   amt: commands.Option(int, 'How much to buy', min_value=0)):
         """Purchase some amount of a resource for money"""
         if not await self.market_open.get():
@@ -285,7 +285,7 @@ class BankCog(discordutils.CogBase):
             return
 
         values = await self.market_values.get()
-        res_index = pnwutils.constants.all_res.index(res_name)
+        res_index = pnwutils.constants.market_res.index(res_name)
         if await values[2][res_index] < amt:
             await ctx.respond('The stocks are too low to buy that much!')
             return
@@ -306,14 +306,14 @@ class BankCog(discordutils.CogBase):
 
     @market.command(guild_ids=config.guild_ids)
     async def sell(self, ctx: discord.ApplicationContext,
-                   res_name: commands.Option(str, 'Choose resource to sell', choices=pnwutils.constants.all_res),
+                   res_name: commands.Option(str, 'Choose resource to sell', choices=pnwutils.constants.market_res),
                    amt: commands.Option(int, 'How much to sell', min_value=0)):
         """Sell some amount of a resource to the bank for money"""
         if not await self.market_open.get():
             await ctx.respond('The market is currently closed!')
             return
         values = await self.market_values.get()
-        res_index = pnwutils.constants.all_res.index(res_name)
+        res_index = pnwutils.constants.market_res.index(res_name)
         bal = self.balances[await self.nations[ctx.author.id].get()]
         res = pnwutils.Resources(**await bal.get())
         res[res_name.lower()] -= amt
@@ -332,21 +332,21 @@ class BankCog(discordutils.CogBase):
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def set_price(self, ctx: discord.ApplicationContext,
                         b_s: commands.Option(str, 'Buying or Selling price?', choices=('buying', 'selling')),
-                        res_name: commands.Option(str, 'Resource to set price', choices=pnwutils.constants.all_res),
+                        res_name: commands.Option(str, 'Resource to set price', choices=pnwutils.constants.market_res),
                         price: commands.Option(int, 'Resource price', min_value=0)):
         """Set the buying/selling price of a resource"""
         values = await self.market_values.get()
-        values[b_s == 'Selling'][pnwutils.constants.all_res.index(res_name)] = price
+        values[b_s == 'Selling'][pnwutils.constants.market_res.index(res_name)] = price
         await ctx.respond(f'The price of {res_name} has been set to {price} ppu.')
 
     @market.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def set_stock(self, ctx: discord.ApplicationContext,
-                        res_name: commands.Option(str, 'resource to set stock', choices=pnwutils.constants.all_res),
+                        res_name: commands.Option(str, 'resource to set stock', choices=pnwutils.constants.market_res),
                         stock: commands.Option(int, 'Resource stock', min_value=0)):
         """Set the stocks of a resource"""
         values = await self.market_values.get()
-        values[2][pnwutils.constants.all_res.index(res_name)] = stock
+        values[2][pnwutils.constants.market_res.index(res_name)] = stock
         await ctx.respond(f'The stock of {res_name} has been set to {stock} tons.')
 
     @market.command(guild_ids=config.guild_ids, default_permission=False)
