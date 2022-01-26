@@ -128,7 +128,7 @@ class FinanceCog(discordutils.CogBase):
                     'Other': 'other'
                 }
                 data['other'] = None
-                disabled = options()
+                disabled = set()
                 for label, field in project_field_names.items():
                     if data[field]:
                         disabled.add(label)
