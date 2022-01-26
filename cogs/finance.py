@@ -192,6 +192,7 @@ class FinanceCog(discordutils.CogBase):
                         'Other projects are not eligible for grants. Kindly request for a loan.'
                     )
                     return None
+                req_data.reason = project
                 req_data.note = f'{project} Project Grant'
                 await self.on_request_fixed(req_data)
                 return None
