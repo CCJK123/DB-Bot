@@ -197,7 +197,7 @@ class ResourceSelectView(discord.ui.View):
         
         if res:
             res = set(res)
-            assert res <= pnwutils.constants.all_res
+            assert res <= set(pnwutils.constants.all_res)
         else:
             res = pnwutils.constants.all_res
         self._fut = asyncio.get_event_loop().create_future()

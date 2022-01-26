@@ -1,6 +1,5 @@
 import aiohttp
 import enum
-import operator
 from typing import Any
 
 import discord

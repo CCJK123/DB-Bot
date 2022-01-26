@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import operator
 import datetime
 from typing import Any
 
@@ -491,7 +490,7 @@ def setup(bot: dbbot.DBBot) -> None:
                     f'<t:{int(data.due_date.timestamp())}:R>. '
                     'You can check your loan status with `bank loan status`.'
                 )
-                bal = cog.bot.get_cog('BankCog').balances[req_data.nation_id]
+                bal = bot.get_cog('BankCog').balances[req_data.nation_id]
                 await bal.request_options((pnwutils.Resources(**await bal.get()) + req_data.resources).to_dict())
 
                 await interaction.message.edit(embed=interaction.message.embeds[0].add_field(
@@ -510,7 +509,7 @@ def setup(bot: dbbot.DBBot) -> None:
                                          embed=req_data.create_withdrawal_embed(),
                                          view=withdrawal_view,
                                          allowed_mentions=discord.AllowedMentions.none())
-                await cog.bot.add_view(withdrawal_view, message_id=msg.id)
+                await bot.add_view(withdrawal_view, message_id=msg.id)
 
         else:
             await interaction.user.send(
