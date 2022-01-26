@@ -469,35 +469,6 @@ class FinanceCog(discordutils.CogBase):
             return
         await discordutils.default_error_handler(ctx, error)
 
-    options = commands.SlashCommandGroup('request_options', 'Set options for request!', guild_ids=config.guild_ids)
-
-    @options.command(guild_ids=config.guild_ids, default_permission=False)
-    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def channel(self, ctx: discord.ApplicationContext,
-                      kind: commands.Option(str, 'Channel type', name='type', choices=('process', 'withdraw'))
-                      ) -> None:
-        """Set this channel to either the process or the withdrawal channel"""
-        if kind == 'process':
-            await self.process_channel.set(ctx.channel)
-        else:
-            await self.withdrawal_channel.set(ctx.channel)
-        await ctx.respond(f'{kind.capitalize()} channel set!')
-
-    @options.command(guild_ids=config.guild_ids, default_permission=False)
-    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def war_aid(self, ctx: discord.ApplicationContext) -> None:
-        """Toggle the war aid option"""
-        await self.has_war_aid.transform(operator.not_)
-        await ctx.respond(f'War Aid is now {(not await self.has_war_aid.get()) * "not "}available!')
-
-    @options.command(guild_ids=config.guild_ids, default_permission=False)
-    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def infra_rebuild_cap(self, ctx: discord.ApplicationContext,
-                                cap: commands.Option(int, 'What level to provide aid up to', min_value=0)) -> None:
-        """Set the infra rebuild cap for war aid"""
-        await self.infra_rebuild_cap.options(50 * round(cap / 50))
-        await ctx.respond(f'The infrastructure rebuild cap has been set to {await self.infra_rebuild_cap.get()}.')
-
 
 # Setup Finance Cog as an extension
 def setup(bot: dbbot.DBBot) -> None:
@@ -521,13 +492,13 @@ def setup(bot: dbbot.DBBot) -> None:
                     'You can check your loan status with `bank loan status`.'
                 )
                 bal = cog.bot.get_cog('BankCog').balances[req_data.nation_id]
-                await bal.options((pnwutils.Resources(**await bal.get()) + req_data.resources).to_dict())
+                await bal.request_options((pnwutils.Resources(**await bal.get()) + req_data.resources).to_dict())
 
                 await interaction.message.edit(embed=interaction.message.embeds[0].add_field(
                     name='Return By',
                     value=data.display_date,
                     inline=True))
-                await cog.loans[req_data.nation_id].options(data.to_dict())
+                await cog.loans[req_data.nation_id].request_options(data.to_dict())
             else:
                 await req_data.requester.send(
                     f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} '

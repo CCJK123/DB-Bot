@@ -31,7 +31,7 @@ class WarDetectorCog(discordutils.CogBase):
 
     async def on_ready(self):
         if await self.running.get(None) is None:
-            await self.running.options(False)
+            await self.running.request_options(False)
 
         if await self.running.get():
             self.detect_wars.start()
@@ -115,32 +115,6 @@ class WarDetectorCog(discordutils.CogBase):
             return
         self.detect_wars.start()
         await ctx.respond('War detector started!')
-
-    @war_detector.command(guild_ids=config.guild_ids, default_permission=False)
-    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def losing(self, ctx: discord.ApplicationContext) -> None:
-        """Toggles whether or not to check for losing wars"""
-        await ctx.send(f'Losing wars will now {"not " * await self.check_losing.get()}be checked!')
-        await self.check_losing.transform(operator.not_)
-
-    @war_detector.command(guild_ids=config.guild_ids, default_permission=False)
-    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def channel(self, ctx: discord.ApplicationContext,
-                      kind: commands.Option(str, 'Channel type', name='type',
-                                            choices=('attack', 'defend', 'lose'))
-                      ) -> None:
-        """Sets the attack, defend and lose channels"""
-        if kind == 'attack':
-            channel = self.att_channel
-            kind_text = 'Offensive'
-        elif kind == 'defend':
-            channel = self.def_channel
-            kind_text = 'Defensive'
-        else:
-            channel = self.lose_channel
-            kind_text = 'Losing'
-        await channel.set(ctx.channel)
-        await ctx.respond(f'{kind_text} wars channel set!')
 
 
 # Setup War Detector Cog as an extension

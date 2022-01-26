@@ -51,7 +51,7 @@ class ApplicationCog(discordutils.CogBase):
             except ValueError:
                 await ctx.respond('Error in getting nation id!')
                 return
-            await util_cog.nations[str(member.id)].options(nation_id)
+            await util_cog.nations[str(member.id)].request_options(nation_id)
             data = await pnwutils.api.post_query(self.bot.session, queries.acceptance_query,
                                                  {'nation_id': nation_id}, 'nations')
             data = data['data']

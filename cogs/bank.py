@@ -62,7 +62,7 @@ class BankCog(discordutils.CogBase):
         resources = await self.balances[nation_id].get(None)
         if resources is None:
             resources = pnwutils.Resources()
-            await self.balances[nation_id].options({})
+            await self.balances[nation_id].request_options({})
         else:
             resources = pnwutils.Resources(**resources)
 
@@ -90,7 +90,7 @@ class BankCog(discordutils.CogBase):
         resources = await self.balances[nation_id].get(None)
         if resources is None:
             resources = pnwutils.Resources()
-            await self.balances[nation_id].options({})
+            await self.balances[nation_id].request_options({})
         else:
             resources = pnwutils.Resources(**resources)
 
@@ -132,7 +132,7 @@ class BankCog(discordutils.CogBase):
         resources = await self.balances[nation_id].get(None)
         if resources is None:
             resources = pnwutils.Resources()
-            await self.balances[nation_id].options({})
+            await self.balances[nation_id].request_options({})
         else:
             resources = pnwutils.Resources(**resources)
 
@@ -141,7 +141,7 @@ class BankCog(discordutils.CogBase):
         if dep_transactions:
             for transaction in dep_transactions:
                 resources += transaction.resources
-            await self.balances[nation_id].options(resources.to_dict())
+            await self.balances[nation_id].request_options(resources.to_dict())
             await author.send('Your balance is now:', embed=resources.create_balance_embed(author.name))
             return
         await author.send('You did not deposit any resources! Aborting!')
@@ -169,7 +169,7 @@ class BankCog(discordutils.CogBase):
         resources = await self.balances[nation_id].get(None)
 
         if resources is None:
-            await self.balances[nation_id].options({})
+            await self.balances[nation_id].request_options({})
             await author.send('You do not have anything to withdraw! Aborting...')
             return
 
@@ -239,7 +239,7 @@ class BankCog(discordutils.CogBase):
         await self.bot.add_view(view, message_id=msg.id)
 
         res = resources - req_resources
-        await self.balances[nation_id].options(res.to_dict())
+        await self.balances[nation_id].request_options(res.to_dict())
         await author.send('Your withdrawal request has been sent. '
                           'It will be sent to your nation shortly.')
 
@@ -260,7 +260,7 @@ class BankCog(discordutils.CogBase):
     async def _prices(self, ctx: discord.ApplicationContext):
         """List out the prices of resources in the market"""
         if await self.market_values.get(None) is None:
-            await self.market_values.options([[0] * len(pnwutils.constants.market_res)] * 3)
+            await self.market_values.request_options([[0] * len(pnwutils.constants.market_res)] * 3)
         values = await self.market_values.get()
         await ctx.respond(embeds=(
             discordutils.construct_embed(pnwutils.constants.market_res, values[0], description='Buying Prices',
@@ -297,10 +297,10 @@ class BankCog(discordutils.CogBase):
             await ctx.respond('You do not have enough money deposited to do that!')
             return
         res[res_name] += amt
-        await bal.options(res.to_dict())
+        await bal.request_options(res.to_dict())
         values = await self.market_values.get()
         values[2][res_index] -= amt
-        await self.market_values.options(values)
+        await self.market_values.request_options(values)
         await ctx.respond('Transaction complete!', embed=res.create_balance_embed(ctx.author.name))
         return
 
@@ -321,43 +321,12 @@ class BankCog(discordutils.CogBase):
             await ctx.respond('You do not have enough money deposited to do that!')
             return
         res.money += amt * values[1][res_index]
-        await bal.options(res.to_dict())
+        await bal.request_options(res.to_dict())
         values = await self.market_values.get()
         values[2][res_index] += amt
-        await self.market_values.options(values)
+        await self.market_values.request_options(values)
         await ctx.respond('Transaction complete!', embed=res.create_balance_embed(ctx.author.name))
         return
-
-    @market.command(guild_ids=config.guild_ids, default_permission=False)
-    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def set_price(self, ctx: discord.ApplicationContext,
-                        b_s: commands.Option(str, 'Buying or Selling price?', choices=('buying', 'selling')),
-                        res_name: commands.Option(str, 'Resource to set price', choices=pnwutils.constants.market_res),
-                        price: commands.Option(int, 'Resource price', min_value=0)):
-        """Set the buying/selling price of a resource"""
-        values = await self.market_values.get()
-        values[b_s == 'selling'][pnwutils.constants.market_res.index(res_name)] = price
-        await self.market_values.options(values)
-        await ctx.respond(f'The {b_s} price of {res_name} has been set to {price} ppu.')
-
-    @market.command(guild_ids=config.guild_ids, default_permission=False)
-    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def set_stock(self, ctx: discord.ApplicationContext,
-                        res_name: commands.Option(str, 'resource to set stock', choices=pnwutils.constants.market_res),
-                        stock: commands.Option(int, 'Resource stock', min_value=0)):
-        """Set the stocks of a resource"""
-        values = await self.market_values.get()
-        values[2][pnwutils.constants.market_res.index(res_name)] = stock
-        await self.market_values.options(values)
-        await ctx.respond(f'The stock of {res_name} has been set to {stock} tons.')
-
-    @market.command(guild_ids=config.guild_ids, default_permission=False)
-    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def open(self, ctx: discord.ApplicationContext):
-        """Open or close the market"""
-        await self.market_open.transform(operator.not_)
-        s = 'open' if await self.market_open.get() else 'closed'
-        await ctx.respond(f'The market is now {s}!')
 
     loan = bank.create_subgroup('loan', 'Commands related to loans')
     loan.guild_ids = config.guild_ids
@@ -375,7 +344,7 @@ class BankCog(discordutils.CogBase):
         res = pnwutils.Resources(**await bal.get())
         res -= loan.resources
         if res.all_positive():
-            await bal.options(res.to_dict())
+            await bal.request_options(res.to_dict())
             await self.loans[nation_id].delete()
             await ctx.respond('Your loan has been successfully repaid!')
             return
@@ -417,7 +386,7 @@ class BankCog(discordutils.CogBase):
         resources = await self.balances[nation_id].get(None)
         if resources is None:
             resources = pnwutils.Resources()
-            await self.balances[nation_id].options({})
+            await self.balances[nation_id].request_options({})
         else:
             resources = pnwutils.Resources(**resources)
 
@@ -439,7 +408,7 @@ class BankCog(discordutils.CogBase):
                 break
             resources[res] += amt
 
-        await self.balances[nation_id].options(resources.to_dict())
+        await self.balances[nation_id].request_options(resources.to_dict())
         await author.send(f'The balance of {member.mention} has been modified!',
                           embed=resources.create_balance_embed(member.name),
                           allowed_mentions=discord.AllowedMentions.none())
@@ -463,7 +432,7 @@ class BankCog(discordutils.CogBase):
         resources = await self.balances[nation_id].get(None)
         if resources is None:
             resources = pnwutils.Resources()
-            await self.balances[nation_id].options({})
+            await self.balances[nation_id].request_options({})
         else:
             resources = pnwutils.Resources(**resources)
 
@@ -484,7 +453,7 @@ class BankCog(discordutils.CogBase):
                 break
             resources[res] = amt
 
-        await self.balances[nation_id].options(resources.to_dict())
+        await self.balances[nation_id].request_options(resources.to_dict())
         await author.send(f'The balance of {member.mention} has been modified!',
                           embed=resources.create_balance_embed(member.name),
                           allowed_mentions=discord.AllowedMentions.none())

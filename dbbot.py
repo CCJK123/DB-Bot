@@ -7,7 +7,7 @@ from typing import Callable
 import discord
 from discord.ext import tasks, commands as cmds
 
-from utils import discordutils
+from utils import discordutils, config
 
 
 # pycharm complains about sync_commands not being written,
@@ -27,7 +27,7 @@ class DBBot(discord.Bot):
 
     async def prep(self):
         if await self.views.get(None) is None:
-            await self.views.options({})
+            await self.views.request_options({})
         
         self.session = await aiohttp.ClientSession().__aenter__()
         self.database = await self.database.__aenter__()
