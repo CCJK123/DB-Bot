@@ -11,7 +11,9 @@ class OptionsCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
 
-    options = commands.SlashCommandGroup('options', "Edit the bot's options", guild_ids=config.guild_ids)
+    options = commands.SlashCommandGroup('options', "Edit the bot's options", guild_ids=config.guild_ids,
+                                         default_permission=False, permissions=[commands.permissions.CommandPermission(
+                                             config.gov_role_id, type=2, permission=True)])
 
     request_options = options.create_subgroup('request', 'Set options for request!')
     request_options.guild_ids = config.guild_ids
