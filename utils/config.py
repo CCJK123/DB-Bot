@@ -1,9 +1,12 @@
 import os
 
+from discord.commands.permissions import CommandPermission
+
 token: str = os.environ['bot_token']
 timeout: float = 300
 gov_role_id: int = 595155137274839040
 staff_role_id: int = 383815082473291778
+gov_role_permission = CommandPermission(gov_role_id, type=2, permission=True)
 on_accepted_added_roles: tuple[int, ...] = (540341927191642131, 322071813469241344, 362266182663012393)
 guild_id: int = 321984630720954379
 guild_ids: list[int] = [guild_id]
