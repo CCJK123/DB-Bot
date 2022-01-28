@@ -61,7 +61,7 @@ class BankCog(discordutils.CogBase):
         resources = await self.balances[nation_id].get(None)
         if resources is None:
             resources = pnwutils.Resources()
-            await self.balances[nation_id].request_options({})
+            await self.balances[nation_id].set({})
         else:
             resources = pnwutils.Resources(**resources)
 
@@ -74,31 +74,6 @@ class BankCog(discordutils.CogBase):
             await ctx.respond(
                 f'You have a loan due in <t:{int(datetime.datetime.fromisoformat(loan["due_date"]).timestamp())}:R>',
                 embed=pnwutils.Resources(**loan['resources']).create_embed(title='Loaned Resources'))
-
-    @commands.user_command(name='check balance', guild_ids=config.guild_ids, default_permission=False)
-    @commands.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def bal_check(self, ctx: discord.ApplicationContext, member: discord.Member):
-        """Check the bank balance of this member"""
-        nation_id = await self.nations[member.id].get(None)
-        if nation_id is None:
-            await ctx.respond(f'{member.mention} nation id has not been set!',
-                              allowed_mentions=discord.AllowedMentions.none(),
-                              ephemeral=True)
-            return
-
-        resources = await self.balances[nation_id].get(None)
-        if resources is None:
-            resources = pnwutils.Resources()
-            await self.balances[nation_id].request_options({})
-        else:
-            resources = pnwutils.Resources(**resources)
-
-        await ctx.respond(
-            f"{member.mention}'s Balance",
-            embed=resources.create_balance_embed(member.name),
-            allowed_mentions=discord.AllowedMentions.none(),
-            ephemeral=True
-        )
 
     @bank.command(guild_ids=config.guild_ids)
     @cmds.max_concurrency(1, cmds.BucketType.user)
@@ -131,7 +106,7 @@ class BankCog(discordutils.CogBase):
         resources = await self.balances[nation_id].get(None)
         if resources is None:
             resources = pnwutils.Resources()
-            await self.balances[nation_id].request_options({})
+            await self.balances[nation_id].set({})
         else:
             resources = pnwutils.Resources(**resources)
 
@@ -140,7 +115,7 @@ class BankCog(discordutils.CogBase):
         if dep_transactions:
             for transaction in dep_transactions:
                 resources += transaction.resources
-            await self.balances[nation_id].request_options(resources.to_dict())
+            await self.balances[nation_id].set(resources.to_dict())
             await author.send('Your balance is now:', embed=resources.create_balance_embed(author.name))
             return
         await author.send('You did not deposit any resources! Aborting!')
@@ -168,7 +143,7 @@ class BankCog(discordutils.CogBase):
         resources = await self.balances[nation_id].get(None)
 
         if resources is None:
-            await self.balances[nation_id].request_options({})
+            await self.balances[nation_id].set({})
             await author.send('You do not have anything to withdraw! Aborting...')
             return
 
@@ -238,7 +213,7 @@ class BankCog(discordutils.CogBase):
         await self.bot.add_view(view, message_id=msg.id)
 
         res = resources - req_resources
-        await self.balances[nation_id].request_options(res.to_dict())
+        await self.balances[nation_id].set(res.to_dict())
         await author.send('Your withdrawal request has been sent. '
                           'It will be sent to your nation shortly.')
 
@@ -259,7 +234,7 @@ class BankCog(discordutils.CogBase):
     async def _prices(self, ctx: discord.ApplicationContext):
         """List out the prices of resources in the market"""
         if await self.market_values.get(None) is None:
-            await self.market_values.request_options([[0] * len(pnwutils.constants.market_res)] * 3)
+            await self.market_values.set([[0] * len(pnwutils.constants.market_res)] * 3)
         values = await self.market_values.get()
         await ctx.respond(embeds=(
             discordutils.construct_embed(pnwutils.constants.market_res, values[0], description='Buying Prices',
@@ -296,10 +271,10 @@ class BankCog(discordutils.CogBase):
             await ctx.respond('You do not have enough money deposited to do that!')
             return
         res[res_name] += amt
-        await bal.request_options(res.to_dict())
+        await bal.set(res.to_dict())
         values = await self.market_values.get()
         values[2][res_index] -= amt
-        await self.market_values.request_options(values)
+        await self.market_values.set(values)
         await ctx.respond('Transaction complete!', embed=res.create_balance_embed(ctx.author.name))
         return
 
@@ -320,10 +295,10 @@ class BankCog(discordutils.CogBase):
             await ctx.respond('You do not have enough money deposited to do that!')
             return
         res.money += amt * values[1][res_index]
-        await bal.request_options(res.to_dict())
+        await bal.set(res.to_dict())
         values = await self.market_values.get()
         values[2][res_index] += amt
-        await self.market_values.request_options(values)
+        await self.market_values.set(values)
         await ctx.respond('Transaction complete!', embed=res.create_balance_embed(ctx.author.name))
         return
 
@@ -343,7 +318,7 @@ class BankCog(discordutils.CogBase):
         res = pnwutils.Resources(**await bal.get())
         res -= loan.resources
         if res.all_positive():
-            await bal.request_options(res.to_dict())
+            await bal.set(res.to_dict())
             await self.loans[nation_id].delete()
             await ctx.respond('Your loan has been successfully repaid!')
             return
@@ -357,15 +332,6 @@ class BankCog(discordutils.CogBase):
             await ctx.respond("You don't have an active loan!")
             return
         await ctx.respond(embed=financeutils.LoanData(**loan).to_embed())
-
-    @loan.command(name='list', guild_ids=config.guild_ids, default_permission=False)
-    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def loan_list(self, ctx: discord.ApplicationContext):
-        """List all the loans that are currently active"""
-        loans = await self.loans.get()
-        await ctx.respond('\n'.join(
-            f'Loan of [{pnwutils.Resources(**loan["resources"])}] due on {loan["due_date"]}'
-            for n, loan in loans.items()) or 'There are no active loans!')
 
     @commands.user_command(name='bank adjust', guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
@@ -385,7 +351,7 @@ class BankCog(discordutils.CogBase):
         resources = await self.balances[nation_id].get(None)
         if resources is None:
             resources = pnwutils.Resources()
-            await self.balances[nation_id].request_options({})
+            await self.balances[nation_id].set({})
         else:
             resources = pnwutils.Resources(**resources)
 
@@ -407,7 +373,7 @@ class BankCog(discordutils.CogBase):
                 break
             resources[res] += amt
 
-        await self.balances[nation_id].request_options(resources.to_dict())
+        await self.balances[nation_id].set(resources.to_dict())
         await author.send(f'The balance of {member.mention} has been modified!',
                           embed=resources.create_balance_embed(member.name),
                           allowed_mentions=discord.AllowedMentions.none())
@@ -431,7 +397,7 @@ class BankCog(discordutils.CogBase):
         resources = await self.balances[nation_id].get(None)
         if resources is None:
             resources = pnwutils.Resources()
-            await self.balances[nation_id].request_options({})
+            await self.balances[nation_id].set({})
         else:
             resources = pnwutils.Resources(**resources)
 
@@ -452,12 +418,46 @@ class BankCog(discordutils.CogBase):
                 break
             resources[res] = amt
 
-        await self.balances[nation_id].request_options(resources.to_dict())
+        await self.balances[nation_id].set(resources.to_dict())
         await author.send(f'The balance of {member.mention} has been modified!',
                           embed=resources.create_balance_embed(member.name),
                           allowed_mentions=discord.AllowedMentions.none())
 
-    @bank.command(name='contents', guild_ids=config.guild_ids, default_permission=False)
+    @commands.user_command(name='check balance', guild_ids=config.guild_ids, default_permission=False)
+    @commands.has_role(config.gov_role_id, guild_id=config.guild_id)
+    async def bal_check(self, ctx: discord.ApplicationContext, member: discord.Member):
+        """Check the bank balance of this member"""
+        nation_id = await self.nations[member.id].get(None)
+        if nation_id is None:
+            await ctx.respond(f'{member.mention} nation id has not been set!',
+                              allowed_mentions=discord.AllowedMentions.none(),
+                              ephemeral=True)
+            return
+
+        resources = await self.balances[nation_id].get(None)
+        if resources is None:
+            resources = pnwutils.Resources()
+            await self.balances[nation_id].set({})
+        else:
+            resources = pnwutils.Resources(**resources)
+
+        await ctx.respond(
+            f"{member.mention}'s Balance",
+            embed=resources.create_balance_embed(member.name),
+            allowed_mentions=discord.AllowedMentions.none(),
+            ephemeral=True
+        )
+
+    @commands.command(guild_ids=config.guild_ids, default_permission=False)
+    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
+    async def loan_list(self, ctx: discord.ApplicationContext):
+        """List all the loans that are currently active"""
+        loans = await self.loans.get()
+        await ctx.respond('\n'.join(
+            f'Loan of [{pnwutils.Resources(**loan["resources"])}] due on {loan["due_date"]}'
+            for n, loan in loans.items()) or 'There are no active loans!')
+
+    @commands.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def bank_contents(self, ctx: discord.ApplicationContext):
         """Check the current contents of the bank"""
@@ -467,6 +467,14 @@ class BankCog(discordutils.CogBase):
         )
         resources = pnwutils.Resources(**data['data'].pop())
         await ctx.respond(embed=resources.create_embed(title=f'{config.alliance_name} Bank'), ephemeral=True)
+
+    @commands.command(guild_ids=config.guild_ids, default_permission=False)
+    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
+    async def balances_total(self, ctx: discord.ApplicationContext):
+        """Find the total value of all balances"""
+        balances = await self.balances.get()
+        total = sum(pnwutils.Resources(**bal) for bal in balances) or pnwutils.Resources()
+        await ctx.respond(embed=total.create_embed(title=f'Total Balances Value'), ephemeral=True)
 
 
 def setup(bot: dbbot.DBBot):
