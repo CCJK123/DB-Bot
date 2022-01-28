@@ -16,7 +16,7 @@ class UtilCog(discordutils.CogBase):
         self.nations: discordutils.MappingProperty[int, str] = discordutils.MappingProperty[int, str](self, 'nations')
 
     register = commands.SlashCommandGroup('register', 'Commands related to the user to nation registry the bot keeps!',
-                                          guild_ids=config.guild_ids, default_permission=False)
+                                          guild_ids=config.guild_ids)
 
     @register.command(guild_ids=config.guild_ids)
     async def nation(self, ctx: discord.ApplicationContext,
@@ -74,8 +74,7 @@ class UtilCog(discordutils.CogBase):
         else:
             await ctx.respond('Aborting!')
 
-    @register.command(name='list', guild_ids=config.guild_ids, default_permission=False)
-    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
+    @register.command(name='list', guild_ids=config.guild_ids)
     async def register_list(self, ctx: discord.ApplicationContext):
         """List all nations registered in our database."""
         nations = await self.nations.get()
@@ -90,7 +89,7 @@ class UtilCog(discordutils.CogBase):
             return
         await ctx.respond('There are no registrations!')
 
-    @register.command(name='update', guild_ids=config.guild_ids, default_permission=False)
+    @commands.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_any_role(config.gov_role_id, config.staff_role_id, guild_id=config.guild_id)
     async def register_update(self, ctx: discord.ApplicationContext):
         """Update registry using the / separated nation ids in nicknames"""
