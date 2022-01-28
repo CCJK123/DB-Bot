@@ -36,7 +36,7 @@ async def post_query(sess: aiohttp.ClientSession,
         raise APIError(f'Error in fetching data: {data["errors"]}')
     data = data['data']
     # get the only child of the dict
-    data = next(data.values())
+    data = next(iter(data.values()))
     # Get data from other pages, if they exist
     if check_more and data['paginatorInfo']['hasMorePages']:
         query_variables = query_variables.copy()
