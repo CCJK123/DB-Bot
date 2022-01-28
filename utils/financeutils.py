@@ -4,7 +4,7 @@ import asyncio
 import datetime
 import enum
 import pickle
-from typing import Callable, Awaitable, Iterable, Optional, TypedDict
+from typing import Callable, Awaitable, Iterable, TypedDict
 from dataclasses import dataclass, field
 
 import discord
@@ -191,7 +191,7 @@ class ResourceSelector(discord.ui.Select['ResourceSelectView']):
 
 
 class ResourceSelectView(discord.ui.View):
-    def __init__(self, user_id: Optional[int] = None, res: Iterable[str] | None = None,
+    def __init__(self, user_id: int | None = None, res: Iterable[str] | None = None,
                  timeout: float = config.timeout):
         super().__init__(timeout=timeout)
         
