@@ -94,7 +94,7 @@ class OptionsCog(discordutils.CogBase):
         bank_cog = self.bot.get_cog('BankCog')
         values = await bank_cog.market_values.get()
         values[b_s == 'selling'][pnwutils.constants.market_res.index(res_name)] = price
-        await bank_cog.market_values.request_options(values)
+        await bank_cog.market_values.set(values)
         await ctx.respond(f'The {b_s} price of {res_name} has been set to {price} ppu.')
 
     @market_options.command(guild_ids=config.guild_ids)
@@ -105,7 +105,7 @@ class OptionsCog(discordutils.CogBase):
         bank_cog = self.bot.get_cog('BankCog')
         values = await bank_cog.market_values.get()
         values[2][pnwutils.constants.market_res.index(res_name)] = stock
-        await bank_cog.market_values.request_options(values)
+        await bank_cog.market_values.set(values)
         await ctx.respond(f'The stock of {res_name} has been set to {stock} tons.')
 
 

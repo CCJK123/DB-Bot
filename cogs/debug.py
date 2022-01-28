@@ -29,7 +29,7 @@ class DebugCog(discordutils.CogBase):
     @commands.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def set_key(self, ctx: discord.ApplicationContext, key: str, val: str):
-        await self.bot.database.request_options(key, eval(val))
+        await self.bot.database.set(key, eval(val))
         await ctx.respond(f'{key} set to {eval(val)}')
 
 

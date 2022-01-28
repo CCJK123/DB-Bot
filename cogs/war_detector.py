@@ -30,7 +30,7 @@ class WarDetectorCog(discordutils.CogBase):
 
     async def on_ready(self):
         if await self.running.get(None) is None:
-            await self.running.request_options(False)
+            await self.running.set(False)
 
         if await self.running.get():
             self.detect_wars.start()

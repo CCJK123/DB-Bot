@@ -491,13 +491,13 @@ def setup(bot: dbbot.DBBot) -> None:
                     'You can check your loan status with `bank loan status`.'
                 )
                 bal = bot.get_cog('BankCog').balances[req_data.nation_id]
-                await bal.request_options((pnwutils.Resources(**await bal.get()) + req_data.resources).to_dict())
+                await bal.set((pnwutils.Resources(**await bal.get()) + req_data.resources).to_dict())
 
                 await interaction.message.edit(embed=interaction.message.embeds[0].add_field(
                     name='Return By',
                     value=data.display_date,
                     inline=True))
-                await cog.loans[req_data.nation_id].request_options(data.to_dict())
+                await cog.loans[req_data.nation_id].set(data.to_dict())
             else:
                 await req_data.requester.send(
                     f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} '
