@@ -466,7 +466,7 @@ class BankCog(discordutils.CogBase):
             {'alliance_id': config.alliance_id}
         )
         resources = pnwutils.Resources(**data['data'].pop())
-        await ctx.respond(embed=resources.create_embed(), ephemeral=True)
+        await ctx.respond(embed=resources.create_embed(title=f'{config.alliance_name} Bank'), ephemeral=True)
 
 
 def setup(bot: dbbot.DBBot):
