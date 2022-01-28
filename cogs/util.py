@@ -108,11 +108,14 @@ class UtilCog(discordutils.CogBase):
         # there are no await statements between get and set, so this is fine
         await ctx.respond(f'{count} members have been added to the database.')
 
-    check = commands.SlashCommandGroup('check', 'Various checks on members of the alliance', guild_ids=config.guild_ids,
-                                       default_permission=False, permissions=[config.gov_role_permission])
+    check = commands.SlashCommandGroup(
+        'check', 'Various checks on members of the alliance', guild_ids=config.guild_ids,
+        default_permission=False, permissions=[
+            config.gov_role_permission,
+            commands.permissions.CommandPermission(config.staff_role_id, 2, permission=True)
+        ])
 
-    @check.command(name='ran_out', guild_ids=config.guild_ids, default_permission=False)
-    @commands.permissions.has_any_role(config.gov_role_id, config.staff_role_id, guild_id=config.guild_id)
+    @check.command(name='ran_out', guild_ids=config.guild_ids)
     async def check_ran_out(self, ctx: discord.ApplicationContext):
         """List all nations that have run out of food or uranium in the alliance."""
         data = (await pnwutils.api.post_query(self.bot.session, alliance_member_res_query,
@@ -150,8 +153,7 @@ class UtilCog(discordutils.CogBase):
         else:
             await ctx.respond('No one has ran out of food or uranium!')
 
-    @check.command(name='activity', guild_ids=config.guild_ids, default_permission=False)
-    @commands.permissions.has_any_role(config.gov_role_id, config.staff_role_id, guild_id=config.guild_id)
+    @check.command(name='activity', guild_ids=config.guild_ids)
     async def activity_check(self, ctx: discord.ApplicationContext,
                              days: commands.Option(int, 'How many days inactive', default=3)):
         """Lists nations that have not been active in the last n days (defaults to 3 days)"""
