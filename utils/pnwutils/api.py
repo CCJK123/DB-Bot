@@ -19,7 +19,6 @@ def construct_query(q: str, var: dict[str, Any]) -> dict[str, str | dict[str, An
 async def post_query(sess: aiohttp.ClientSession,
                      query_string: str,
                      query_variables: dict[str, Any],
-                     query_type: str,
                      check_more: bool = False
                      ) -> Iterable[dict[str, Any]] | dict[str, Any]:
 
@@ -35,13 +34,15 @@ async def post_query(sess: aiohttp.ClientSession,
         data = await response.json()
     if 'data' not in data.keys():
         raise APIError(f'Error in fetching data: {data["errors"]}')
-    data = data['data'][query_type]
+    data = data['data']
+    # get the only child of the dict
+    data = next(data.values())
     # Get data from other pages, if they exist
     if check_more and data['paginatorInfo']['hasMorePages']:
         query_variables = query_variables.copy()
         query_variables['page'] += 1
 
         # linter does not realise that in this case, the post_query call will always return Iterable[dict[str, Any]]
-        return chain(data, await post_query(sess, query_string, query_variables, query_type, True))
+        return chain(data, await post_query(sess, query_string, query_variables, True))
 
     return data

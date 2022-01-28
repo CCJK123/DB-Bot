@@ -16,7 +16,7 @@ class UtilCog(discordutils.CogBase):
         self.nations: discordutils.MappingProperty[int, str] = discordutils.MappingProperty[int, str](self, 'nations')
 
     register = commands.SlashCommandGroup('register', 'Commands related to the user to nation registry the bot keeps!',
-                                          guild_ids=config.guild_ids)
+                                          guild_ids=config.guild_ids, default_permission=False)
 
     @register.command(guild_ids=config.guild_ids)
     async def nation(self, ctx: discord.ApplicationContext,
@@ -54,8 +54,7 @@ class UtilCog(discordutils.CogBase):
             return
 
         data = await pnwutils.api.post_query(self.bot.session, nation_alliance_query,
-                                             {'nation_id': nation_id},
-                                             'nations')
+                                             {'nation_id': nation_id})
         data = data['data']
         if not data:
             # nation does not exist, empty list returned
@@ -117,8 +116,7 @@ class UtilCog(discordutils.CogBase):
     async def check_ran_out(self, ctx: discord.ApplicationContext):
         """List all nations that have run out of food or uranium in the alliance."""
         data = (await pnwutils.api.post_query(self.bot.session, alliance_member_res_query,
-                                              {'alliance_id': config.alliance_id},
-                                              'nations', True))['data']
+                                              {'alliance_id': config.alliance_id}, True))['data']
         result = {'Food': [], 'Food And Uranium': [], 'Uranium': []}
         ids = set()
         for nation in data:
@@ -158,8 +156,7 @@ class UtilCog(discordutils.CogBase):
                              days: commands.Option(int, 'How many days inactive', default=3)):
         """Lists nations that have not been active in the last n days (defaults to 3 days)"""
         data = (await pnwutils.api.post_query(self.bot.session, alliance_activity_query,
-                                              {'alliance_id': config.alliance_id},
-                                              'nations', True))['data']
+                                              {'alliance_id': config.alliance_id}, True))['data']
 
         inactives = set()
         now = datetime.datetime.now()

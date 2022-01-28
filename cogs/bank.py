@@ -1,6 +1,5 @@
 import asyncio
 import datetime
-import operator
 from typing import Any, Optional
 
 import discord
@@ -33,7 +32,7 @@ class BankCog(discordutils.CogBase):
             raise ValueError('Please provide entity id!')
 
         data = await pnwutils.api.post_query(self.bot.session, bank_transactions_query,
-                                             {'alliance_id': config.alliance_id}, 'alliances')
+                                             {'alliance_id': config.alliance_id})
 
         bank_recs = data['data'][0]['bankrecs']
         if entity_id is None:
@@ -226,7 +225,7 @@ class BankCog(discordutils.CogBase):
             await author.send('You took too long to reply! Aborting.')
             return
 
-        data = await pnwutils.api.post_query(self.bot.session, nation_name_query, {'nation_id': nation_id}, 'nations')
+        data = await pnwutils.api.post_query(self.bot.session, nation_name_query, {'nation_id': nation_id})
         name = data['data'][0]['nation_name']
         link = pnwutils.link.bank('w', req_resources, name, 'Withdrawal from balance')
 
@@ -464,8 +463,7 @@ class BankCog(discordutils.CogBase):
         """Check the current contents of the bank"""
         data = await pnwutils.api.post_query(
             self.bot.session, bank_info_query,
-            {'alliance_id': config.alliance_id},
-            'alliances'
+            {'alliance_id': config.alliance_id}
         )
         resources = pnwutils.Resources(**data['data'].pop())
         await ctx.respond(embed=resources.create_embed(), ephemeral=True)

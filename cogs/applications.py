@@ -53,7 +53,7 @@ class ApplicationCog(discordutils.CogBase):
                 return
             await util_cog.nations[str(member.id)].request_options(nation_id)
             data = await pnwutils.api.post_query(self.bot.session, queries.acceptance_query,
-                                                 {'nation_id': nation_id}, 'nations')
+                                                 {'nation_id': nation_id})
             data = data['data']
             await ctx.respond(
                 f'Reason: Accepted (Leader Name: {data["leader_name"]}, Nation Name: {data["nation_name"]}, '

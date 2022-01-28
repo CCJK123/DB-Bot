@@ -73,8 +73,7 @@ class WarDetectorCog(discordutils.CogBase):
     @tasks.loop(minutes=2)
     async def detect_wars(self) -> None:
         async with aiohttp.ClientSession() as session:
-            data = await pnwutils.api.post_query(session, alliance_wars_query, {'alliance_id': config.alliance_id},
-                                                 'wars')
+            data = await pnwutils.api.post_query(session, alliance_wars_query, {'alliance_id': config.alliance_id})
 
         war: dict[str, Any]
         for war in data:
