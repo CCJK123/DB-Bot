@@ -95,12 +95,9 @@ class WarDetectorCog(discordutils.CogBase):
                 await (await self.channels[WarType.LOSE].get()).send(embeds=await self.war_embed(war, WarType.LOSE))
                 self.done_wars.append(war['id'])
 
-    war_detector = commands.SlashCommandGroup('war_detector', 'A module that keeps track of wars!',
-                                              guild_ids=config.guild_ids)
-
-    @war_detector.command(guild_id=config.guild_id, default_permission=False)
+    @commands.command(guild_id=config.guild_id, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def toggle(self, ctx: discord.ApplicationContext) -> None:
+    async def detector_toggle(self, ctx: discord.ApplicationContext) -> None:
         """Toggles the war detector on and off"""
         if any(await c.get(None) is None for c in self.channels.values()):
             await ctx.respond('Not all of the defensive, offensive and losing wars channels have been set! '
