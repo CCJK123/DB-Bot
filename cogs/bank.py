@@ -473,7 +473,7 @@ class BankCog(discordutils.CogBase):
     async def balances_total(self, ctx: discord.ApplicationContext):
         """Find the total value of all balances"""
         balances = await self.balances.get()
-        total = sum(pnwutils.Resources(**bal) for bal in balances) or pnwutils.Resources()
+        total = sum((pnwutils.Resources(**bal) for bal in balances.values()), pnwutils.Resources())
         await ctx.respond(embed=total.create_embed(title=f'Total Balances Value'), ephemeral=True)
 
 
