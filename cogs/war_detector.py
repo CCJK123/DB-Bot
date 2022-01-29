@@ -99,10 +99,11 @@ class WarDetectorCog(discordutils.CogBase):
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def detector_toggle(self, ctx: discord.ApplicationContext) -> None:
         """Toggles the war detector on and off"""
-        if any(await c.get(None) is None for c in self.channels.values()):
-            await ctx.respond('Not all of the defensive, offensive and losing wars channels have been set! '
-                              'Set them with the `war_detector channel` command in the respective channels.')
-            return
+        for c in self.channels.values():
+            if await c.get(None) is None:
+                await ctx.respond('Not all of the defensive, offensive and losing wars channels have been set! '
+                                  'Set them with the `options war_detector channel` command in the respective channels.')
+                return
 
         if self.detect_wars.is_running():
             self.detect_wars.stop()
