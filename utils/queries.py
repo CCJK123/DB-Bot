@@ -166,6 +166,7 @@ query alliance_activity($alliance_id: [Int], $page: Int) {
         }
         data {
             alliance_position
+            nation_name
             vmode
             id
             last_active

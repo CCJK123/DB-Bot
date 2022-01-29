@@ -125,6 +125,7 @@ class UtilCog(discordutils.CogBase):
             if nation['alliance_position'] == 'APPLICANT' or nation['vmode'] > 0:
                 continue
             has_food = not nation['food']
+            # check for nuclear power and uranium amounts
             has_ura = not nation['uranium'] and any(map(operator.itemgetter('nuclearpower'), nation['cities']))
 
             if has_food and has_ura:
@@ -160,6 +161,7 @@ class UtilCog(discordutils.CogBase):
                                               {'alliance_id': config.alliance_id}, True))['data']
 
         inactives = set()
+        nation_names = {}
         now = datetime.datetime.now()
         for nation in data:
             if nation['alliance_position'] == 'APPLICANT' or nation['vmode'] > 0:
@@ -167,6 +169,7 @@ class UtilCog(discordutils.CogBase):
             time_since_active = now - datetime.datetime.fromisoformat(nation['last_active'])
             if time_since_active >= datetime.timedelta(days=days):
                 inactives.add(nation['id'])
+                nation_names[nation['id']] = nation['nation_name']
 
         inactives_discord = {}
         nations = await self.nations.get()
@@ -177,9 +180,8 @@ class UtilCog(discordutils.CogBase):
         await ctx.respond('Inactives:')
         for m in discordutils.split_blocks('\n', (f'<@{d_id}>' for d_id in inactives_discord.values()), 2000):
             await ctx.respond(m)
-        for m in discordutils.split_blocks('\n',
-                                           (pnwutils.link.nation(n) for n in inactives - inactives_discord.keys()),
-                                           2000):
+        for m in discordutils.split_blocks('\n', (f'[{nation_names[n]}]({pnwutils.link.nation(n)})'
+                                                  for n in inactives - inactives_discord.keys()), 2000):
             await ctx.respond(m)
 
     @commands.user_command(guild_ids=config.guild_ids)

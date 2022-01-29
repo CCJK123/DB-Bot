@@ -13,7 +13,7 @@ class ApplicationCog(discordutils.CogBase):
         super().__init__(bot, __name__)
 
     @commands.command(guild_ids=config.guild_ids)
-    @cmds.max_concurrency(1, cmds.BucketType.user)
+    @cmds.max_concurrency(1, cmds.BucketType.channel)
     async def start_interview(self, ctx: discord.ApplicationContext,
                               q_num: commands.Option(int, 'Do not provide this parameter unless asked to',
                                                      name='question_number', default=1, min_value=1,
