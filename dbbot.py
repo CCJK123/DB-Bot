@@ -71,8 +71,10 @@ class DBBot(discord.Bot):
     async def on_command_error(self, ctx: discord.ApplicationContext, exception):
         command = ctx.command
         if command and command.has_error_handler():
+            print(f'Ignoring {exception}, already has handler')
             return
 
+        print('Trying to respond with exception')
         await ctx.respond(str(exception))
 
         ignored = (
