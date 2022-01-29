@@ -24,12 +24,13 @@ class OptionsCog(discordutils.CogBase):
         finance_cog = self.bot.get_cog('FinanceCog')
         """Set this channel to either the process or the withdrawal channel"""
         if kind == 'process':
-            await finance_cog.set(ctx.channel)
+            await finance_cog.process_channel.set(ctx.channel)
         else:
             await finance_cog.withdrawal_channel.set(ctx.channel)
         await ctx.respond(f'{kind.capitalize()} channel set!')
 
     @request_options.command(guild_ids=config.guild_ids)
+    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def war_aid(self, ctx: discord.ApplicationContext) -> None:
         """Toggle the war aid option"""
         finance_cog = self.bot.get_cog('FinanceCog')
@@ -47,16 +48,19 @@ class OptionsCog(discordutils.CogBase):
 
     war_detector_options = options.create_subgroup('war_detector', "Options for the bot's war detector")
     war_detector_options.guild_ids = config.guild_ids
+    print(war_detector_options.permissions)
+    war_detector_options.permissions = [config.gov_role_permission]
 
     @war_detector_options.command(guild_ids=config.guild_ids)
+    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def losing(self, ctx: discord.ApplicationContext) -> None:
         """Toggles whether or not to check for losing wars"""
         war_detector_cog = self.bot.get_cog('WarDetectorCog')
-        await ctx.send(f'Losing wars will now {"not " * await war_detector_cog.check_losing.get()}be checked!')
+        await ctx.respond(f'Losing wars will now {"not " * await war_detector_cog.check_losing.get()}be checked!')
         await war_detector_cog.check_losing.transform(operator.not_)
 
-    @war_detector_options.command(guild_ids=config.guild_ids)
-    async def channel(self, ctx: discord.ApplicationContext,
+    @war_detector_options.command(name='channel', guild_ids=config.guild_ids)
+    async def channel_(self, ctx: discord.ApplicationContext,
                       kind: commands.Option(str, 'Channel type', name='type',
                                             choices=('attack', 'defend', 'lose'))
                       ) -> None:
