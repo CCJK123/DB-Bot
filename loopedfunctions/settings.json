@@ -4,7 +4,7 @@
   "password": "",
   "log_path": "../logs",
   "contacted_path": "contacted.csv",
-  "api_key": "",
+  "api_key": "6b6a6ab065a851",
   "message": {
     "subject": "Test Subject",
     "body": "Test Body"

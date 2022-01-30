@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 import aiofiles
 import aiohttp
 
-from loopedfunctions.functions import ActivityLogger, Recruiter, types
+from functions import ActivityLogger, Recruiter, types
 
 
 async def main(filepath: str):

@@ -1,3 +1,4 @@
+import pathlib
 from datetime import datetime
 from typing import Iterable
 
@@ -9,7 +10,7 @@ from . import constants
 
 class ActivityLogger:
     def __init__(self, session: aiohttp.ClientSession, settings: dict) -> None:
-        self.path = settings['log_path']
+        self.path = pathlib.Path(settings['log_path'])
         self.key = settings['api_key']
         self.session = session
         self.path.mkdir(exist_ok=True)

@@ -11,7 +11,7 @@ class Recruiter:
     def __init__(self, session: aiohttp.ClientSession, data: types.SettingsDict):
         self.session = session
         self.settings = data
-        self.contacted: list[str] | None = None
+        self.contacted: "list[str] | None" = None
 
     async def login(self):
         payload = {
@@ -19,8 +19,8 @@ class Recruiter:
             'password': self.settings['password'],
             'loginform': 'Login'
         }
-        async with self.session.post(constants.login_url, data=payload) as resp:
-            print(await resp.read())
+        async with self.session.post(constants.login_url, data=payload):
+            pass
 
         async with aiofiles.open(self.settings['contacted_path']) as f:
             self.contacted = (await f.read()).split(',')
@@ -32,16 +32,20 @@ class Recruiter:
             data = await resp.json()
 
         contacting = []
-        for nation in data:
+        print(f'Starting message round... {now.isoformat(" ")}')
+        for nation in data['data']:
             if await self.should_contact(nation, now):
+                print(f'contacting {nation["nation"]} ({nation["nation_id"]})')
                 await self.send_message(nation)
-                contacting.append(nation['nationid'])
+                contacting.append(str(nation['nation_id']))
                 await asyncio.sleep(0.01)
 
         if contacting:
+            print('appending...')
             async with aiofiles.open(self.settings['contacted_path'], 'a') as f:
                 await f.write(',' + ','.join(contacting))
             self.contacted.extend(contacting)
+        print(f'Contacted {len(contacting)} nations!')
 
     async def send_message(self, nation: dict[str, str]):
         payload = {
@@ -52,17 +56,18 @@ class Recruiter:
             'body': self.replace_parameters(self.settings['message']['body'], nation),
             'sndmsg': 'Send Message'
         }
-        async with self.session.post(constants.api_base_url, data=payload) as resp:
-            print(await resp.read())
+        async with self.session.post(constants.api_base_url, data=payload):
+            pass
 
-    async def should_contact(self, nation: dict[str, str | int], now: datetime):
-        if int(nation['minutessinceactive']) > self.settings['restrictions']['max_inactive']:
+    async def should_contact(self, nation: "dict[str, str | int]", now: datetime):
+        if now - datetime.fromisoformat(nation['last_active']).replace(tzinfo=timezone.utc) > timedelta(
+                seconds=self.settings['restrictions']['max_inactive']):
             return False
-        if int(nation['nationid']) in self.settings['restrictions']['exclude']:
+        if nation['nation_id'] in self.settings['restrictions']['exclude']:
             return False
-        if nation['nationid'] in self.contacted:
+        if str(nation['nation_id']) in self.contacted:
             return False
-        if datetime.fromisoformat(nation['founded']).replace(tzinfo=timezone.utc) - now < timedelta(minutes=4):
+        if now - datetime.fromisoformat(nation['founded']).replace(tzinfo=timezone.utc) < timedelta(minutes=4):
             return False
         return True
 
@@ -71,11 +76,9 @@ class Recruiter:
         params = {
             'nation': nation['nation'],
             'leader': nation['leader'],
-            'id': nation['nationid'],
+            'id': nation['nation_id'],
             'score': nation['score'],
             'cities': nation['cities'],
-            'infra': nation['infrastructure'],
-            'color': nation['color']
         }
         for param, value in params.items():
             text = text.replace(f'${{{param}}}', str(value))
