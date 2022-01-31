@@ -56,7 +56,7 @@ class Recruiter:
             'body': self.replace_parameters(self.settings['message']['body'], nation),
             'sndmsg': 'Send Message'
         }
-        async with self.session.post(constants.api_base_url, data=payload):
+        async with self.session.post(f'{constants.base_url}inbox/message', data=payload):
             pass
 
     async def should_contact(self, nation: "dict[str, str | int]", now: datetime):
