@@ -7,7 +7,7 @@ from discord import commands
 from discord.ext import commands as cmds
 
 from utils import financeutils, discordutils, pnwutils, config
-from utils.queries import bank_transactions_query, bank_info_query, nation_name_query
+from utils.queries import bank_transactions_query, bank_info_query, nation_name_query, alliance_name_query
 import dbbot
 
 
@@ -17,6 +17,7 @@ class BankCog(discordutils.CogBase):
         self.balances = discordutils.MappingProperty[str, pnwutils.ResourceDict](self, 'balances')
         self.market_values = discordutils.CogProperty[list[list[int]]](self, 'market.values')
         self.market_open = discordutils.CogProperty[bool](self, 'market.open')
+        self.offshore_id = discordutils.CogProperty[str](self, 'offshore_id')
 
     @property
     def nations(self) -> discordutils.MappingProperty[int, str]:
@@ -467,6 +468,36 @@ class BankCog(discordutils.CogBase):
         )
         resources = pnwutils.Resources(**data['data'].pop())
         await ctx.respond(embed=resources.create_embed(title=f'{config.alliance_name} Bank'), ephemeral=True)
+
+    @commands.command(guild_ids=config.guild_ids, default_permission=False)
+    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
+    async def bank_withdraw(self, ctx: discord.ApplicationContext):
+        """Get a link to send the entire bank to an offshore"""
+        off_id = await self.offshore_id.get(None)
+        if off_id is None:
+            await ctx.respond('Offshore alliance has not been set!', ephemeral=True)
+            return
+
+        data = await pnwutils.api.post_query(
+            self.bot.session, bank_info_query,
+            {'alliance_id': config.alliance_id}
+        )
+        resources = pnwutils.Resources(**data['data'].pop())
+
+        try:
+            aa_name = (await pnwutils.api.post_query(
+                self.bot.session, alliance_name_query, {'alliance_id': off_id}
+            ))['data']['name']
+        except KeyError:
+            await ctx.respond(f'It appears an alliance with the set ID {off_id} does not exist! '
+                              'Is the offshore ID outdated?', ephemeral=True)
+            return
+
+        await ctx.respond(
+            view=discordutils.LinkView(
+                'Withdrawal Link',
+                pnwutils.link.bank('wa', resources, aa_name, 'Safekeeping')),
+            ephemeral=True)
 
     @commands.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)

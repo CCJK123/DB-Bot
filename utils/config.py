@@ -14,7 +14,6 @@ on_accepted_added_roles: tuple[int, ...] = (540341927191642131, 3220718134692413
 
 api_key: str = os.environ['api_key']
 alliance_id: str = '4221'
-offshore_id: str = '9322'
 alliance_name: str = 'Dark Brotherhood'
 
 interview_questions = (

@@ -125,6 +125,16 @@ query bank_info($alliance_id: [Int]) {
 }
 '''
 
+alliance_name_query = '''
+query alliance_name($alliance_id: [Int]) {
+    alliances(id: $alliance_id, first: 1) {
+        data {
+            name
+        }
+    }
+}
+'''
+
 # util.py
 
 nation_alliance_query = '''

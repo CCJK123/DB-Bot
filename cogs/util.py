@@ -61,7 +61,9 @@ class UtilCog(discordutils.CogBase):
             await ctx.respond('This nation does not exist!')
             return
         # nation exists, is in one elem list
-        if data[0]['alliance_id'] not in (config.alliance_id, config.offshore_id):
+        bank_cog = self.bot.get_cog('BankCog')
+        off_id = await bank_cog.offshore_id.get(None)
+        if data[0]['alliance_id'] not in (config.alliance_id, off_id):
             await ctx.respond(f'This nation is not in {config.alliance_name}!')
             return
 

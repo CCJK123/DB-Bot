@@ -61,9 +61,9 @@ class OptionsCog(discordutils.CogBase):
 
     @war_detector_options.command(name='channel', guild_ids=config.guild_ids)
     async def channel_(self, ctx: discord.ApplicationContext,
-                      kind: commands.Option(str, 'Channel type', name='type',
-                                            choices=('attack', 'defend', 'lose'))
-                      ) -> None:
+                       kind: commands.Option(str, 'Channel type', name='type',
+                                             choices=('attack', 'defend', 'lose'))
+                       ) -> None:
         """Sets the attack, defend and lose channels"""
         war_detector_cog = self.bot.get_cog('WarDetectorCog')
         if kind == 'attack':
@@ -111,6 +111,21 @@ class OptionsCog(discordutils.CogBase):
         values[2][pnwutils.constants.market_res.index(res_name)] = stock
         await bank_cog.market_values.set(values)
         await ctx.respond(f'The stock of {res_name} has been set to {stock} tons.')
+
+    bank_options = options.create_subgroup('bank', 'Edit the bank options!')
+    bank_options.guild_ids = config.guild_ids
+
+    @bank_options.command(guild_ids=config.guild_ids)
+    async def set_offshore(self, ctx: discord.ApplicationContext,
+                           off_id: commands.Option(int, 'ID of the offshore alliance')):
+        bank_cog = self.bot.get_cog('BankCog')
+        confirm_view = discordutils.Choices('Yes', 'No')
+        await ctx.respond(f'Is this the offshore? [Link]({pnwutils.link.alliance(off_id)})',
+                          view=confirm_view, ephemeral=True)
+        if await confirm_view.result() == 'Yes':
+            await bank_cog.offshore_id.set(str(off_id))
+            await ctx.respond('Offshore id has been set!', ephemeral=True)
+        await ctx.respond('Aborting!', ephemeral=True)
 
 
 def setup(bot: dbbot.DBBot) -> None:
