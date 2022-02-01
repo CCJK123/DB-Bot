@@ -1,5 +1,6 @@
 import aiohttp
 import enum
+import operator
 from typing import Any
 
 import discord
@@ -105,6 +106,7 @@ class WarDetectorCog(discordutils.CogBase):
                                   'Set them with the `options war_detector channel` command in the respective channels.')
                 return
 
+        await self.running.transform(operator.not_)
         if self.detect_wars.is_running():
             self.detect_wars.stop()
             await ctx.respond('War detector stopped!')

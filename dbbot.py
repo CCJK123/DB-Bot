@@ -7,7 +7,7 @@ from typing import Callable
 import discord
 from discord.ext import tasks, commands as cmds
 
-from utils import discordutils, config
+from utils import discordutils
 
 
 # pycharm complains about sync_commands not being written,
@@ -33,8 +33,9 @@ class DBBot(discord.Bot):
         self.database = await self.database.__aenter__()
 
         self.change_status.start()
-        war_detector_cog = self.get_cog('WarDetectorCog')
-        await war_detector_cog.on_ready()
+        for cog in self.cogs.values():
+            if isinstance(cog, discordutils.CogBase):
+                await cog.on_ready()
 
     async def cleanup(self):
         await self.session.__aexit__(None, None, None)

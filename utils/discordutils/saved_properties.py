@@ -18,6 +18,9 @@ class CogBase(discord.Cog):
     def __init__(self, bot: "dbbot.DBBot", name: str):
         self.bot = bot
         self.cog_name = name
+    
+    async def on_ready(self):
+        pass
 
 
 T = TypeVar('T')
