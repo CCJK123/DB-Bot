@@ -25,6 +25,17 @@ class DBBot(discord.Bot):
         self.views = discordutils.ViewStorage[discordutils.PersistentView](self, 'views')
         self.prepped = False
 
+    def load_cogs(self, directory: str) -> None:
+        """
+        directory: str
+        Name of directory where the cogs can be found.
+
+        Loads extensions found in [directory] into the bot.
+        """
+        cogs = (file.split('.')[0] for file in os.listdir(directory) if file.endswith('.py') and not file.startswith('_'))
+        for ext in cogs:
+            self.load_extension(f'{directory}.{ext}')
+
     async def prep(self):
         if await self.views.get(None) is None:
             await self.views.set({})

@@ -35,9 +35,7 @@ if __name__ == '__main__':
     bot = dbbot.DBBot(db.db_url, keep_alive)
 
     # Load cogs
-    cogs = (file.split('.')[0] for file in os.listdir('cogs') if file.endswith('.py') and not file.startswith('_'))
-    for ext in cogs:
-        bot.load_extension(f'cogs.{ext}')
+    bot.load_cogs('cogs')
 
     # bot.help_command.cog = bot.get_cog('UtilCog')
     # the new bot doesnt seem to have a help command, the help command has not been ported over to slash yet i believe
