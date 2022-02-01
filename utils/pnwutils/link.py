@@ -20,24 +20,18 @@ def bank(kind: Literal['w', 'd', 'wa'], res: Resources | None = None,
     if kind == 'd' and recipient is not None:
         raise ValueError('Do not provide recipient for deposits!')
 
-    # Check if withdrawing to alliance
-    with_aa = False
-    if kind == 'wa':
-        with_aa = True
-        kind = 'w'
-
     # Add parameters to withdrawal / deposit url
     link = f'{alliance()}&display=bank'
-    if res is not None:
-        for res_name, res_amt in res:
-            link += f'&{kind}_{res_name}={res_amt}'
     if note is not None:
-        link += f'&{kind}_note={note.replace(" ", "%20")}'
-    if with_aa:
+        link += f'&{kind[0]}_note={note.replace(" ", "%20")}'
+    if kind == 'wa':
         link += '&w_type=alliance'
     if recipient is not None:
         # Replace spaces with url encoding for spaces
         link += f'&w_recipient={recipient.replace(" ", "%20")}'
+    if res is not None:
+        for res_name, res_amt in res:
+            link += f'&{kind[0]}_{res_name}={res_amt}'
     return link
 
 
