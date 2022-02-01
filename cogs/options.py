@@ -125,6 +125,7 @@ class OptionsCog(discordutils.CogBase):
         if await confirm_view.result() == 'Yes':
             await bank_cog.offshore_id.set(str(off_id))
             await ctx.respond('Offshore id has been set!', ephemeral=True)
+            return
         await ctx.respond('Aborting!', ephemeral=True)
 
 
