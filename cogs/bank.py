@@ -73,7 +73,7 @@ class BankCog(discordutils.CogBase):
                           allowed_mentions=discord.AllowedMentions.none(), )
         if loan is not None:
             await ctx.respond(
-                f'You have a loan due in <t:{int(datetime.datetime.fromisoformat(loan["due_date"]).timestamp())}:R>',
+                f'You have a loan due <t:{int(datetime.datetime.fromisoformat(loan["due_date"]).timestamp())}:R>',
                 embed=pnwutils.Resources(**loan['resources']).create_embed(title='Loaned Resources'))
 
     @bank.command(guild_ids=config.guild_ids)
@@ -448,8 +448,11 @@ class BankCog(discordutils.CogBase):
             allowed_mentions=discord.AllowedMentions.none(),
             ephemeral=True
         )
+    
+    _bank = commands.SlashCommandGroup('_bank', "Gov Bank Commands", guild_ids=config.guild_ids,
+                                       default_permission=False, permissions=[config.gov_role_permission])
 
-    @commands.command(guild_ids=config.guild_ids, default_permission=False)
+    @_bank.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def loan_list(self, ctx: discord.ApplicationContext):
         """List all the loans that are currently active"""
@@ -458,20 +461,24 @@ class BankCog(discordutils.CogBase):
             f'Loan of [{pnwutils.Resources(**loan["resources"])}] due on {loan["due_date"]}'
             for n, loan in loans.items()) or 'There are no active loans!')
 
-    @commands.command(guild_ids=config.guild_ids, default_permission=False)
+    @_bank.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def bank_contents(self, ctx: discord.ApplicationContext):
+    async def contents(self, ctx: discord.ApplicationContext,
+                       adjusted: commands.Option(bool, 'Whether to adjust for balances held by members',
+                                                 default=True)):
         """Check the current contents of the bank"""
         data = await pnwutils.api.post_query(
             self.bot.session, bank_info_query,
             {'alliance_id': config.alliance_id}
         )
         resources = pnwutils.Resources(**data['data'].pop())
+        if adjusted:
+            resources -= await self.get_total_balances()
         await ctx.respond(embed=resources.create_embed(title=f'{config.alliance_name} Bank'), ephemeral=True)
 
-    @commands.command(guild_ids=config.guild_ids, default_permission=False)
+    @_bank.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def bank_withdraw(self, ctx: discord.ApplicationContext):
+    async def safekeep(self, ctx: discord.ApplicationContext):
         """Get a link to send the entire bank to an offshore"""
         off_id = await self.offshore_id.get(None)
         if off_id is None:
@@ -487,24 +494,29 @@ class BankCog(discordutils.CogBase):
         try:
             aa_name = (await pnwutils.api.post_query(
                 self.bot.session, alliance_name_query, {'alliance_id': off_id}
-            ))['data']['name']
-        except KeyError:
+            ))['data'][0]['name']
+        except IndexError:
+            # failed on trying to access 0th elem, list is empty
             await ctx.respond(f'It appears an alliance with the set ID {off_id} does not exist! '
                               'Is the offshore ID outdated?', ephemeral=True)
             return
 
         await ctx.respond(
+            'Safekeeping Link',
             view=discordutils.LinkView(
                 'Withdrawal Link',
                 pnwutils.link.bank('wa', resources, aa_name, 'Safekeeping')),
             ephemeral=True)
+    
+    async def get_total_balances(self) -> pnwutils.Resources:
+        balances = await self.balances.get()
+        return sum((pnwutils.Resources(**bal) for bal in balances.values()), pnwutils.Resources())
 
-    @commands.command(guild_ids=config.guild_ids, default_permission=False)
+    @_bank.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def balances_total(self, ctx: discord.ApplicationContext):
         """Find the total value of all balances"""
-        balances = await self.balances.get()
-        total = sum((pnwutils.Resources(**bal) for bal in balances.values()), pnwutils.Resources())
+        total = await self.get_total_balances()
         await ctx.respond(embed=total.create_embed(title=f'Total Balances Value'), ephemeral=True)
 
 
