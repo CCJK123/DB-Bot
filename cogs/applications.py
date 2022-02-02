@@ -55,7 +55,8 @@ class ApplicationCog(discordutils.CogBase):
                 f'application-{nation_id}',
                 reason=f'Application from {ctx.author.mention}',
                 topic=f"{ctx.author.display_name}'s Application to {config.alliance_name}",
-                position=len(category.channels), overwrites=overwrites)
+                overwrites=overwrites)
+            await channel.move(end=True)
         except discord.Forbidden:
             await ctx.respond('I do not have the permissions to create channels in the category!')
             return
@@ -154,21 +155,21 @@ class ApplicationCog(discordutils.CogBase):
         nation_id = await util_cog.nations[applicant_id].get()
         data = await pnwutils.api.post_query(self.bot.session, queries.acceptance_query,
                                              {'nation_id': nation_id})
-        data = data['data']
+        data = data['data'].pop()
         acc_str = 'Accepted' if accepted else 'Rejected'
         info_str = f'Leader Name: {data["leader_name"]}, Nation Name: {data["nation_name"]}, ' \
-                   f'Nation ID: {nation_id}, Discord User ID: {applicant_id})'
+                   f'Nation ID: {nation_id}, Discord User ID: {applicant_id}'
 
-        transcript = io.StringIO(f'Transcript For Application of Nation {nation_id} (<@{applicant_id}>\n'
-                                 f'Closed at {datetime.now(timezone.utc).isoformat()} by {ctx.author.mention}')
+        transcript_list = [f'Transcript For Application of Nation {nation_id} (<@{applicant_id}>\n'
+                           f'Closed at {datetime.now(timezone.utc).isoformat()} by {ctx.author.mention}']
         async for message in ctx.channel.history(limit=None, oldest_first=True):
-            transcript.write(f'{message.author.mention}: {message.content}')
-
+            transcript_list.append(f'{message.author.mention}: {message.content}')
         await application_log.send(embed=discord.Embed(title=f'{acc_str} Application', description=info_str),
-                                   file=discord.File(transcript,  # type: ignore
+                                   file=discord.File(io.StringIO('\n'.join(transcript_list)),  # type: ignore
                                                      f'{nation_id}_application_transcript.txt',
                                                      description=f'Transcript of the application of nation {nation_id}')
                                    )
+        await ctx.channel.delete(reason=f'Closing application by applicant with id {applicant_id}.')
 
 
 def setup(bot: dbbot.DBBot) -> None:
