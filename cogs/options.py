@@ -132,16 +132,15 @@ class OptionsCog(discordutils.CogBase):
     application_options.guild_ids = config.guild_ids
 
     @application_options.command(guild_ids=config.guild_ids)
-    async def set_application_category(self, ctx: discord.ApplicationContext):
+    async def set(self, ctx: discord.ApplicationContext,
+                  kind: commands.Option(str, choices=('category', 'log'))):
         application_cog = self.bot.get_cog('ApplicationCog')
-        await application_cog.application_channel.set(ctx.channel.category)
-        await ctx.respond(f'Application category set to {self.channel.category.name}!')
-
-    @application_options.command(guild_ids=config.guild_ids)
-    async def set_application_log(self, ctx: discord.ApplicationContext):
-        application_cog = self.bot.get_cog('ApplicationCog')
-        await application_cog.application_log.set(ctx.channel)
-        await ctx.respond('Application log set!')
+        if kind == 'log':
+            await application_cog.application_log.set(ctx.channel)
+            await ctx.respond('Application log channel set!')
+            return
+        await application_cog.application_category.set(ctx.channel.category)
+        await ctx.respond(f'Application category set to {ctx.channel.category.name}!')
 
 
 def setup(bot: dbbot.DBBot) -> None:

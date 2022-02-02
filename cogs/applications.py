@@ -21,18 +21,24 @@ class ApplicationCog(discordutils.CogBase):
     @commands.command(guild_ids=config.guild_ids)
     @cmds.max_concurrency(1, cmds.BucketType.user)
     async def apply(self, ctx: discord.ApplicationContext):
-        if '/' in ctx.author.display_name:
-            try:
-                int(nation_id := ctx.author.display_name.split('/')[-1])
-            except ValueError:
-                await ctx.respond('Please register with __ first!')
+        """Apply to our alliance!"""
+        await self.applications.initialise()
+        await self.completed_applications.initialise()
+        util_cog = self.bot.get_cog('UtilCog')
+        nation_id = await util_cog.nations[ctx.author.id].get(None)
+        if nation_id is None:
+            if '/' in ctx.author.display_name:
+                try:
+                    int(nation_id := ctx.author.display_name.split('/')[-1])
+                except ValueError:
+                    await ctx.respond('Please register with __ or manually register to '
+                                      'our database with `/register nation` first!')
+                    return
+                await util_cog.nations[ctx.author.id].set(nation_id)
+            else:
+                await ctx.respond('Please register with __ or manually register to '
+                                  'our database with `/register nation` first!')
                 return
-            util_cog = self.bot.get_cog('UtilCog')
-            await util_cog.nations[ctx.author.id].set(nation_id)
-            await ctx.respond('You have been registered to our database!')
-        else:
-            await ctx.respond('Please register with __ first!')
-            return
 
         category: discord.CategoryChannel = await self.application_category.get(None)
         if category is None:
@@ -44,12 +50,16 @@ class ApplicationCog(discordutils.CogBase):
             ctx.author: discord.PermissionOverwrite(read_messages=True),
             ctx.guild.get_role(config.interviewer_role_id): discord.PermissionOverwrite(read_messages=True)
         }
-        channel = await category.create_text_channel(
-            f'application-{nation_id}',
-            reason=f'Application from {ctx.author.mention}',
-            topic=f"{ctx.author.display_name}'s Application to {config.alliance_name}",
-            pos=-1, overwrites=overwrites)
-
+        try:
+            channel = await category.create_text_channel(
+                f'application-{nation_id}',
+                reason=f'Application from {ctx.author.mention}',
+                topic=f"{ctx.author.display_name}'s Application to {config.alliance_name}",
+                position=len(category.channels), overwrites=overwrites)
+        except discord.Forbidden:
+            await ctx.respond('I do not have the permissions to create channels in the category!')
+            return
+        
         await self.applications[channel.id].set(ctx.author.id)
         await ctx.respond(f'Please proceed to your interview channel at {channel.mention}', ephemeral=True)
         await channel.send(f'Welcome to the {config.alliance_name} interview. '
@@ -103,19 +113,15 @@ class ApplicationCog(discordutils.CogBase):
             return
 
         applicant = ctx.guild.get_member(applicant_id)
-        await applicant.add_roles(*map(discord.Object, config.on_accepted_added_roles),
-                                  reason=f'Accepted into {config.alliance_name}!')
-
+        try:
+            await applicant.add_roles(*map(discord.Object, config.on_accepted_added_roles),
+                                    reason=f'Accepted into {config.alliance_name}!')
+        except discord.Forbidden:
+            await ctx.respond('I do not have the permissions to add roles!')
+            return
         await self.applications[ctx.channel_id].delete()
         await self.completed_applications[ctx.channel_id].set((applicant_id, True))
         await ctx.respond(f'{applicant.mention}, you have been accepted into {config.alliance_name}!')
-
-    @accept.error
-    async def accept_on_error(self, ctx: discord.ApplicationContext, error: discord.ApplicationCommandError):
-        if isinstance(error, discord.ApplicationCommandInvokeError):
-            await ctx.respond('I do not have the permissions to add roles!')
-            return
-        await discordutils.default_error_handler(ctx, error)
 
     @_application.command(guild_ids=config.guild_ids, default_permission=False)
     @cmds.max_concurrency(1, cmds.BucketType.channel)
@@ -123,7 +129,7 @@ class ApplicationCog(discordutils.CogBase):
         """Close this application channel."""
         application_info = await self.completed_applications[ctx.channel_id].get(None)
         if application_info is None:
-            await ctx.respond('This channel is not an application channel!')
+            await ctx.respond('This channel is not a completed application channel!')
             return
         application_log = await self.application_log.get(None)
         if application_log is None:
