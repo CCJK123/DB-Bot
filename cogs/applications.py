@@ -59,7 +59,7 @@ class ApplicationCog(discordutils.CogBase):
         except discord.Forbidden:
             await ctx.respond('I do not have the permissions to create channels in the category!')
             return
-        
+
         await self.applications[channel.id].set(ctx.author.id)
         await ctx.respond(f'Please proceed to your interview channel at {channel.mention}', ephemeral=True)
         await channel.send(f'Welcome to the {config.alliance_name} interview. '
@@ -95,15 +95,15 @@ class ApplicationCog(discordutils.CogBase):
                           'and will get back to you as soon as possible (1 - 4 hours). '
                           'They will respond to your queries and may ask follow up questions.')
 
-    _application = commands.SlashCommandGroup('_application', 'Interviewer commands related to applications',
-                                              guild_ids=config.guild_ids, default_permission=False,
-                                              permissions=[
-                                                  config.gov_role_permission,
-                                                  commands.CommandPermission(config.interviewer_role_id, type=1,
-                                                                             permission=True, guild_id=config.guild_id)
-                                              ])
+    application = commands.SlashCommandGroup('application', 'Interviewer commands related to applications',
+                                             guild_ids=config.guild_ids, default_permission=False,
+                                             permissions=[
+                                                 config.gov_role_permission,
+                                                 commands.CommandPermission(config.interviewer_role_id, type=1,
+                                                                            permission=True, guild_id=config.guild_id)
+                                             ])
 
-    @_application.command(guild_ids=config.guild_ids, default_permission=False)
+    @application.command(guild_ids=config.guild_ids, default_permission=False)
     @cmds.max_concurrency(1, cmds.BucketType.channel)
     async def accept(self, ctx: discord.ApplicationContext):
         """Accept someone into the alliance!"""
@@ -115,15 +115,28 @@ class ApplicationCog(discordutils.CogBase):
         applicant = ctx.guild.get_member(applicant_id)
         try:
             await applicant.add_roles(*map(discord.Object, config.on_accepted_added_roles),
-                                    reason=f'Accepted into {config.alliance_name}!')
+                                      reason=f'Accepted into {config.alliance_name}!')
         except discord.Forbidden:
             await ctx.respond('I do not have the permissions to add roles!')
             return
         await self.applications[ctx.channel_id].delete()
         await self.completed_applications[ctx.channel_id].set((applicant_id, True))
-        await ctx.respond(f'{applicant.mention}, you have been accepted into {config.alliance_name}!')
+        await ctx.respond(f'{applicant.mention}, you have been accepted into {config.alliance_name}!',
+                          allowed_mentions=discord.AllowedMentions.none())
 
-    @_application.command(guild_ids=config.guild_ids, default_permission=False)
+    @application.command(guild_ids=config.guild_ids, default_permission=False)
+    @cmds.max_concurrency(1, cmds.BucketType.channel)
+    async def reject(self, ctx: discord.ApplicationContext):
+        applicant_id = await self.applications[ctx.channel_id].get(None)
+        if applicant_id is None:
+            await ctx.respond('This channel is not an application channel!')
+            return
+        await self.applications[ctx.channel_id].delete()
+        await self.completed_applications[ctx.channel_id].set((applicant_id, False))
+        await ctx.respond(f'<@{applicant_id}>, you have been rejected.',
+                          allowed_mentions=discord.AllowedMentions.none())
+
+    @application.command(guild_ids=config.guild_ids, default_permission=False)
     @cmds.max_concurrency(1, cmds.BucketType.channel)
     async def close(self, ctx: discord.ApplicationContext):
         """Close this application channel."""
@@ -146,7 +159,7 @@ class ApplicationCog(discordutils.CogBase):
         info_str = f'Leader Name: {data["leader_name"]}, Nation Name: {data["nation_name"]}, ' \
                    f'Nation ID: {nation_id}, Discord User ID: {applicant_id})'
 
-        transcript = io.StringIO(f'Transcript For Application of Nation {nation_id} (@!<{applicant_id}>\n'
+        transcript = io.StringIO(f'Transcript For Application of Nation {nation_id} (<@{applicant_id}>\n'
                                  f'Closed at {datetime.now(timezone.utc).isoformat()} by {ctx.author.mention}')
         async for message in ctx.channel.history(limit=None, oldest_first=True):
             transcript.write(f'{message.author.mention}: {message.content}')
