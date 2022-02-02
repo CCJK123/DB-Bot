@@ -48,8 +48,6 @@ class OptionsCog(discordutils.CogBase):
 
     war_detector_options = options.create_subgroup('war_detector', "Options for the bot's war detector")
     war_detector_options.guild_ids = config.guild_ids
-    print(war_detector_options.permissions)
-    war_detector_options.permissions = [config.gov_role_permission]
 
     @war_detector_options.command(guild_ids=config.guild_ids)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)

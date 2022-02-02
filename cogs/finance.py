@@ -268,8 +268,6 @@ class FinanceCog(discordutils.CogBase):
             except asyncio.TimeoutError:
                 await author.send('You took too long to respond! Exiting...')
                 return
-            print(data["offensive_wars"])
-            print(data["defensive_wars"])
             req_data.additional_info = {
                 'Beige Turns': data['beigeturns'],
                 'Active Wars': f'''
