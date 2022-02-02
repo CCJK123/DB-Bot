@@ -30,7 +30,7 @@ class UtilCog(discordutils.CogBase):
         if not nation_id:
             if '/' in ctx.author.display_name:
                 try:
-                    int(nation_id := ctx.author.display_name.split('/')[1])
+                    int(nation_id := ctx.author.display_name.split('/')[-1])
                 except ValueError:
                     await ctx.respond('Please provide your nation id!')
                     return
@@ -100,7 +100,7 @@ class UtilCog(discordutils.CogBase):
         for member in ctx.guild.members:
             if str(member.id) not in nations.keys() and '/' in member.display_name:
                 try:
-                    int(nation_id := member.display_name.split('/')[1])
+                    int(nation_id := member.display_name.split('/')[-1])
                 except ValueError:
                     continue
                 nations[str(member.id)] = nation_id

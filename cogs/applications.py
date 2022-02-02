@@ -1,4 +1,6 @@
 import asyncio
+from datetime import datetime, timezone
+import io
 
 import discord
 from discord import commands
@@ -11,6 +13,47 @@ import dbbot
 class ApplicationCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
+        self.application_category = discordutils.ChannelProperty(self, 'application_category')
+        self.application_log = discordutils.ChannelProperty(self, 'application_log')
+        self.applications = discordutils.MappingProperty[str, str](self, 'applications')
+        self.completed_applications = discordutils.MappingProperty[str, str](self, 'accepted_applications')
+
+    @commands.command(guild_ids=config.guild_ids)
+    @cmds.max_concurrency(1, cmds.BucketType.user)
+    async def apply(self, ctx: discord.ApplicationContext):
+        if '/' in ctx.author.display_name:
+            try:
+                int(nation_id := ctx.author.display_name.split('/')[-1])
+            except ValueError:
+                await ctx.respond('Please register with __ first!')
+                return
+            util_cog = self.bot.get_cog('UtilCog')
+            await util_cog.nations[ctx.author.id].set(nation_id)
+            await ctx.respond('You have been registered to our database!')
+        else:
+            await ctx.respond('Please register with __ first!')
+            return
+
+        category: discord.CategoryChannel = await self.application_category.get(None)
+        if category is None:
+            await ctx.respond('Application Category has not been set! Aborting...')
+            return
+        overwrites = {
+            ctx.guild.default_role: discord.PermissionOverwrite(read_messages=False),
+            ctx.guild.me: discord.PermissionOverwrite(read_messages=True),
+            ctx.author: discord.PermissionOverwrite(read_messages=True),
+            ctx.guild.get_role(config.interviewer_role_id): discord.PermissionOverwrite(read_messages=True)
+        }
+        channel = await category.create_text_channel(
+            f'application-{nation_id}',
+            reason=f'Application from {ctx.author.mention}',
+            topic=f"{ctx.author.display_name}'s Application to {config.alliance_name}",
+            pos=-1, overwrites=overwrites)
+
+        await self.applications[channel.id].set(ctx.author.id)
+        await ctx.respond(f'Please proceed to your interview channel at {channel.mention}', ephemeral=True)
+        await channel.send(f'Welcome to the {config.alliance_name} interview. '
+                           'When you are ready, please run the `/start_interview` command.')
 
     @commands.command(guild_ids=config.guild_ids)
     @cmds.max_concurrency(1, cmds.BucketType.channel)
@@ -20,8 +63,12 @@ class ApplicationCog(discordutils.CogBase):
                                                      max_value=len(config.interview_questions))
                               ) -> None:
         """Gives you interview questions for you to respond to."""
-        if not ctx.channel.name.endswith('-application'):
-            await ctx.respond('This is not an interview channel!')
+        applicant_id = await self.applications[ctx.channel.id].get(None)
+        if applicant_id is None:
+            await ctx.respond('This channel is not an application channel!')
+            return
+        if int(applicant_id) != ctx.author.id:
+            await ctx.respond('You are not the applicant of this application channel!')
             return
 
         response_check = discordutils.get_msg_chk(ctx)
@@ -38,28 +85,30 @@ class ApplicationCog(discordutils.CogBase):
                           'and will get back to you as soon as possible (1 - 4 hours). '
                           'They will respond to your queries and may ask follow up questions.')
 
-    @commands.user_command(guild_ids=config.guild_ids, default_permission=False)
-    @commands.permissions.has_any_role(config.gov_role_id, config.staff_role_id, guild_id=config.guild_id)
-    async def accept(self, ctx: discord.ApplicationContext, member: discord.Member):
+    _application = commands.SlashCommandGroup('_application', 'Interviewer commands related to applications',
+                                              guild_ids=config.guild_ids, default_permission=False,
+                                              permissions=[
+                                                  config.gov_role_permission,
+                                                  commands.CommandPermission(config.interviewer_role_id, type=1,
+                                                                             permission=True, guild_id=config.guild_id)
+                                              ])
+
+    @_application.command(guild_ids=config.guild_ids, default_permission=False)
+    @cmds.max_concurrency(1, cmds.BucketType.channel)
+    async def accept(self, ctx: discord.ApplicationContext):
         """Accept someone into the alliance!"""
-        await member.add_roles(*map(discord.Object, config.on_accepted_added_roles),
-                               reason=f'Accepted into {config.alliance_name}!')
-        util_cog = self.bot.get_cog('UtilCog')
-        if '/' in member.display_name:
-            try:
-                int(nation_id := member.display_name.split('/')[1])
-            except ValueError:
-                await ctx.respond('Error in getting nation id!')
-                return
-            await util_cog.nations[str(member.id)].set(nation_id)
-            data = await pnwutils.api.post_query(self.bot.session, queries.acceptance_query,
-                                                 {'nation_id': nation_id})
-            data = data['data']
-            await ctx.respond(
-                f'Reason: Accepted (Leader Name: {data["leader_name"]}, Nation Name: {data["nation_name"]}, '
-                f'Nation ID: {nation_id}, Discord User ID: {member.id})', ephemeral=True)
-        else:
-            await ctx.respond('Error in getting nation id!')
+        applicant_id = await self.applications[ctx.channel_id].get(None)
+        if applicant_id is None:
+            await ctx.respond('This channel is not an application channel!')
+            return
+
+        applicant = ctx.guild.get_member(applicant_id)
+        await applicant.add_roles(*map(discord.Object, config.on_accepted_added_roles),
+                                  reason=f'Accepted into {config.alliance_name}!')
+
+        await self.applications[ctx.channel_id].delete()
+        await self.completed_applications[ctx.channel_id].set((applicant_id, True))
+        await ctx.respond(f'{applicant.mention}, you have been accepted into {config.alliance_name}!')
 
     @accept.error
     async def accept_on_error(self, ctx: discord.ApplicationContext, error: discord.ApplicationCommandError):
@@ -67,6 +116,40 @@ class ApplicationCog(discordutils.CogBase):
             await ctx.respond('I do not have the permissions to add roles!')
             return
         await discordutils.default_error_handler(ctx, error)
+
+    @_application.command(guild_ids=config.guild_ids, default_permission=False)
+    @cmds.max_concurrency(1, cmds.BucketType.channel)
+    async def close(self, ctx: discord.ApplicationContext):
+        """Close this application channel."""
+        application_info = await self.completed_applications[ctx.channel_id].get(None)
+        if application_info is None:
+            await ctx.respond('This channel is not an application channel!')
+            return
+        application_log = await self.application_log.get(None)
+        if application_log is None:
+            await ctx.respond('Application Log channel is unset! Aborting...')
+            return
+        applicant_id, accepted = application_info
+
+        util_cog = self.bot.get_cog('UtilCog')
+        nation_id = await util_cog.nations[applicant_id].get()
+        data = await pnwutils.api.post_query(self.bot.session, queries.acceptance_query,
+                                             {'nation_id': nation_id})
+        data = data['data']
+        acc_str = 'Accepted' if accepted else 'Rejected'
+        info_str = f'Leader Name: {data["leader_name"]}, Nation Name: {data["nation_name"]}, ' \
+                   f'Nation ID: {nation_id}, Discord User ID: {applicant_id})'
+
+        transcript = io.StringIO(f'Transcript For Application of Nation {nation_id} (@!<{applicant_id}>\n'
+                                 f'Closed at {datetime.now(timezone.utc).isoformat()} by {ctx.author.mention}')
+        async for message in ctx.channel.history(limit=None, oldest_first=True):
+            transcript.write(f'{message.author.mention}: {message.content}')
+
+        await application_log.send(embed=discord.Embed(title=f'{acc_str} Application', description=info_str),
+                                   file=discord.File(transcript,  # type: ignore
+                                                     f'{nation_id}_application_transcript.txt',
+                                                     description=f'Transcript of the application of nation {nation_id}')
+                                   )
 
 
 def setup(bot: dbbot.DBBot) -> None:

@@ -78,7 +78,7 @@ class OptionsCog(discordutils.CogBase):
         await channel.set(ctx.channel)
         await ctx.respond(f'{kind_text} wars channel set!')
 
-    market_options = options.create_subgroup('market', 'Edit the market options!')
+    market_options = options.create_subgroup('market', 'Options for the market system!')
     market_options.guild_ids = config.guild_ids
 
     @market_options.command(guild_ids=config.guild_ids)
@@ -112,7 +112,7 @@ class OptionsCog(discordutils.CogBase):
         await bank_cog.market_values.set(values)
         await ctx.respond(f'The stock of {res_name} has been set to {stock} tons.')
 
-    bank_options = options.create_subgroup('bank', 'Edit the bank options!')
+    bank_options = options.create_subgroup('bank', 'Options for the bank system!')
     bank_options.guild_ids = config.guild_ids
 
     @bank_options.command(guild_ids=config.guild_ids)
@@ -127,6 +127,21 @@ class OptionsCog(discordutils.CogBase):
             await ctx.respond('Offshore id has been set!', ephemeral=True)
             return
         await ctx.respond('Aborting!', ephemeral=True)
+
+    application_options = options.create_subgroup('application', 'Options for the application system!')
+    application_options.guild_ids = config.guild_ids
+
+    @application_options.command(guild_ids=config.guild_ids)
+    async def set_application_category(self, ctx: discord.ApplicationContext):
+        application_cog = self.bot.get_cog('ApplicationCog')
+        await application_cog.application_channel.set(ctx.channel.category)
+        await ctx.respond(f'Application category set to {self.channel.category.name}!')
+
+    @application_options.command(guild_ids=config.guild_ids)
+    async def set_application_log(self, ctx: discord.ApplicationContext):
+        application_cog = self.bot.get_cog('ApplicationCog')
+        await application_cog.application_log.set(ctx.channel)
+        await ctx.respond('Application log set!')
 
 
 def setup(bot: dbbot.DBBot) -> None:

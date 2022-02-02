@@ -1,6 +1,6 @@
 import os
 
-from discord.commands.permissions import CommandPermission
+from discord.commands import CommandPermission
 
 token: str = os.environ['bot_token']
 timeout: float = 300
@@ -16,6 +16,7 @@ api_key: str = os.environ['api_key']
 alliance_id: str = '4221'
 alliance_name: str = 'Dark Brotherhood'
 
+interviewer_role_id = 331571201686372356
 interview_questions = (
     '1. Why do you want to join the Dark Brotherhood? Have you been in another alliance?',
     "2. What's your nation link and leader name?",
