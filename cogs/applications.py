@@ -161,9 +161,10 @@ class ApplicationCog(discordutils.CogBase):
                    f'Nation ID: {nation_id}, Discord User ID: {applicant_id}'
 
         transcript_list = [f'Transcript For Application of Nation {nation_id} (<@{applicant_id}>\n'
-                           f'Closed at {datetime.now(timezone.utc).isoformat()} by {ctx.author.mention}']
+                           f'Closed at {datetime.now(timezone.utc).isoformat()} by {ctx.author.mention}\n']
         async for message in ctx.channel.history(limit=None, oldest_first=True):
-            transcript_list.append(f'{message.author.mention}: {message.content}')
+            message: discord.Message
+            transcript_list.append(f'{message.created_at.isoformat()} {message.author.name} ({message.author.id}): {message.content}')
         await application_log.send(embed=discord.Embed(title=f'{acc_str} Application', description=info_str),
                                    file=discord.File(io.StringIO('\n'.join(transcript_list)),  # type: ignore
                                                      f'{nation_id}_application_transcript.txt',
