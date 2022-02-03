@@ -150,7 +150,7 @@ class ApplicationCog(discordutils.CogBase):
             await ctx.respond('Application Log channel is unset! Aborting...')
             return
         applicant_id, accepted = application_info
-
+        applicant = ctx.guild.get_member(applicant_id)
         util_cog = self.bot.get_cog('UtilCog')
         nation_id = await util_cog.nations[applicant_id].get()
         data = await pnwutils.api.post_query(self.bot.session, queries.acceptance_query,
@@ -158,13 +158,13 @@ class ApplicationCog(discordutils.CogBase):
         data = data['data'].pop()
         acc_str = 'Accepted' if accepted else 'Rejected'
         info_str = f'Leader Name: {data["leader_name"]}, Nation Name: {data["nation_name"]}, ' \
-                   f'Nation ID: {nation_id}, Discord User ID: {applicant_id}'
+                   f'Nation ID: {nation_id}, Discord User: {applicant.name}, Discord User ID: {applicant_id}'
 
         transcript_list = [f'Transcript For Application of Nation {nation_id} (<@{applicant_id}>\n'
-                           f'Closed at {datetime.now(timezone.utc).isoformat()} by {ctx.author.mention}\n']
+                           f'Closed at {datetime.now(timezone.utc).isoformat()} by {ctx.author.name}.\n']
         async for message in ctx.channel.history(limit=None, oldest_first=True):
-            message: discord.Message
-            transcript_list.append(f'{message.created_at.isoformat()} {message.author.name} ({message.author.id}): {message.content}')
+            transcript_list.append(f'{message.created_at.isoformat()} {message.author.name} '
+                                   f'({message.author.id}): {message.content}')
         await application_log.send(embed=discord.Embed(title=f'{acc_str} Application', description=info_str),
                                    file=discord.File(io.StringIO('\n'.join(transcript_list)),  # type: ignore
                                                      f'{nation_id}_application_transcript.txt',
