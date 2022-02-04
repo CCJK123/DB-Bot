@@ -122,8 +122,8 @@ class ApplicationCog(discordutils.CogBase):
             return
         await self.applications[ctx.channel_id].delete()
         await self.completed_applications[ctx.channel_id].set((applicant_id, True))
-        await ctx.respond(f'{applicant.mention}, you have been accepted into {config.alliance_name}!',
-                          allowed_mentions=discord.AllowedMentions.none())
+        await ctx.respond(f'{applicant.mention} has been accepted.',
+                          ephemeral=True)
 
     @application.command(guild_ids=config.guild_ids, default_permission=False)
     @cmds.max_concurrency(1, cmds.BucketType.channel)
@@ -134,8 +134,8 @@ class ApplicationCog(discordutils.CogBase):
             return
         await self.applications[ctx.channel_id].delete()
         await self.completed_applications[ctx.channel_id].set((applicant_id, False))
-        await ctx.respond(f'<@{applicant_id}>, you have been rejected.',
-                          allowed_mentions=discord.AllowedMentions.none())
+        await ctx.respond(f'<@{applicant_id}> has been rejected.',
+                          ephemeral=True)
 
     @application.command(guild_ids=config.guild_ids, default_permission=False)
     @cmds.max_concurrency(1, cmds.BucketType.channel)
