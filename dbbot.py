@@ -44,9 +44,6 @@ class DBBot(discord.Bot):
         self.database = await self.database.__aenter__()
 
         self.change_status.start()
-        for cog in self.cogs.values():
-            if isinstance(cog, discordutils.CogBase):
-                await cog.on_ready()
 
     async def cleanup(self):
         await self.session.__aexit__(None, None, None)
@@ -72,6 +69,10 @@ class DBBot(discord.Bot):
         if not self.prepped:
             self.prepped = True
             await self.prep()
+
+        for cog in self.cogs.values():
+            if isinstance(cog, discordutils.CogBase):
+                await cog.on_ready()
 
         # add views
         for view in await self.views.get_views():

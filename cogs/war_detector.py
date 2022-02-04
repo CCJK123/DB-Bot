@@ -18,6 +18,14 @@ class WarType(enum.Enum):
     ATT = 1
 
 
+WarType.LOSE.string = 'losing'
+WarType.LOSE.string_short = 'lose'
+WarType.ATT.string = 'attacker'
+WarType.ATT.string_short = 'att'
+WarType.DEF.string = 'defender'
+WarType.DEF.string_short = 'def'
+
+
 class WarDetectorCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
@@ -28,6 +36,7 @@ class WarDetectorCog(discordutils.CogBase):
         self.lose_channel = discordutils.ChannelProperty(self, 'lose_channel')
         self.channels = {WarType.ATT: self.att_channel, WarType.DEF: self.def_channel, WarType.LOSE: self.lose_channel}
         self.done_wars: list[str] = []
+        self.reported_losing: list[str] = []
 
     async def on_ready(self):
         if await self.running.get(None) is None:
@@ -46,13 +55,13 @@ class WarDetectorCog(discordutils.CogBase):
             title = 'Losing War!'
 
         embeds = discord.Embed(title=title, description=f'[War Page]({pnwutils.link.war(data["id"])})'), discord.Embed()
-        for name, nation, prefix, n in ('Attacker', data['attacker'], 'att', 0), (
-                'Defender', data['defender'], 'def', 1):
-            embeds[n].add_field(name=name,
-                                value=f'[{nation["nation_name"]}]({pnwutils.link.nation(data[f"{prefix}id"])})',
+        for t, n in (WarType.ATT, 0), (WarType.DEF, 1):
+            nation = data[t.string]
+            embeds[n].add_field(name=t.string.captialize(),
+                                value=f'[{nation["nation_name"]}]({pnwutils.link.nation(data[f"{t.string_short}id"])})',
                                 inline=False)
             aa_text = 'None' if nation['alliance'] is None else \
-                f'[{nation["alliance"]["name"]}]({pnwutils.link.alliance(data[f"{prefix}_alliance_id"])})'
+                f'[{nation["alliance"]["name"]}]({pnwutils.link.alliance(data[f"{t.string_short}_alliance_id"])})'
             embeds[n].add_field(name='Alliance', value=aa_text, inline=False)
             embeds[n].add_field(name='Score', value=nation['score'])
             r = pnwutils.war_range(nation['score'])
@@ -66,8 +75,8 @@ class WarDetectorCog(discordutils.CogBase):
             embeds[n].add_field(name='Missiles', value=nation['missiles'])
             embeds[n].add_field(name='Nukes', value=nation['nukes'])
             if kind == WarType.LOSE:
-                embeds[n].add_field(name='Resistance', value=data[f'{prefix}_resistance'], inline=False)
-                embeds[n].add_field(name='Action Points', value=data[f'{prefix}points'])
+                embeds[n].add_field(name='Resistance', value=data[f'{t.string_short}_resistance'], inline=False)
+                embeds[n].add_field(name='Action Points', value=data[f'{t.string_short}points'])
 
         return embeds
 
@@ -78,23 +87,26 @@ class WarDetectorCog(discordutils.CogBase):
 
         war: dict[str, Any]
         for war in data:
+            if war['id'] in self.reported_losing:
+                continue
+            kind = WarType.ATT if war['att_alliance_id'] == config.alliance_id else WarType.DEF
+            if await self.check_losing.get() and war[f'{kind.string_short}_resistance'] <= 50:
+                await (await self.channels[WarType.LOSE].get()).send(embeds=await self.war_embed(war, WarType.LOSE))
+                self.reported_losing.append(war['id'])
+                continue
+
             if war['id'] in self.done_wars:
                 continue
 
-            kind, kind_str = (WarType.ATT, 'attacker') if war['att_alliance_id'] == config.alliance_id else (
-                WarType.DEF, 'defender')
-            if war[kind_str]['alliance_position'] == 'APPLICANT':
+            if war[kind.string]['alliance_position'] == 'APPLICANT':
                 self.done_wars.append(war['id'])
                 continue
+
             if war['turnsleft'] == 60:
                 # new war
-                kind = WarType.ATT if war['att_alliance_id'] == config.alliance_id else WarType.DEF
                 await (await self.channels[kind].get()).send(embeds=await self.war_embed(war, kind))
                 self.done_wars.append(war['id'])
                 continue
-            if await self.check_losing.get() and war[f'{kind_str[:3]}_resistance'] <= 50:
-                await (await self.channels[WarType.LOSE].get()).send(embeds=await self.war_embed(war, WarType.LOSE))
-                self.done_wars.append(war['id'])
 
     @commands.command(guild_id=config.guild_id, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
