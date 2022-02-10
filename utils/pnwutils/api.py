@@ -32,9 +32,14 @@ async def post_query(sess: aiohttp.ClientSession,
     query = construct_query(query_string, query_variables)
     async with sess.post(constants.api_url, json=query) as response:
         data = await response.json()
-    if 'data' not in data.keys():
-        raise APIError(f'Error in fetching data: {data["errors"]}')
-    data = data['data']
+    try:
+        data = data['data']
+    except KeyError:
+        raise APIError(f'Error in fetching data: {data["errors"]}') from None
+    except TypeError:
+        if isinstance(data, list):
+            raise APIError(f'Error in fetching data: {data[0]["errors"][0]["message"]}') from None
+        raise
     # get the only child of the dict
     data = next(iter(data.values()))
     # Get data from other pages, if they exist

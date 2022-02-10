@@ -237,7 +237,7 @@ query alliance_wars($alliance_id: [ID]) {
 '''
 
 individual_war_query = '''
-query individual_war(war_id: [ID]) {
+query individual_war($war_id: [Int]) {
     wars(id: $war_id) {
         id
         attid

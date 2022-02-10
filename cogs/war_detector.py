@@ -122,15 +122,15 @@ class WarDetectorCog(discordutils.CogBase):
             bar = (resist // 10) * '🟩' + (10 - resist // 10) * '⬛'
             s += (f'{k.string.capitalize()}: [{n["nation_name"]}]'
                   f'({pnwutils.link.nation(w[f"{k.string_short}id"])})\n'
-                  f'{aa_text}\n'
-                  f'{bar} {resist} Resistance\n'
+                  f'{aa_text}\n\n'
+                  f'{bar} {resist} Resistance\n\n'
                   f'{pnwutils.mil_text(n, w[f"{k.string_short}points"])}\n\n')
         return s
 
     detector = commands.SlashCommandGroup('detector', "The bot's war detector!", guild_ids=config.guild_ids,
                                           default_permission=False, permissions=[config.gov_role_permission])
     
-    @detector.command(guild_id=config.guild_id, default_permission=False)
+    @detector.command(guild_ids=config.guild_ids, default_permission=False)
     async def toggle(self, ctx: discord.ApplicationContext):
         """Toggles the war detector on and off"""
         for c in self.channels.values():
@@ -150,7 +150,7 @@ class WarDetectorCog(discordutils.CogBase):
         await self.running.set(True)
         await ctx.respond('War detector started!')
 
-    @detector.command(guild_id=config.guild_id, default_permission=False)
+    @detector.command(guild_ids=config.guild_ids, default_permission=False)
     async def monitor_ongoing(self, ctx: discord.ApplicationContext):
         """Makes the detector check for ongoing wars to monitor that it missed while offline."""
         data = await pnwutils.api.post_query(self.bot.session, alliance_wars_query, {'alliance_id': config.alliance_id})
@@ -170,10 +170,10 @@ class WarDetectorCog(discordutils.CogBase):
         
         await ctx.respond(f'Complete! {c} wars added.')
 
-    @commands.command(guild_id=config.guild_id)
+    @commands.command(guild_ids=config.guild_ids)
     async def war(self, ctx: discord.ApplicationContext, war: commands.Option(str, 'War ID or link')):
         war: str
-        war.removeprefix(f'{pnwutils.constants.base_url}nation/war/timeline/war=')
+        war = war.removeprefix(f'{pnwutils.constants.base_url}nation/war/timeline/war=')
 
         try:
             int(war)
@@ -182,10 +182,11 @@ class WarDetectorCog(discordutils.CogBase):
             return
 
         data = await pnwutils.api.post_query(self.bot.session, individual_war_query, {'war_id': war})
-        data = data.pop()  # type: ignore
-        await ctx.respond(self.war_description(data))
-
-
-# Setup War Detector Cog as an extension
+        if data:
+            data = data.pop()  # type: ignore
+            embed = discord.Embed(description=self.war_description(data))
+            await ctx.respond(embed=embed)
+        else:
+            ctx.respond('No such war exists!')# Setup War Detector Cog as an extension
 def setup(bot: dbbot.DBBot) -> None:
     bot.add_cog(WarDetectorCog(bot))
