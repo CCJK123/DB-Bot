@@ -236,6 +236,55 @@ query alliance_wars($alliance_id: [ID]) {
 }
 '''
 
+individual_war_query = '''
+query individual_war(war_id: [ID]) {
+    wars(id: $war_id) {
+        id
+        attid
+        defid
+        att_alliance_id
+        def_alliance_id
+        att_resistance
+        def_resistance
+        attpoints
+        defpoints
+        attacker {
+            nation_name
+            score
+            num_cities
+            warpolicy
+            soldiers
+            tanks
+            aircraft
+            ships
+            missiles
+            nukes
+            alliance_position
+            alliance {
+                name
+            }
+        }
+        defender {
+            nation_name
+            score
+            num_cities
+            warpolicy
+            soldiers
+            tanks
+            aircraft
+            ships
+            missiles
+            nukes
+            alliance_position
+            alliance {
+                name
+            }
+        }
+    }
+}
+'''
+
+# applications.py
 
 acceptance_query = '''
 query acceptance_data($nation_id: [Int]) {

@@ -1,5 +1,7 @@
+from typing import TypedDict
+
 # Setup what is exported by default
-__all__ = ('war_range', 'infra_value', 'infra_price')
+__all__ = ('war_range', 'infra_value', 'infra_price', 'mil_text')
 
 
 def war_range(score: str | float) -> tuple[float, float]:
@@ -24,3 +26,22 @@ def infra_price(start: float, end: float) -> float:
     if diff > 100:
         return infra_value(start) * 100 + infra_price(start + 100, end)
     return infra_value(start) * diff
+
+
+class MilDict(TypedDict):
+    soldiers: int
+    tanks: int
+    aircraft: int
+    ships: int
+    missiles: int
+    nukes: int
+
+
+def mil_text(nation: MilDict, action_points: int):
+    return (f'{action_points} ⚔️\n'
+            f'{nation["soldiers"]} 🪖\n'
+            f'{nation["tanks"]} :truck:\n'
+            f'{nation["aircraft"]} ✈\n'
+            f'{nation["ships"]} 🚢\n'
+            f'{nation["missiles"]} 🚀\n'
+            f'{nation["nukes"]} ☢️')

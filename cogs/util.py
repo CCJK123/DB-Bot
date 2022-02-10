@@ -40,8 +40,7 @@ class UtilCog(discordutils.CogBase):
             await ctx.respond('Please provide your nation id!')
             return
 
-        nation_prefix = pnwutils.constants.base_url + 'nation/id='
-        nation_id.removeprefix(nation_prefix)
+        nation_id.removeprefix(f'{pnwutils.constants.base_url}nation/id=')
 
         try:
             int(nation_id)
