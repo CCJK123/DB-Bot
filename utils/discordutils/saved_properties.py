@@ -182,11 +182,10 @@ class SetProperty(Generic[T], CogProperty[set[T]]):
     __slots__ = ()
 
     async def get_(self) -> set[T]:
-        print(type(await super().get_()))
         return set(await super().get_())
 
     async def set_(self, value: set[T]) -> None:
-        await super().set_(value)
+        await super().set_(tuple(value))
 
     async def add(self, elem: T) -> None:
         self.value.add(elem)

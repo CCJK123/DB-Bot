@@ -13,7 +13,7 @@ import dbbot
 
 
 class WarType(enum.Enum):
-    def __init__(self):
+    def __init__(self, v):
         self.string = ''
         self.string_short = ''
 
@@ -54,8 +54,9 @@ class WarDetectorCog(discordutils.CogBase):
             self.detect_wars.start()
 
     @staticmethod
-    def mil_text(nation):
-        return (f'{nation["soldiers"]} 🪖\n'
+    def mil_text(nation, points):
+        return (f'{points} ⚔️\n'
+                f'{nation["soldiers"]} 🪖\n'
                 f'{nation["tanks"]} :truck:\n'
                 f'{nation["aircraft"]} ✈\n'
                 f'{nation["ships"]} 🚢\n'
@@ -85,20 +86,20 @@ class WarDetectorCog(discordutils.CogBase):
             embed.add_field(name='Cities', value=nation['num_cities'], inline=False)
             embed.add_field(name='War Policy', value=nation['warpolicy'], inline=False)
             embed.add_field(name='Military',
-                            value=self.mil_text(nation))
+                            value=self.mil_text(nation, data[f'{t.string_short}points']))
         return embed
 
     @tasks.loop(minutes=2)
     async def detect_wars(self) -> None:
-        async with aiohttp.ClientSession() as session:
-            data = await pnwutils.api.post_query(session, alliance_wars_query, {'alliance_id': config.alliance_id})
-
+        data = await pnwutils.api.post_query(self.bot.session, alliance_wars_query, {'alliance_id': config.alliance_id})
+        await self.monitor_att.initialise()
+        await self.monitor_def.initialise()
         monitoring = []
         war: dict[str, Any]
         for war in data:
-            if war['id'] in self.monitor_att:
+            if await self.monitor_att.contains(war['id']):
                 kind = WarType.ATT
-            elif war['id'] in self.monitor_def:
+            elif await self.monitor_def.contains(war['id']):
                 kind = WarType.DEF
             else:
                 kind = WarType.ATT if war['att_alliance_id'] == config.alliance_id else WarType.DEF
@@ -115,28 +116,35 @@ class WarDetectorCog(discordutils.CogBase):
 
         monitoring.sort(key=lambda t: t[0][f'{t[1].string_short}_resistance'])
         monitoring = monitoring[:min(5, len(monitoring))]
+        monitoring = tuple(filter(lambda t: t[0][f'{t[1].string_short}_resistance'] != 100, monitoring))
         if monitoring != self.last_monitoring:
             self.last_monitoring = monitoring
-            embed = discord.Embed(title=f'{config.alliance_name} Active Wars')
-            for w, k in monitoring:
-                embed.add_field(name=f"{w[k.string]['nation_name']}'s War", value=self.war_description(w))
-            await self.updates_channel.send(embed=embed)
+            if monitoring:
+                embed = discord.Embed(title=f'{config.alliance_name} Lowest Resistance Active Wars')
+                for w, k in monitoring:
+                    embed.add_field(name=f"{w[k.string]['nation_name']}'s War", value=self.war_description(w), inline=False)
+                await self.updates_channel.send(embed=embed)
 
     def war_description(self, w):
         s = ''
         for k in WarType.ATT, WarType.DEF:
+            n = w[k.string]
+            aa_text = 'None' if n['alliance'] is None else \
+                f'[{n["alliance"]["name"]}]({pnwutils.link.alliance(w[f"{k.string_short}_alliance_id"])})'
             resist = w[f"{k.string_short}_resistance"]
             bar = (resist // 10) * '🟩' + (10 - resist // 10) * '⬛'
-            s += (f'{k.string.capitalize()}: [{w[k.string]["nation_name"]}]'
+            s += (f'{k.string.capitalize()}: [{n["nation_name"]}]'
                   f'({pnwutils.link.nation(w[f"{k.string_short}id"])})\n'
-                  f'{w[k.string]["alliance"]["name"]}\n'
+                  f'{aa_text}\n'
                   f'{bar} {resist} Resistance\n'
-                  f'{self.mil_text(w[k.string])}\n\n')
+                  f'{self.mil_text(n, w[f"{k.string_short}points"])}\n\n')
         return s
 
-    @commands.command(guild_id=config.guild_id, default_permission=False)
-    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def detector_toggle(self, ctx: discord.ApplicationContext) -> None:
+    detector = commands.SlashCommandGroup('detector', "The bot's war detector!", guild_ids=config.guild_ids,
+                                          default_permission=False, permissions=[config.gov_role_permission])
+    
+    @detector.command(guild_id=config.guild_id, default_permission=False)
+    async def toggle(self, ctx: discord.ApplicationContext):
         """Toggles the war detector on and off"""
         for c in self.channels.values():
             if await c.get(None) is None:
@@ -145,15 +153,36 @@ class WarDetectorCog(discordutils.CogBase):
                                   'in the respective channels.')
                 return
 
-        await self.monitor_att.initialise()
-        await self.monitor_def.initialise()
-        await self.running.transform(operator.not_)
+        print(await self.running.get())
         if self.detect_wars.is_running():
             self.detect_wars.stop()
+            await self.running.set(False)
             await ctx.respond('War detector stopped!')
             return
         self.detect_wars.start()
+        await self.running.set(True)
         await ctx.respond('War detector started!')
+
+    @detector.command(guild_id=config.guild_id, default_permission=False)
+    async def monitor_ongoing(self, ctx: discord.ApplicationContext):
+        """Makes the detector check for ongoing wars to monitor that it missed while offline."""
+        data = await pnwutils.api.post_query(self.bot.session, alliance_wars_query, {'alliance_id': config.alliance_id})
+        c = 0
+        for war in data:
+            if await self.monitor_att.contains(war['id']) or await self.monitor_def.contains(war['id']):
+                continue
+            kind = WarType.ATT if war['att_alliance_id'] == config.alliance_id else WarType.DEF
+            if war[kind.string]['alliance_position'] == 'APPLICANT':
+                continue
+            if war['att_resistance'] and war['def_resistance'] and war['turnsleft'] > 0:
+                if kind == WarType.ATT:
+                    await self.monitor_att.add(war['id'])
+                else:
+                    await self.monitor_def.add(war['id'])
+                c += 1
+        
+        await ctx.respond(f'Complete! {c} wars added.')
+            
 
 
 # Setup War Detector Cog as an extension
