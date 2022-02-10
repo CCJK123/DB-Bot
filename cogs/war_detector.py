@@ -13,6 +13,10 @@ import dbbot
 
 
 class WarType(enum.Enum):
+    def __init__(self):
+        self.string = ''
+        self.string_short = ''
+
     DEF = -1
     LOSE = 0
     ATT = 1
@@ -29,14 +33,18 @@ WarType.DEF.string_short = 'def'
 class WarDetectorCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
+        self.last_monitoring: list[tuple[dict[str, Any], WarType]] | None = None
         self.running = discordutils.CogProperty[bool](self, 'running')
-        self.check_losing = discordutils.CogProperty[bool](self, 'check_losing')
+
+        self.updates_channel = discordutils.ChannelProperty(self, 'update_channel')
+
         self.att_channel = discordutils.ChannelProperty(self, 'att_channel')
         self.def_channel = discordutils.ChannelProperty(self, 'def_channel')
-        self.lose_channel = discordutils.ChannelProperty(self, 'lose_channel')
-        self.channels = {WarType.ATT: self.att_channel, WarType.DEF: self.def_channel, WarType.LOSE: self.lose_channel}
-        self.done_wars: list[str] = []
-        self.reported_losing: list[str] = []
+        self.channels = {WarType.ATT: self.att_channel, WarType.DEF: self.def_channel}
+
+        self.monitor_att = discordutils.SetProperty(self, 'monitor_att')
+        self.monitor_def = discordutils.SetProperty(self, 'monitor_def')
+        self.monitor = {WarType.ATT: self.monitor_att, WarType.DEF: self.monitor_def}
 
     async def on_ready(self):
         if await self.running.get(None) is None:
@@ -46,7 +54,15 @@ class WarDetectorCog(discordutils.CogBase):
             self.detect_wars.start()
 
     @staticmethod
-    async def war_embed(data: dict[str, Any], kind: WarType) -> tuple[discord.Embed, discord.Embed]:
+    def mil_text(nation):
+        return (f'{nation["soldiers"]} 🪖\n'
+                f'{nation["tanks"]} :truck:\n'
+                f'{nation["aircraft"]} ✈\n'
+                f'{nation["ships"]} 🚢\n'
+                f'{nation["missiles"]} 🚀\n'
+                f'{nation["nukes"]} ☢️')
+
+    async def new_war_embed(self, data: dict[str, Any], kind: WarType) -> discord.Embed:
         if kind == WarType.ATT:
             title = 'New Offensive War'
         elif kind == WarType.DEF:
@@ -54,59 +70,69 @@ class WarDetectorCog(discordutils.CogBase):
         else:
             title = 'Losing War!'
 
-        embeds = discord.Embed(title=title, description=f'[War Page]({pnwutils.link.war(data["id"])})'), discord.Embed()
-        for t, n in (WarType.ATT, 0), (WarType.DEF, 1):
+        embed = discord.Embed(title=title, description=f'[War Page]({pnwutils.link.war(data["id"])})')
+        for t in WarType.ATT, WarType.DEF:
             nation = data[t.string]
-            embeds[n].add_field(name=t.string.captialize(),
-                                value=f'[{nation["nation_name"]}]({pnwutils.link.nation(data[f"{t.string_short}id"])})',
-                                inline=False)
+            embed.add_field(name=t.string.capitalize(),
+                            value=f'[{nation["nation_name"]}]({pnwutils.link.nation(data[f"{t.string_short}id"])})',
+                            inline=False)
             aa_text = 'None' if nation['alliance'] is None else \
                 f'[{nation["alliance"]["name"]}]({pnwutils.link.alliance(data[f"{t.string_short}_alliance_id"])})'
-            embeds[n].add_field(name='Alliance', value=aa_text, inline=False)
-            embeds[n].add_field(name='Score', value=nation['score'])
+            embed.add_field(name='Alliance', value=aa_text, inline=False)
+            embed.add_field(name='Score', value=nation['score'])
             r = pnwutils.war_range(nation['score'])
-            embeds[n].add_field(name='Range', value=f'{r[0]:.2f}-{r[1]:.2f}')
-            embeds[n].add_field(name='Cities', value=nation['num_cities'], inline=False)
-            embeds[n].add_field(name='War Policy', value=nation['warpolicy'], inline=False)
-            embeds[n].add_field(name='Soldiers', value=nation['soldiers'])
-            embeds[n].add_field(name='Tanks', value=nation['tanks'])
-            embeds[n].add_field(name='Aircraft', value=nation['aircraft'])
-            embeds[n].add_field(name='Ships', value=nation['ships'])
-            embeds[n].add_field(name='Missiles', value=nation['missiles'])
-            embeds[n].add_field(name='Nukes', value=nation['nukes'])
-            if kind == WarType.LOSE:
-                embeds[n].add_field(name='Resistance', value=data[f'{t.string_short}_resistance'], inline=False)
-                embeds[n].add_field(name='Action Points', value=data[f'{t.string_short}points'])
-
-        return embeds
+            embed.add_field(name='Range', value=f'{r[0]:.2f}-{r[1]:.2f}')
+            embed.add_field(name='Cities', value=nation['num_cities'], inline=False)
+            embed.add_field(name='War Policy', value=nation['warpolicy'], inline=False)
+            embed.add_field(name='Military',
+                            value=self.mil_text(nation))
+        return embed
 
     @tasks.loop(minutes=2)
     async def detect_wars(self) -> None:
         async with aiohttp.ClientSession() as session:
             data = await pnwutils.api.post_query(session, alliance_wars_query, {'alliance_id': config.alliance_id})
 
+        monitoring = []
         war: dict[str, Any]
         for war in data:
-            if war['id'] in self.reported_losing:
-                continue
-            kind = WarType.ATT if war['att_alliance_id'] == config.alliance_id else WarType.DEF
-            if await self.check_losing.get() and war[f'{kind.string_short}_resistance'] <= 50:
-                await (await self.channels[WarType.LOSE].get()).send(embeds=await self.war_embed(war, WarType.LOSE))
-                self.reported_losing.append(war['id'])
+            if war['id'] in self.monitor_att:
+                kind = WarType.ATT
+            elif war['id'] in self.monitor_def:
+                kind = WarType.DEF
+            else:
+                kind = WarType.ATT if war['att_alliance_id'] == config.alliance_id else WarType.DEF
+
+                if war[kind.string]['alliance_position'] != 'APPLICANT' and war['turnsleft'] == 60:
+                    # new war
+                    await self.channels[kind].send(embed=await self.new_war_embed(war, kind))
+
+                    await self.monitor[kind].add(war['id'])
                 continue
 
-            if war['id'] in self.done_wars:
-                continue
+            if war['att_resistance'] and war['def_resistance'] and war['turnsleft'] > 0:
+                monitoring.append((war, kind))
 
-            if war[kind.string]['alliance_position'] == 'APPLICANT':
-                self.done_wars.append(war['id'])
-                continue
+        monitoring.sort(key=lambda t: t[0][f'{t[1].string_short}_resistance'])
+        monitoring = monitoring[:min(5, len(monitoring))]
+        if monitoring != self.last_monitoring:
+            self.last_monitoring = monitoring
+            embed = discord.Embed(title=f'{config.alliance_name} Active Wars')
+            for w, k in monitoring:
+                embed.add_field(name=f"{w[k.string]['nation_name']}'s War", value=self.war_description(w))
+            await self.updates_channel.send(embed=embed)
 
-            if war['turnsleft'] == 60:
-                # new war
-                await (await self.channels[kind].get()).send(embeds=await self.war_embed(war, kind))
-                self.done_wars.append(war['id'])
-                continue
+    def war_description(self, w):
+        s = ''
+        for k in WarType.ATT, WarType.DEF:
+            resist = w[f"{k.string_short}_resistance"]
+            bar = (resist // 10) * '🟩' + (10 - resist // 10) * '⬛'
+            s += (f'{k.string.capitalize()}: [{w[k.string]["nation_name"]}]'
+                  f'({pnwutils.link.nation(w[f"{k.string_short}id"])})\n'
+                  f'{w[k.string]["alliance"]["name"]}\n'
+                  f'{bar} {resist} Resistance\n'
+                  f'{self.mil_text(w[k.string])}\n\n')
+        return s
 
     @commands.command(guild_id=config.guild_id, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
@@ -114,10 +140,13 @@ class WarDetectorCog(discordutils.CogBase):
         """Toggles the war detector on and off"""
         for c in self.channels.values():
             if await c.get(None) is None:
-                await ctx.respond('Not all of the defensive, offensive and losing wars channels have been set! '
-                                  'Set them with the `options war_detector channel` command in the respective channels.')
+                await ctx.respond('Not all of the defensive, offensive and updates wars channels have been set! '
+                                  'Set them with the `options war_detector channel` command '
+                                  'in the respective channels.')
                 return
 
+        await self.monitor_att.initialise()
+        await self.monitor_def.initialise()
         await self.running.transform(operator.not_)
         if self.detect_wars.is_running():
             self.detect_wars.stop()

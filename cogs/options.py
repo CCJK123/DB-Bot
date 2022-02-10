@@ -49,18 +49,10 @@ class OptionsCog(discordutils.CogBase):
     war_detector_options = options.create_subgroup('war_detector', "Options for the bot's war detector")
     war_detector_options.guild_ids = config.guild_ids
 
-    @war_detector_options.command(guild_ids=config.guild_ids)
-    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def losing(self, ctx: discord.ApplicationContext) -> None:
-        """Toggles whether or not to check for losing wars"""
-        war_detector_cog = self.bot.get_cog('WarDetectorCog')
-        await ctx.respond(f'Losing wars will now {"not " * await war_detector_cog.check_losing.get()}be checked!')
-        await war_detector_cog.check_losing.transform(operator.not_)
-
     @war_detector_options.command(name='channel', guild_ids=config.guild_ids)
     async def channel_(self, ctx: discord.ApplicationContext,
                        kind: commands.Option(str, 'Channel type', name='type',
-                                             choices=('attack', 'defend', 'lose'))
+                                             choices=('attack', 'defend', 'updates'))
                        ) -> None:
         """Sets the attack, defend and lose channels"""
         war_detector_cog = self.bot.get_cog('WarDetectorCog')
@@ -71,7 +63,7 @@ class OptionsCog(discordutils.CogBase):
             channel = war_detector_cog.def_channel
             kind_text = 'Defensive'
         else:
-            channel = war_detector_cog.lose_channel
+            channel = war_detector_cog.updates_channel
             kind_text = 'Losing'
         await channel.set(ctx.channel)
         await ctx.respond(f'{kind_text} wars channel set!')

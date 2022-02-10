@@ -1,7 +1,7 @@
 import abc
 import operator
 import pickle
-from typing import Callable, Generic, TypeVar, TYPE_CHECKING
+from typing import Callable, Generic, ParamSpec, TypeVar, TYPE_CHECKING
 
 import discord
 
@@ -10,8 +10,8 @@ from .views import PersistentView
 if TYPE_CHECKING:
     from ... import dbbot
 
-__all__ = ('CogBase', 'BotProperty', 'ViewStorage', 'CogProperty',
-           'WrappedProperty', 'ChannelProperty', 'MappingProperty')
+__all__ = ('CogBase', 'BotProperty', 'ViewStorage', 'CogProperty', 'WrappedProperty',
+           'ChannelProperty', 'MappingProperty', 'SetProperty')
 
 
 class CogBase(discord.Cog):
@@ -27,6 +27,7 @@ T = TypeVar('T')
 T0 = TypeVar('T0')
 T1 = TypeVar('T1')
 DT = TypeVar('DT')
+P = ParamSpec('P')
 
 _sentinel = object()
 
@@ -176,8 +177,40 @@ class MappingProperty(Generic[T0, T1], CogProperty[dict[T0, T1]]):
             await self.set({})
 
 
+class SetProperty(Generic[T], CogProperty[set[T]]):
+    """Property storing a set"""
+    __slots__ = ()
+
+    async def get_(self) -> set[T]:
+        print(type(await super().get_()))
+        return set(await super().get_())
+
+    async def set_(self, value: set[T]) -> None:
+        await super().set_(value)
+
+    async def add(self, elem: T) -> None:
+        self.value.add(elem)
+        await self.set_(self.value)
+
+    async def remove(self, elem: T) -> None:
+        self.value.remove(elem)
+        await self.set_(self.value)
+
+    async def contains(self, elem: T) -> bool:
+        return elem in await self.get()
+
+    async def initialise(self) -> None:
+        """
+        Makes sure that the property is set to a set before it is accessed
+        Should only actually do anything the first time, when nothing is set at self.key
+        """
+        if await self.get(None) is None:
+            print(f'Initialising key {self.key} from {self.owner.cog_name} to set()')
+            await self.set(set())
+
+
 class WrappedProperty(Generic[T, T1], CogProperty[T]):
-    """Property where the stored value is wrapped with functions to get the actual value"""
+    """Property where the stored value is wrapped with conversion functions to get the actual value"""
     __slots__ = ('transform_to', 'transform_from')
 
     def __init__(self, owner: CogBase, key: str,
@@ -201,3 +234,7 @@ class ChannelProperty(WrappedProperty[discord.TextChannel, int]):
 
     def __init__(self, owner: CogBase, key: str):
         super().__init__(owner, key, owner.bot.get_channel, operator.attrgetter('id'))
+
+    async def send(self, *args: P.args, **kwargs: P.kwargs):
+        channel = await self.get()
+        await channel.send(*args, **kwargs)
