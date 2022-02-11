@@ -129,7 +129,7 @@ class WarDetectorCog(discordutils.CogBase):
 
     detector = commands.SlashCommandGroup('detector', "The bot's war detector!", guild_ids=config.guild_ids,
                                           default_permission=False, permissions=[config.gov_role_permission])
-    
+
     @detector.command(guild_ids=config.guild_ids, default_permission=False)
     async def toggle(self, ctx: discord.ApplicationContext):
         """Toggles the war detector on and off"""
@@ -167,7 +167,7 @@ class WarDetectorCog(discordutils.CogBase):
                 else:
                     await self.monitor_def.add(war['id'])
                 c += 1
-        
+
         await ctx.respond(f'Complete! {c} wars added.')
 
     @commands.command(guild_ids=config.guild_ids)
@@ -187,6 +187,9 @@ class WarDetectorCog(discordutils.CogBase):
             embed = discord.Embed(description=self.war_description(data))
             await ctx.respond(embed=embed)
         else:
-            ctx.respond('No such war exists!')# Setup War Detector Cog as an extension
+            ctx.respond('No such war exists!')
+
+
+# Setup War Detector Cog as an extension
 def setup(bot: dbbot.DBBot) -> None:
     bot.add_cog(WarDetectorCog(bot))
