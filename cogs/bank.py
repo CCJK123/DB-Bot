@@ -128,7 +128,7 @@ class BankCog(discordutils.CogBase):
             await ctx.respond('Your nation id has not been set!')
             return
 
-        channel = self.bot.get_cog('FinanceCog').send_channel  # type: ignore
+        channel = self.bot.get_cog('FinanceCog').withdrawal_channel  # type: ignore
         if (channel := await channel.get(None)) is None:
             await ctx.respond('Output channel has not been set! Aborting...')
             return None

@@ -57,7 +57,7 @@ class FinanceCog(discordutils.CogBase):
             await author.send('Your nation id has not been set! Aborting...')
             return
 
-        data = await pnwutils.api.post_query(self.bot.session, nation_query, {'nation_id': nation_id}, 'nations')
+        data = await pnwutils.api.post_query(self.bot.session, nation_query, {'nation_id': nation_id})
         data = data['data']
         if data:
             # Data contains a nation, hence nation with given id exists
