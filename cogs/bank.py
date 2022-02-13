@@ -262,9 +262,11 @@ class BankCog(discordutils.CogBase):
         nation_id_t = await self.nations[ctx.author.id].get(None)
         if nation_id_t is None:
             await ctx.respond('Your nation id has not been set!')
+            return
         nation_id_r = await self.nations[member.id].get(None)
         if nation_id_r is None:
             await ctx.respond("The recipient's nation id has not been set!")
+            return
         bal_r = self.balances[nation_id_r]
         resources = await self.balances[nation_id_t].get(None)
 
