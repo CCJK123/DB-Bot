@@ -144,27 +144,29 @@ def withdrawal_embed(name: str, nation_id: str, reason: str, resources: pnwutils
 
 
 # noinspection PyAttributeOutsideInit
-class WithdrawalButton(discord.ui.Button['WithdrawalView']):
-    def __init__(self, custom_id: int):
-        super().__init__(row=0, custom_id=f'Withdrawal Button {custom_id}', label='Sent')
+class WithdrawalViewButton(discord.ui.Button['WithdrawalView']):
+    def __init__(self, custom_id: int, label: str):
+        super().__init__(row=0, custom_id=f'Withdrawal {label} Button {custom_id}', label=label)
 
     async def callback(self, interaction: discord.Interaction):
         self.style = discord.ButtonStyle.success
-        self.disabled = True
+        for child in self.view.children:
+            child.disabled = True
         self.view.stop()
         await self.view.remove()
         await interaction.response.edit_message(view=self.view)
-        await self.view.callback(*self.view.args)
+        await self.view.callback(self.label, interaction, *self.view.args)
 
 
 class WithdrawalView(discordutils.CallbackPersistentView):
-    def __init__(self, callback_key: str, link: str, *args, custom_id: int = None):
+    def __init__(self, callback_key: str, link: str, *args, custom_id: int = None, can_reject: bool = True):
         super().__init__(key=callback_key, timeout=None)
         self.custom_id = self.get_id() if custom_id is None else custom_id
-
         self.args = args
         self.add_item(discordutils.LinkButton('Withdrawal Link', link))
-        self.add_item(WithdrawalButton(self.custom_id))
+        self.add_item(WithdrawalViewButton(self.custom_id, 'Sent'))
+        if can_reject:
+            self.add_item(WithdrawalViewButton(self.custom_id, 'Reject'))
 
     def get_state(self) -> tuple:
         return self.key, self.children[0].url, *self.args  # type: ignore

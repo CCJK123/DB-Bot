@@ -113,7 +113,7 @@ class WarDetectorCog(discordutils.CogBase):
 
     @staticmethod
     def war_description(w) -> str:
-        s = f'[War Page]({pnwutils.link.war(w["id"])})\n'
+        s = f'[War Page]({pnwutils.link.war(w["id"])})\n\n'
         for k in WarType.ATT, WarType.DEF:
             n = w[k.string]
             aa_text = 'None' if n['alliance'] is None else \
@@ -187,7 +187,7 @@ class WarDetectorCog(discordutils.CogBase):
             embed = discord.Embed(description=self.war_description(data))
             await ctx.respond(embed=embed)
         else:
-            ctx.respond('No such war exists!')
+            await ctx.respond('No such war exists!')
 
 
 # Setup War Detector Cog as an extension
