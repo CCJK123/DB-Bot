@@ -498,7 +498,7 @@ def setup(bot: dbbot.DBBot) -> None:
                 await cog.loans[req_data.nation_id].set(data.to_dict())
             else:
                 await req_data.requester.send(
-                    f'Your {req_data.kind} request {"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason} '
+                    f'Your {req_data.kind} request for {req_data.reason} '
                     'has been accepted! The resources will be sent to you soon. '
                 )
                 channel = await cog.withdrawal_channel.get()
@@ -512,7 +512,7 @@ def setup(bot: dbbot.DBBot) -> None:
         else:
             await interaction.user.send(
                 f'What was the reason for rejecting the {req_data.kind} request '
-                f'{"to" if (req_data.kind == "War Aid") else "for"} {req_data.reason}?'
+                f'for {req_data.reason}?'
             )
 
             def msg_chk(m: discord.Message) -> bool:
@@ -526,7 +526,7 @@ def setup(bot: dbbot.DBBot) -> None:
                 await interaction.user.send('You took too long to respond! Default rejection reason set.')
                 reject_reason = 'not given'
             await req_data.requester.send(
-                f'Your {req_data.kind} request for {req_data.reason} '
+                f'Your {req_data.kind} request for `{req_data.reason}`'
                 f'has been rejected!\nReason: `{reject_reason}`')
             await interaction.message.edit(embed=interaction.message.embeds.pop().add_field(
                 name='Rejection Reason', value=reject_reason, inline=True))
@@ -539,6 +539,6 @@ def setup(bot: dbbot.DBBot) -> None:
     async def on_sent(label: str, _: discord.Interaction, req_data: RequestData):
         assert label == 'Sent'
         await req_data.set_requester(bot).send(
-            f'Your {req_data.kind} request for {req_data.reason} has been sent to your nation!'
+            f'Your {req_data.kind} request for `{req_data.reason}` has been sent to your nation!'
         )
 

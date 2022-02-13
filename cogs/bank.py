@@ -526,7 +526,7 @@ def setup(bot: dbbot.DBBot):
             bal = bot.get_cog('BankCog').balances[nation_id]
             await bal.set((pnwutils.Resources(**await bal.get()) + req_res).to_dict())
             await interaction.user.send(
-                f'What was the reason for rejecting the withdrawal request for {reason}?'
+                f'What was the reason for rejecting the withdrawal request for `{reason}`?'
             )
 
             def msg_chk(m: discord.Message) -> bool:
@@ -539,6 +539,9 @@ def setup(bot: dbbot.DBBot):
             except asyncio.TimeoutError():
                 await interaction.user.send('You took too long to respond! Default rejection reason set.')
                 reject_reason = 'not given'
-            await bot.get_user(requester_id).requester.send(
-                f'Your withdrawal request for {reason} '
+            await bot.get_user(requester_id).send(
+                f'Your withdrawal request for `{reason}` '
                 f'has been rejected!\nReason: `{reject_reason}`')
+            await interaction.message.edit(embed=interaction.message.embeds.pop().add_field(
+                name='Rejection Reason', value=reject_reason, inline=True))
+            
