@@ -67,7 +67,7 @@ class BankCog(discordutils.CogBase):
         loan = await self.loans[nation_id].get(None)
 
         await ctx.respond(f"{ctx.author.mention}'s Balance",
-                          embed=resources.create_balance_embed(ctx.author.name),
+                          embed=resources.create_balance_embed(ctx.author.display_name),
                           allowed_mentions=discord.AllowedMentions.none(), )
         if loan is not None:
             await ctx.respond(
@@ -115,7 +115,7 @@ class BankCog(discordutils.CogBase):
             for transaction in dep_transactions:
                 resources += transaction.resources
             await self.balances[nation_id].set(resources.to_dict())
-            await author.send('Your balance is now:', embed=resources.create_balance_embed(author.name))
+            await author.send('Your balance is now:', embed=resources.create_balance_embed(author.display_name))
             return
         await author.send('You did not deposit any resources! Aborting!')
 
@@ -158,15 +158,12 @@ class BankCog(discordutils.CogBase):
         msg_chk = discordutils.get_dm_msg_chk(author.id)
         req_resources = pnwutils.Resources()
         try:
-            res_names = res_select_view.result()
+            res_names = await res_select_view.result()
         except asyncio.TimeoutError:
             await author.send('You took too long to reply! Aborting.')
             return
 
-        for res in await res_names:
-            if not resources[res]:
-                await author.send(f'You do not have any {res}! Skipping...')
-                continue
+        for res in res_names:
             await author.send(f'How much {res} do you wish to withdraw?')
             while True:
                 try:
@@ -232,7 +229,9 @@ class BankCog(discordutils.CogBase):
     @loan.command(name='return', guild_ids=config.guild_ids)
     async def _return(self, ctx: discord.ApplicationContext):
         """Return your loan using resources from your balance, if any"""
-        nation_id = await self.nations[ctx.author.id].get()
+        nation_id = await self.nations[ctx.author.id].get(None)
+        if nation_id is None:
+            await ctx.respond('Your nation id has not been set!')
         loan = await self.loans[nation_id].get(None)
         if loan is None:
             await ctx.respond("You don't have an active loan!")
@@ -256,6 +255,75 @@ class BankCog(discordutils.CogBase):
             await ctx.respond("You don't have an active loan!")
             return
         await ctx.respond(embed=financeutils.LoanData(**loan).to_embed())
+
+    @commands.user_command(guild_ids=config.guild_ids)
+    async def transfer(self, ctx: discord.ApplicationContext, member: discord.Member):
+        """Transfer some of your balance to this person"""
+        nation_id_t = await self.nations[ctx.author.id].get(None)
+        if nation_id_t is None:
+            await ctx.respond('Your nation id has not been set!')
+        nation_id_r = await self.nations[member.id].get(None)
+        if nation_id_r is None:
+            await ctx.respond("The recipient's nation id has not been set!")
+        bal_r = self.balances[nation_id_r]
+        resources = await self.balances[nation_id_t].get(None)
+
+        await ctx.respond('Please check your DMs')
+        author = ctx.author
+        if resources is None:
+            await self.balances[nation_id_t].set({})
+            await author.send('You do not have anything to transfer! Aborting...')
+            return
+
+        resources = pnwutils.Resources(**resources)
+
+        if not resources:
+            await author.send('You do not have anything to transfer! Aborting...')
+            return
+
+        res_select_view = financeutils.ResourceSelectView(author.id, resources.keys_nonzero())
+        await author.send('What resources do you wish to transfer?', view=res_select_view)
+
+        msg_chk = discordutils.get_dm_msg_chk(author.id)
+        t_resources = pnwutils.Resources()
+        try:
+            res_names = await res_select_view.result()
+        except asyncio.TimeoutError:
+            await author.send('You took too long to reply! Aborting.')
+            return
+
+        for res in res_names:
+            await author.send(f'How much {res} do you wish to transfer?')
+            while True:
+                try:
+                    amt = (await self.bot.wait_for('message', check=msg_chk, timeout=config.timeout)
+                           ).content
+                except asyncio.TimeoutError:
+                    await author.send('You took too long to reply! Aborting.')
+                    return
+
+                try:
+                    amt = int(amt)
+                except ValueError:
+                    await author.send("That isn't a number! Please try again.")
+                    continue
+                if amt <= 0:
+                    await author.send('You must transfer at least 0 of this resource!')
+                    continue
+                if amt > resources[res]:
+                    await author.send(f'You cannot transfer that much {res}! You only have {resources[res]} {res}!')
+                    continue
+
+                break
+            t_resources[res] = amt
+        resources_f_t = resources - t_resources
+        resources_f_r = await bal_r.get() + t_resources
+        await self.balances[author.id].set(resources_f_t.to_dict())
+        await bal_r.set(resources_f_r.to_dict())
+        await author.send(f'You have sent {member.display_name} {t_resources}!')
+        await author.send('Your balance is now:', embed=resources_f_t.create_balance_embed(author.display_name))
+        await member.send(f'You have been transferred {t_resources} from {author.display_name}!')
+        await member.send('Your balance is now:', embed=resources_f_r.create_balance_embed(member.display_name))
 
     @commands.user_command(name='bank adjust', guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
@@ -299,7 +367,7 @@ class BankCog(discordutils.CogBase):
 
         await self.balances[nation_id].set(resources.to_dict())
         await author.send(f'The balance of {member.mention} has been modified!',
-                          embed=resources.create_balance_embed(member.name),
+                          embed=resources.create_balance_embed(member.display_name),
                           allowed_mentions=discord.AllowedMentions.none())
 
     @commands.user_command(name='bank set', guild_ids=config.guild_ids, default_permission=False)
@@ -344,7 +412,7 @@ class BankCog(discordutils.CogBase):
 
         await self.balances[nation_id].set(resources.to_dict())
         await author.send(f'The balance of {member.mention} has been modified!',
-                          embed=resources.create_balance_embed(member.name),
+                          embed=resources.create_balance_embed(member.display_name),
                           allowed_mentions=discord.AllowedMentions.none())
 
     @commands.user_command(name='check balance', guild_ids=config.guild_ids, default_permission=False)
@@ -367,7 +435,7 @@ class BankCog(discordutils.CogBase):
 
         await ctx.respond(
             f"{member.mention}'s Balance",
-            embed=resources.create_balance_embed(member.name),
+            embed=resources.create_balance_embed(member.display_name),
             allowed_mentions=discord.AllowedMentions.none(),
             ephemeral=True
         )

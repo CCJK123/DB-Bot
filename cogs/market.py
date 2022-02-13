@@ -64,7 +64,7 @@ class MarketCog(discordutils.CogBase):
         values = await self.market_values.get()
         values[2][res_index] -= amt
         await self.market_values.set(values)
-        await ctx.respond('Transaction complete!', embed=res.create_balance_embed(ctx.author.name))
+        await ctx.respond('Transaction complete!', embed=res.create_balance_embed(ctx.author.display_name))
         return
 
     @market.command(guild_ids=config.guild_ids)
@@ -85,7 +85,7 @@ class MarketCog(discordutils.CogBase):
         values = await self.market_values.get()
         values[2][res_index] += amt
         await self.market_values.set(values)
-        await ctx.respond('Transaction complete!', embed=res.create_balance_embed(ctx.author.name))
+        await ctx.respond('Transaction complete!', embed=res.create_balance_embed(ctx.author.display_name))
         return
 
 
