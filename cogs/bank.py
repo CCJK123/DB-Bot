@@ -203,7 +203,7 @@ class BankCog(discordutils.CogBase):
         name = data['data'][0]['nation_name']
         link = pnwutils.link.bank('w', req_resources, name, 'Withdrawal from balance')
 
-        view = financeutils.WithdrawalView('withdrawal_on_sent', link, author.id, req_resources)
+        view = financeutils.WithdrawalView('withdrawal_on_sent', link, author.id, req_resources, reason)
 
         msg = await channel.send(f'Withdrawal Request from {author.mention}',
                                  embed=financeutils.withdrawal_embed(name, nation_id, reason, req_resources),
@@ -447,7 +447,30 @@ def setup(bot: dbbot.DBBot):
     bot.add_cog(BankCog(bot))
 
     @financeutils.WithdrawalView.register_callback('withdrawal_on_sent')
-    async def on_sent(requester_id: int, req_res: pnwutils.Resources):
-        await bot.get_user(requester_id).send(
-            'Your withdrawal request has been sent to your nation!',
-            embed=req_res.create_embed(title='Withdrawn Resources'))
+    async def on_sent(label: str, interaction: discord.Interaction, requester_id: int,
+                      req_res: pnwutils.Resources, reason: str):
+        if label == 'Sent':
+            await bot.get_user(requester_id).send(
+                'Your withdrawal request has been sent to your nation!',
+                embed=req_res.create_embed(title='Withdrawn Resources'))
+        else:
+            nation_id = await bot.get_cog('UtilCog').nations[requester_id].get()
+            bal = bot.get_cog('BankCog').balances[nation_id]
+            await bal.set((pnwutils.Resources(**await bal.get()) + req_res).to_dict())
+            await interaction.user.send(
+                f'What was the reason for rejecting the withdrawal request for {reason}?'
+            )
+
+            def msg_chk(m: discord.Message) -> bool:
+                return m.author == interaction.user and m.guild is None
+
+            try:
+                reject_reason: str = (await bot.wait_for(
+                    'message', check=msg_chk,
+                    timeout=config.timeout)).content
+            except asyncio.TimeoutError():
+                await interaction.user.send('You took too long to respond! Default rejection reason set.')
+                reject_reason = 'not given'
+            await bot.get_user(requester_id).requester.send(
+                f'Your withdrawal request for {reason} '
+                f'has been rejected!\nReason: `{reject_reason}`')

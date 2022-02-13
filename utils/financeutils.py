@@ -132,7 +132,7 @@ class RequestChoices(discordutils.CallbackPersistentView):
             self.add_item(RequestChoice(c, self.custom_id))
 
     def get_state(self) -> tuple:
-        return self.key, self.data
+        return {}, self.key, self.data
 
 
 def withdrawal_embed(name: str, nation_id: str, reason: str, resources: pnwutils.Resources) -> discord.Embed:
@@ -162,6 +162,7 @@ class WithdrawalView(discordutils.CallbackPersistentView):
     def __init__(self, callback_key: str, link: str, *args, custom_id: int = None, can_reject: bool = True):
         super().__init__(key=callback_key, timeout=None)
         self.custom_id = self.get_id() if custom_id is None else custom_id
+        self.can_reject = can_reject
         self.args = args
         self.add_item(discordutils.LinkButton('Withdrawal Link', link))
         self.add_item(WithdrawalViewButton(self.custom_id, 'Sent'))
@@ -169,7 +170,7 @@ class WithdrawalView(discordutils.CallbackPersistentView):
             self.add_item(WithdrawalViewButton(self.custom_id, 'Reject'))
 
     def get_state(self) -> tuple:
-        return self.key, self.children[0].url, *self.args  # type: ignore
+        return {'can_reject': self.can_reject}, self.key, self.children[0].url, *self.args  # type: ignore
 
 
 # noinspection PyAttributeOutsideInit

@@ -536,28 +536,9 @@ def setup(bot: dbbot.DBBot) -> None:
             allowed_mentions=discord.AllowedMentions.none())
 
     @WithdrawalView.register_callback('request_on_sent')
-    async def on_sent(label: str, interaction: discord.Interaction, req_data: RequestData):
-        if label == 'Sent':
-            await req_data.set_requester(bot).send(
-                f'Your {req_data.kind} request for {req_data.reason} has been sent to your nation!'
-            )
-        else:
-            bal = bot.get_cog('BankCog').balances[req_data.nation_id]
-            await bal.set((pnwutils.Resources(**await bal.get()) + req_data.resources).to_dict())
-            await interaction.user.send(
-                f'What was the reason for rejecting the withdrawal request for {req_data.reason}?'
-            )
+    async def on_sent(label: str, _: discord.Interaction, req_data: RequestData):
+        assert label == 'Sent'
+        await req_data.set_requester(bot).send(
+            f'Your {req_data.kind} request for {req_data.reason} has been sent to your nation!'
+        )
 
-            def msg_chk(m: discord.Message) -> bool:
-                return m.author == interaction.user and m.guild is None
-
-            try:
-                reject_reason: str = (await bot.wait_for(
-                    'message', check=msg_chk,
-                    timeout=config.timeout)).content
-            except asyncio.TimeoutError():
-                await interaction.user.send('You took too long to respond! Default rejection reason set.')
-                reject_reason = 'not given'
-            await req_data.requester.send(
-                f'Your withdrawal request for {req_data.reason} '
-                f'has been rejected!\nReason: `{reject_reason}`')
