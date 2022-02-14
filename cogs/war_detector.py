@@ -100,16 +100,25 @@ class WarDetectorCog(discordutils.CogBase):
 
         monitoring.sort(key=lambda t: t[0][f'{t[1].string_short}_resistance'])
         monitoring = monitoring[:min(5, len(monitoring))]
-        monitoring = tuple(filter(lambda t: t[0][f'{t[1].string_short}_resistance'] != 100, monitoring))
-        if monitoring != self.last_monitoring:
+        monitoring = tuple(filter(lambda t: t[0][f'{t[1].string_short}_resistance'] > 50, monitoring))
+        if not self.fuzzy_compare(monitoring, self.last_monitoring):
             self.last_monitoring = monitoring
             if monitoring:
                 embed = discord.Embed(title=f'{config.alliance_name} Lowest Resistance Wars')
                 for w, k in monitoring:
                     embed.add_field(name=f"{w[k.string]['nation_name']}'s War",
-                                    value=self.war_description(w),
-                                    inline=False)
+                                    value=self.war_description(w), inline=False)
                 await self.updates_channel.send(embed=embed)
+
+    @staticmethod
+    def fuzzy_compare(a, b) -> bool:
+        if len(a) != len(b):
+            return False
+        score = 0
+        for e_0, e_1 in zip(a, b):
+            for k in e_0:
+                score += e_0[k] != e_1[k]
+        return score <= 2
 
     @staticmethod
     def war_description(w) -> str:
