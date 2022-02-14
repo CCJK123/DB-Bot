@@ -210,6 +210,62 @@ class UtilCog(discordutils.CogBase):
             return
         await ctx.respond(f'Extension {extension} reloaded!')
 
+    ApplicationCommandDict = dict[str, discord.ApplicationCommand]
+
+    @staticmethod
+    async def filter_commands(ctx: discord.ApplicationContext,
+                              command_dict: ApplicationCommandDict) -> ApplicationCommandDict:
+        return command_dict
+
+    @staticmethod
+    def create_cog_embed(cog: discord.Cog, cog_commands: ApplicationCommandDict):
+        embed = discord.Embed(title=cog.qualified_name,
+                              description=cog.description)
+
+        for cmd_name, cmd in cog_commands.items():
+            embed.add_field(name=cmd.qualified_name,
+                            value=cmd.__doc__ or 'No description found',
+                            inline=False)
+
+        return embed
+
+    @commands.command(guild_ids=config.guild_ids)
+    async def help(self, ctx: discord.ApplicationContext,
+                   kind: commands.Option(str, 'Cog or Command?', choices=('cog', 'command'),
+                                         required=False, default=None),
+                   arg: commands.Option(str, 'Cog or Command name', required=False)):
+        if kind is None:
+            embeds = []
+            for cog_name, cog in self.bot.cogs.items():
+                filtered = await self.filter_commands(ctx, cog.commands)
+                if filtered:
+                    embeds.append(self.create_cog_embed(cog, filtered))
+            await ctx.respond(embeds=embeds)
+        elif kind == 'cog':
+            cog = self.bot.get_cog(arg)
+            if cog is None:
+                await ctx.respond('There is no cog by that name!')
+                return
+            filtered = await self.filter_commands(ctx, cog.commands)
+            if filtered:
+                await ctx.respond(embed=self.create_cog_embed(cog, filtered))
+            else:
+                await ctx.respond('There is no cog by that name!')
+            return
+        # command
+        for cmd_type in discord.SlashCommand, discord.UserCommand, discord.MessageCommand:
+            cmd = self.bot.get_application_command(arg, config.guild_ids, cmd_type)
+            if cmd is not None:
+                break
+
+        if cmd is None:
+            await ctx.respond('No command by that name found!')
+            return
+        await ctx.respond(embed=discord.Embed(
+            title=cmd.qualified_name,
+            description=cmd.__doc__ or 'No description found'
+        ))
+
 
 # Setup Utility Cog as an extension
 def setup(bot: dbbot.DBBot) -> None:
