@@ -215,7 +215,19 @@ class UtilCog(discordutils.CogBase):
     @staticmethod
     async def filter_commands(ctx: discord.ApplicationContext,
                               command_dict: ApplicationCommandDict) -> ApplicationCommandDict:
-        return command_dict
+        new_dict = {}
+        for cmd_name, cmd in command_dict.items():
+            if hasattr(cmd, '__app_cmd_perms__'):
+                perm: commands.CommandPermission
+                for perm in cmd.__app_cmd_perms__:
+                    check = any(role.id == perm.id for role in ctx.author.roles) if perm.type == 1 else ctx.author.id == perm.id
+                    if check ^ (not perm.permission):
+                        break
+                else:
+                    new_dict[cmd_name] = cmd
+            else:
+                new_dict[cmd_name] = cmd
+        return new_dict
 
     @staticmethod
     def create_cog_embed(cog: discord.Cog, cog_commands: ApplicationCommandDict):
