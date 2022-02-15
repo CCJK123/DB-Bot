@@ -5,7 +5,7 @@ import discord
 from discord import commands
 from discord.ext import pages
 
-from utils import discordutils, pnwutils, config
+from utils import discordutils, pnwutils, config, help_command
 from utils.queries import nation_alliance_query, alliance_member_res_query, alliance_activity_query
 import dbbot
 
@@ -210,74 +210,11 @@ class UtilCog(discordutils.CogBase):
             return
         await ctx.respond(f'Extension {extension} reloaded!')
 
-    ApplicationCommandList = list[discord.ApplicationCommand]
-
-    @staticmethod
-    async def filter_commands(ctx: discord.ApplicationContext,
-                              command_list: ApplicationCommandList) -> ApplicationCommandList:
-        new_list = []
-        for cmd in command_list:
-            if hasattr(cmd, 'permissions'):
-                perm: commands.CommandPermission
-                for perm in cmd.permissions:
-                    check = any(role.id == perm.id for role in ctx.author.roles) if perm.type == 1 else ctx.author.id == perm.id
-                    if not (not check) ^ perm.permission:
-                        break
-                else:
-                    new_list.append(cmd)
-            else:
-                new_list.append(cmd)
-        return new_list
-
-    @staticmethod
-    def create_cog_embed(cog: discord.Cog, cog_commands: ApplicationCommandList):
-        embed = discord.Embed(title=cog.qualified_name,
-                              description=cog.description)
-        for cmd in cog_commands:
-            embed.add_field(name=cmd.qualified_name,
-                            value=cmd.description or cmd.callback.__doc__ or 'No description found',
-                            inline=False)
-
-        return embed
-
-    @commands.command(guild_ids=config.guild_ids)
-    async def help(self, ctx: discord.ApplicationContext,
-                   command: commands.Option(str, 'Cog or Command name', required=False) = None):
+    @commands.command(name='help', guild_ids=config.guild_ids)
+    async def help_(self, ctx: discord.ApplicationContext,
+                    command: commands.Option(str, 'Cog or Command name', required=False) = None):
         """Get help on DBBot's cogs and commands."""
-        if command is None:
-            embeds = []
-            for cog_name, cog in self.bot.cogs.items():
-                filtered = await self.filter_commands(ctx, cog.get_commands())
-                if filtered:
-                    embeds.append(self.create_cog_embed(cog, filtered))
-            await ctx.respond(embeds=embeds)
-            return
-        cog = self.bot.get_cog(command)
-        if cog is not None:
-            filtered = await self.filter_commands(ctx, cog.get_commands())
-            if filtered:
-                await ctx.respond(embed=self.create_cog_embed(cog, filtered))
-            else:
-                await ctx.respond('There is no cog by that name!')
-            return
-        # command
-        for cmd_type in discord.SlashCommand, discord.UserCommand, discord.MessageCommand:
-            cmd = self.bot.get_application_command(command, config.guild_ids, cmd_type)
-            if cmd is not None:
-                break
-
-        if cmd is not None:
-            await ctx.respond(embed=discord.Embed(
-                title=cmd.qualified_name,
-                description=cmd.description or cmd.callback.__doc__ or 'No description found'
-            ))
-            return
-        group = self.bot.get_application_command(command, config.guild_ids, discord.SlashCommandGroup)
-        if group is None:
-            
-            return
-        await ctx.respond('No command, cog or group by that name found.')
-        
+        await help_command.help_command(self.bot, ctx, command)
 
 
 # Setup Utility Cog as an extension
