@@ -242,9 +242,9 @@ class UtilCog(discordutils.CogBase):
 
     @commands.command(guild_ids=config.guild_ids)
     async def help(self, ctx: discord.ApplicationContext,
-                   arg: commands.Option(str, 'Cog or Command name', required=False) = None):
+                   command: commands.Option(str, 'Cog or Command name', required=False) = None):
         """Get help on DBBot's cogs and commands."""
-        if arg is None:
+        if command is None:
             embeds = []
             for cog_name, cog in self.bot.cogs.items():
                 filtered = await self.filter_commands(ctx, cog.get_commands())
@@ -252,7 +252,7 @@ class UtilCog(discordutils.CogBase):
                     embeds.append(self.create_cog_embed(cog, filtered))
             await ctx.respond(embeds=embeds)
             return
-        cog = self.bot.get_cog(arg)
+        cog = self.bot.get_cog(command)
         if cog is not None:
             filtered = await self.filter_commands(ctx, cog.get_commands())
             if filtered:
@@ -262,18 +262,22 @@ class UtilCog(discordutils.CogBase):
             return
         # command
         for cmd_type in discord.SlashCommand, discord.UserCommand, discord.MessageCommand:
-            cmd = self.bot.get_application_command(arg, config.guild_ids, cmd_type)
+            cmd = self.bot.get_application_command(command, config.guild_ids, cmd_type)
             if cmd is not None:
                 break
-        print(self.bot.get_application_command(arg, config.guild_ids))
 
-        if cmd is None:
-            await ctx.respond('No command by that name found!')
+        if cmd is not None:
+            await ctx.respond(embed=discord.Embed(
+                title=cmd.qualified_name,
+                description=cmd.description or cmd.callback.__doc__ or 'No description found'
+            ))
             return
-        await ctx.respond(embed=discord.Embed(
-            title=cmd.qualified_name,
-            description=cmd.__doc__ or 'No description found'
-        ))
+        group = self.bot.get_application_command(command, config.guild_ids, group)
+        if group is None:
+            
+            return
+        await ctx.respond('No command, cog or group by that name found.')
+        
 
 
 # Setup Utility Cog as an extension
