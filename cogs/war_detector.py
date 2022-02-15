@@ -7,7 +7,7 @@ from discord.ext import tasks
 
 import dbbot
 from utils import discordutils, pnwutils, config
-from utils.queries import alliance_wars_query, individual_war_query
+from utils.queries import alliance_wars_query
 
 
 class WarType(enum.Enum):
@@ -180,26 +180,6 @@ class WarDetectorCog(discordutils.CogBase):
                 c += 1
 
         await ctx.respond(f'Complete! {c} wars added.')
-
-    @commands.command(guild_ids=config.guild_ids)
-    async def war(self, ctx: discord.ApplicationContext, war: commands.Option(str, 'War ID or link')):
-        """Gives information on a war given an ID or link!"""
-        war: str
-        war = war.removeprefix(f'{pnwutils.constants.base_url}nation/war/timeline/war=')
-
-        try:
-            int(war)
-        except ValueError:
-            await ctx.respond("That isn't a number!")
-            return
-
-        data = await pnwutils.api.post_query(self.bot.session, individual_war_query, {'war_id': war})
-        if data:
-            data = data.pop()  # type: ignore
-            embed = discord.Embed(description=self.war_description(data))
-            await ctx.respond(embed=embed)
-        else:
-            await ctx.respond('No such war exists!')
 
 
 # Setup War Detector Cog as an extension

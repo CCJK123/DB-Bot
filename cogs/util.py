@@ -6,7 +6,8 @@ from discord import commands
 from discord.ext import pages
 
 from utils import discordutils, pnwutils, config, help_command
-from utils.queries import nation_alliance_query, alliance_member_res_query, alliance_activity_query
+from utils.queries import nation_alliance_query, alliance_member_res_query, alliance_activity_query, \
+    individual_war_query
 import dbbot
 
 
@@ -184,6 +185,26 @@ class UtilCog(discordutils.CogBase):
         for m in discordutils.split_blocks('\n', (f'[{nation_names[n]}]({pnwutils.link.nation(n)})'
                                                   for n in inactives - inactives_discord.keys()), 2000):
             await ctx.respond(m)
+
+    @commands.command(guild_ids=config.guild_ids)
+    async def war(self, ctx: discord.ApplicationContext, war: commands.Option(str, 'War ID or link')):
+        """Gives information on a war given an ID or link!"""
+        war: str
+        war = war.removeprefix(f'{pnwutils.constants.base_url}nation/war/timeline/war=')
+
+        try:
+            int(war)
+        except ValueError:
+            await ctx.respond("That isn't a number!")
+            return
+
+        data = await pnwutils.api.post_query(self.bot.session, individual_war_query, {'war_id': war})
+        if data:
+            data = data.pop()  # type: ignore
+            embed = discord.Embed(description=self.bot.get_cog('WarDetectorCog').war_description(data))
+            await ctx.respond(embed=embed)
+        else:
+            await ctx.respond('No such war exists!')
 
     @commands.user_command(guild_ids=config.guild_ids)
     async def nation(self, ctx: discord.ApplicationContext, member: discord.Member):
