@@ -100,7 +100,7 @@ class WarDetectorCog(discordutils.CogBase):
 
         monitoring.sort(key=lambda t: t[0][f'{t[1].string_short}_resistance'])
         monitoring = monitoring[:min(5, len(monitoring))]
-        monitoring = tuple(filter(lambda t: t[0][f'{t[1].string_short}_resistance'] > 50, monitoring))
+        monitoring = tuple(filter(lambda t: t[0][f'{t[1].string_short}_resistance'] <= 50, monitoring))
         if not self.fuzzy_compare(monitoring, self.last_monitoring):
             self.last_monitoring = monitoring
             if monitoring:
@@ -112,11 +112,13 @@ class WarDetectorCog(discordutils.CogBase):
 
     @staticmethod
     def fuzzy_compare(a, b) -> bool:
-        if len(a) != len(b):
+        if a is None or b is None or len(a) != len(b):
             return False
+
         score = 0
         for e_0, e_1 in zip(a, b):
             for k in e_0:
+                print(k)
                 score += e_0[k] != e_1[k]
         return score <= 2
 
@@ -181,6 +183,7 @@ class WarDetectorCog(discordutils.CogBase):
 
     @commands.command(guild_ids=config.guild_ids)
     async def war(self, ctx: discord.ApplicationContext, war: commands.Option(str, 'War ID or link')):
+        """Gives information on a war given an ID or link!"""
         war: str
         war = war.removeprefix(f'{pnwutils.constants.base_url}nation/war/timeline/war=')
 

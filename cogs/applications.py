@@ -17,8 +17,9 @@ class ApplicationCog(discordutils.CogBase):
         self.application_log = discordutils.ChannelProperty(self, 'application_log')
         self.applications = discordutils.MappingProperty[str, str](self, 'applications')
         self.completed_applications = discordutils.MappingProperty[str, str](self, 'accepted_applications')
-
+    
     @commands.command(guild_ids=config.guild_ids)
+    @commands.permission(role_id=config.member_role_id, permission=False, guild_id=config.guild_id)
     @cmds.max_concurrency(1, cmds.BucketType.user)
     async def apply(self, ctx: discord.ApplicationContext):
         """Apply to our alliance!"""
@@ -67,6 +68,7 @@ class ApplicationCog(discordutils.CogBase):
                            'When you are ready, please run the `/start_interview` command.')
 
     @commands.command(guild_ids=config.guild_ids)
+    @commands.permission(role_id=config.member_role_id, permission=False, guild_id=config.guild_id)
     @cmds.max_concurrency(1, cmds.BucketType.channel)
     async def start_interview(self, ctx: discord.ApplicationContext,
                               q_num: commands.Option(int, 'Do not provide this parameter unless asked to',
