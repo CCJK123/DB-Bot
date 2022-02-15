@@ -272,7 +272,7 @@ class UtilCog(discordutils.CogBase):
                 description=cmd.description or cmd.callback.__doc__ or 'No description found'
             ))
             return
-        group = self.bot.get_application_command(command, config.guild_ids, group)
+        group = self.bot.get_application_command(command, config.guild_ids, discord.SlashCommandGroup)
         if group is None:
             
             return
