@@ -1,14 +1,14 @@
-import operator
 import datetime
+import operator
 
 import discord
 from discord import commands
 from discord.ext import pages
 
+import dbbot
 from utils import discordutils, pnwutils, config, help_command
 from utils.queries import nation_alliance_query, alliance_member_res_query, alliance_activity_query, \
     individual_war_query
-import dbbot
 
 
 class UtilCog(discordutils.CogBase):
@@ -124,7 +124,7 @@ class UtilCog(discordutils.CogBase):
         result = {'Food': [], 'Food And Uranium': [], 'Uranium': []}
         ids = set()
         for nation in data:
-            if nation['alliance_position'] == 'APPLICANT' or nation['vmode'] > 0:
+            if nation['alliance_position'] == 'APPLICANT':
                 continue
             has_food = not nation['food']
             # check for nuclear power and uranium amounts
@@ -166,7 +166,7 @@ class UtilCog(discordutils.CogBase):
         nation_names = {}
         now = datetime.datetime.now()
         for nation in data:
-            if nation['alliance_position'] == 'APPLICANT' or nation['vmode'] > 0:
+            if nation['alliance_position'] == 'APPLICANT':
                 continue
             time_since_active = now - datetime.datetime.fromisoformat(nation['last_active'])
             if time_since_active >= datetime.timedelta(days=days):

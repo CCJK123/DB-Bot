@@ -149,7 +149,7 @@ query nation_info($nation_id: [Int]) {
 
 alliance_member_res_query = '''
 query alliance_members_res($alliance_id: [Int], $page: Int) {
-    nations(alliance_id: $alliance_id, first: 500, page: $page) {
+    nations(alliance_id: $alliance_id, first: 500, page: $page, vmode: false) {
         paginatorInfo {
             hasMorePages
         }
@@ -170,14 +170,13 @@ query alliance_members_res($alliance_id: [Int], $page: Int) {
 
 alliance_activity_query = '''
 query alliance_activity($alliance_id: [Int], $page: Int) {
-    nations(alliance_id: $alliance_id, first: 500, page: $page) {
+    nations(alliance_id: $alliance_id, first: 500, page: $page, vmode: false) {
         paginatorInfo {
             hasMorePages
         }
         data {
             alliance_position
             nation_name
-            vmode
             id
             last_active
         }
