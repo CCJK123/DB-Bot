@@ -163,7 +163,7 @@ class WarDetectorCog(discordutils.CogBase):
 
     @detector.command(guild_ids=config.guild_ids, default_permission=False)
     async def monitor_ongoing(self, ctx: discord.ApplicationContext):
-        """Makes the detector check for ongoing wars to monitor that it missed while offline."""
+        """Makes the detector check for ongoing wars that it missed while offline to monitor."""
         data = await pnwutils.api.post_query(self.bot.session, alliance_wars_query, {'alliance_id': config.alliance_id})
         c = 0
         for war in data:

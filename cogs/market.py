@@ -21,7 +21,6 @@ class MarketCog(discordutils.CogBase):
 
     market = commands.SlashCommandGroup('market', 'A market to buy and sell resources from the bank',
                                         guild_ids=config.guild_ids)
-    market.guild_ids = config.guild_ids
 
     @market.command(name='prices', guild_ids=config.guild_ids, hidden=True)
     async def _prices(self, ctx: discord.ApplicationContext):
@@ -50,21 +49,22 @@ class MarketCog(discordutils.CogBase):
         values = await self.market_values.get()
         res_index = pnwutils.constants.market_res.index(res_name)
         if values[2][res_index] < amt:
-            await ctx.respond('The stocks are too low to buy that much!')
+            await ctx.respond(f'The stocks are too low to buy that much {res_name}!', ephemeral=True)
             return
 
         bal = self.balances[await self.nations[ctx.author.id].get()]
         res = pnwutils.Resources(**await bal.get())
         res.money -= amt * values[0][res_index]
         if res.money < 0:
-            await ctx.respond('You do not have enough money deposited to do that!')
+            await ctx.respond('You do not have enough money deposited to do that!', ephemeral=True)
             return
         res[res_name] += amt
         await bal.set(res.to_dict())
         values = await self.market_values.get()
         values[2][res_index] -= amt
         await self.market_values.set(values)
-        await ctx.respond('Transaction complete!', embed=res.create_balance_embed(ctx.author.display_name))
+        await ctx.respond('Transaction complete!', embed=res.create_balance_embed(ctx.author.display_name),
+                          ephemeral=True)
         return
 
     @market.command(guild_ids=config.guild_ids)
@@ -78,14 +78,15 @@ class MarketCog(discordutils.CogBase):
         res = pnwutils.Resources(**await bal.get())
         res[res_name.lower()] -= amt
         if res[res_name.lower()] < 0:
-            await ctx.respond('You do not have enough money deposited to do that!')
+            await ctx.respond('You do not have enough money deposited to do that!', ephemeral=True)
             return
         res.money += amt * values[1][res_index]
         await bal.set(res.to_dict())
         values = await self.market_values.get()
         values[2][res_index] += amt
         await self.market_values.set(values)
-        await ctx.respond('Transaction complete!', embed=res.create_balance_embed(ctx.author.display_name))
+        await ctx.respond('Transaction complete!', embed=res.create_balance_embed(ctx.author.display_name),
+                          ephemeral=True)
         return
 
 

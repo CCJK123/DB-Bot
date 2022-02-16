@@ -11,15 +11,15 @@ ApplicationCommandList = list[discord.ApplicationCommand]
 async def help_command(bot: discord.Bot, ctx: discord.ApplicationContext, name: str | None):
     if name is None:
         embeds = filter(None, (create_cog_embed(ctx, cog) for cog in bot.cogs.values()))
-        await ctx.respond(embeds=tuple(embeds))
+        await ctx.respond(embeds=tuple(embeds), ephemeral=True)
         return
     cog = bot.get_cog(name)
     if cog is not None:
         embed = create_cog_embed(ctx, cog)
         if embed:
-            await ctx.respond(embed=embed)
+            await ctx.respond(embed=embed, ephemeral=True)
         else:
-            await ctx.respond('No command, cog or group by that name found.')
+            await ctx.respond('No command, cog or group by that name found.', ephemeral=True)
         return
     # command
     for cmd_type in discord.SlashCommand, discord.UserCommand, discord.MessageCommand:
@@ -31,16 +31,16 @@ async def help_command(bot: discord.Bot, ctx: discord.ApplicationContext, name: 
         await ctx.respond(embed=discord.Embed(
             title=get_command_name(cmd),
             description=get_command_description(cmd)
-        ))
+        ), ephemeral=True)
         return
     group = bot.get_application_command(name, config.guild_ids, discord.SlashCommandGroup)
     if group is not None:
         embed = discord.Embed(title=group.qualified_name, description=group.description)
         for cmd in group.walk_commands():
             embed.add_field(name=get_command_name(cmd), value=get_command_description(cmd))
-        await ctx.respond(embed=embed)
+        await ctx.respond(embed=embed, ephemeral=True)
         return
-    await ctx.respond('No command, cog or group by that name found.')
+    await ctx.respond('No command, cog or group by that name found.', ephemeral=True)
 
 
 def create_cog_embed(ctx: discord.ApplicationContext, cog: discord.Cog) -> discord.Embed | None:

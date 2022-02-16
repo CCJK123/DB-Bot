@@ -38,24 +38,21 @@ class FinanceCog(discordutils.CogBase):
         # Command Run Validity Check
         # Check if output channel has been set
         if await self.process_channel.get(None) is None or await self.withdrawal_channel.get(None) is None:
-            await ctx.respond('Output channel has not been set! Aborting.')
+            await ctx.respond('Output channel has not been set! Aborting...')
             return
 
-        author = ctx.author
+        nation_id = await self.nations[ctx.author.id].get(None)
+        if nation_id is None:
+            await ctx.respond('Your nation id has not been set! Aborting...', ephemeral=True)
+            return
 
-        if ctx.guild is None:
-            await ctx.respond('Welcome to the DB Finance Request Interface.')
-        else:
-            await ctx.respond('Please check your DMs!')
-            await author.send('Welcome to the DB Finance Request Interface.')
+        await ctx.respond('Please check your DMs!', ephemeral=True)
+
+        author = ctx.author
+        await author.send('Welcome to the DB Finance Request Interface.')
 
         # Check that reply was sent from same author in DMs
         msg_chk = discordutils.get_dm_msg_chk(author.id)
-
-        nation_id = await self.nations[author.id].get(None)
-        if nation_id is None:
-            await author.send('Your nation id has not been set! Aborting...')
-            return
 
         data = await pnwutils.api.post_query(self.bot.session, nation_query, {'nation_id': nation_id})
         data = data['data']
@@ -69,10 +66,6 @@ class FinanceCog(discordutils.CogBase):
                 "You do not have a valid nation id set!"
                 'Please set your nation id again.'
             )
-            return
-
-        if data['alliance_id'] != config.alliance_id:
-            await author.send(f'You are not in {config.alliance_name}!')
             return
 
         # Get Request Type

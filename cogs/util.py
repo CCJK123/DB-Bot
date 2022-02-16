@@ -7,8 +7,8 @@ from discord.ext import pages
 
 import dbbot
 from utils import discordutils, pnwutils, config, help_command
-from utils.queries import nation_alliance_query, alliance_member_res_query, alliance_activity_query, \
-    individual_war_query
+from utils.queries import (nation_alliance_query, alliance_member_res_query,
+                           alliance_activity_query, individual_war_query)
 
 
 class UtilCog(discordutils.CogBase):
