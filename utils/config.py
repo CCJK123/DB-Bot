@@ -6,7 +6,7 @@ token: str = os.environ['bot_token']
 timeout: float = 300
 
 guild_id: int = 321984630720954379
-guild_ids: list[int] = [guild_id]
+guild_ids: list[int] = [guild_id, 941590062540414987]
 member_role_id: int = 322071813469241344
 gov_role_id: int = 595155137274839040
 staff_role_id: int = 383815082473291778

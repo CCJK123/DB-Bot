@@ -1,4 +1,5 @@
 import functools
+from typing import Iterable
 
 import discord
 from discord import commands
@@ -44,8 +45,8 @@ async def help_command(bot: discord.Bot, ctx: discord.ApplicationContext, name: 
 
 
 def create_cog_embed(ctx: discord.ApplicationContext, cog: discord.Cog) -> discord.Embed | None:
-    filtered = filter(functools.partial(check_permissions, ctx), cog.walk_commands())
-
+    # cog.walk_commands doesn't actually walk down the slashcommandgroups
+    filtered = filter(functools.partial(check_permissions, ctx), walk_commands(cog.get_commands()))
     embed = discord.Embed(title=cog.qualified_name, description=cog.description)
     for cmd in filtered:
         embed.add_field(name=get_command_name(cmd),
@@ -54,7 +55,17 @@ def create_cog_embed(ctx: discord.ApplicationContext, cog: discord.Cog) -> disco
     return embed if embed.fields else None
 
 
+def walk_commands(cmds: Iterable[discord.ApplicationCommand]
+                 ) -> Iterable[discord.ApplicationCommand]:
+    for command in cmds:
+        yield command
+        if isinstance(command, discord.SlashCommandGroup):
+            yield from walk_commands(command.subcommands)
+
+
 def check_permissions(ctx: discord.ApplicationContext, command: discord.ApplicationCommand):
+    if command.parent is not None:
+        return check_permissions(ctx, command.parent)
     if hasattr(command, 'permissions'):
         perm: commands.CommandPermission
         for perm in command.permissions:
@@ -69,9 +80,11 @@ def check_permissions(ctx: discord.ApplicationContext, command: discord.Applicat
 
 def get_command_name(command: discord.ApplicationCommand) -> str:
     if isinstance(command, discord.UserCommand):
-        return f'{command.qualified_name} (user command)'
+        return f'{command.qualified_name} (User Command)'
     elif isinstance(command, discord.MessageCommand):
-        return f'{command.qualified_name} (message command)'
+        return f'{command.qualified_name} (Message Command)'
+    elif isinstance(command, discord.SlashCommandGroup):
+        return f'{command.qualified_name} (Group)'
     return command.qualified_name
 
 

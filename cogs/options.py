@@ -72,14 +72,6 @@ class OptionsCog(discordutils.CogBase):
     market_options.guild_ids = config.guild_ids
 
     @market_options.command(guild_ids=config.guild_ids)
-    async def open(self, ctx: discord.ApplicationContext):
-        """Open or close the market"""
-        bank_cog = self.bot.get_cog('BankCog')
-        await bank_cog.market_open.transform(operator.not_)
-        s = 'open' if await bank_cog.market_open.get() else 'closed'
-        await ctx.respond(f'The market is now {s}!')
-
-    @market_options.command(guild_ids=config.guild_ids)
     async def set_price(self, ctx: discord.ApplicationContext,
                         b_s: commands.Option(str, 'Buying or Selling price?', choices=('buying', 'selling')),
                         res_name: commands.Option(str, 'Resource to set price', choices=pnwutils.constants.market_res),
