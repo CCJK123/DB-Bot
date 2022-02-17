@@ -1,9 +1,10 @@
 import os
 import random
-import aiohttp
-from replit.database import AsyncDatabase
+import traceback
 from typing import Callable
 
+import aiohttp
+from replit.database import AsyncDatabase
 import discord
 from discord.ext import tasks, commands as cmds
 
@@ -81,14 +82,13 @@ class DBBot(discord.Bot):
 
         self.on_ready_func()
 
-    async def on_command_error(self, ctx: discord.ApplicationContext, exception):
+    async def on_application_command_error(self, ctx: discord.ApplicationContext, exception):
         command = ctx.command
         if command and command.has_error_handler():
             print(f'Ignoring {exception}, already has handler')
             return
 
-        print('Trying to respond with exception')
-        await ctx.respond(str(exception))
+        await ctx.respond(f'Sorry, an exception occurred.\n\n{"".join(traceback.format_exception(exception))}')
 
         ignored = (
             cmds.CommandNotFound,
@@ -96,7 +96,7 @@ class DBBot(discord.Bot):
             cmds.MissingRequiredArgument
         )
         if not isinstance(exception, ignored):
-            await super().on_command_error(ctx, exception)
+            await super().on_application_command_error(ctx, exception)
 
 
 # the new bot doesnt seem to have a help command, the help command has not been ported over to slash yet i believe

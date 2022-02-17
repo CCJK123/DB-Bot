@@ -96,7 +96,6 @@ class OptionsCog(discordutils.CogBase):
 
     bank_options = options.create_subgroup('bank', 'Options for the bank system!')
     bank_options.guild_ids = config.guild_ids
-    bank_options.permissions = [config.bank_gov_role_permission]
 
     @bank_options.command(guild_ids=config.guild_ids)
     async def set_offshore(self, ctx: discord.ApplicationContext,
