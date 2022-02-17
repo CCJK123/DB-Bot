@@ -17,7 +17,8 @@ resource_emojis = {
     'gasoline': '<:gasoline:943805790567952405>',
     'munitions': '<:munitions:943805807441625089>',
     'steel': '<:steel:943805758263414795>',
-    'aluminum': '<:aluminum:943805716001603615>'
+    'aluminum': '<:aluminum:943805716001603615>',
+    'credits': '<:credits:943805742790631474>'
 }
 
 guild_id: int = 321984630720954379
