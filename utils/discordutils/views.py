@@ -2,11 +2,11 @@ import abc
 import asyncio
 import functools
 import pickle
-from typing import Awaitable, Callable
+from typing import Awaitable, Callable, Mapping
 
 import discord
 
-__all__ = ('Choices', 'LinkButton', 'LinkView', 'PersistentView', 'CallbackPersistentView')
+__all__ = ('Choices', 'LinkButton', 'LinkView', 'MultiLinkView', 'PersistentView', 'CallbackPersistentView')
 
 
 # Setup buttons for user to make choices
@@ -59,6 +59,13 @@ class LinkView(discord.ui.View):
     def __init__(self, label: str, url: str):
         super().__init__()
         self.add_item(LinkButton(label, url))
+
+
+class MultiLinkView(discord.ui.View):
+    def __init__(self, links: Mapping[str, str]):
+        super().__init__()
+        for label, url in links.items():
+            self.add_item(LinkButton(label, url))
 
 
 class PersistentView(discord.ui.View, metaclass=abc.ABCMeta):

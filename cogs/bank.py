@@ -488,12 +488,9 @@ class BankCog(discordutils.CogBase):
                               'Is the offshore ID outdated?', ephemeral=True)
             return
 
-        await ctx.respond(
-            'Safekeeping Link',
-            view=discordutils.LinkView(
-                'Withdrawal Link',
-                pnwutils.link.bank('wa', resources, aa_name, 'Safekeeping')),
-            ephemeral=True)
+        view = discordutils.MultiLinkView({f'Withdrawal Link {i + 1}': link for i, link in enumerate(
+            pnwutils.link.bank_split_link('wa', resources, aa_name, 'Safekeeping'))})
+        await ctx.respond('Safekeeping Link', view=view, ephemeral=True)
     
     async def get_total_balances(self) -> pnwutils.Resources:
         balances = await self.balances.get()

@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Iterable
 
 from . import constants
 from .data_classes import Resources
@@ -33,6 +33,19 @@ def bank(kind: Literal['w', 'd', 'wa'], res: Resources | None = None,
         for res_name, res_amt in res:
             link += f'&{kind[0]}_{res_name}={res_amt}'
     return link
+
+
+def bank_split_link(kind: Literal['w', 'd', 'wa'], res: Resources | None = None,
+                    recipient: str | None = None, note: str | None = None) -> Iterable[str]:
+    """Like `bank`, but outputs multiple links if the link would be too long and cause P&W to error"""
+    link_base = bank(kind, recipient=recipient, note=note)
+    link = link_base
+    for res_name, res_amt in res:
+        if len(link) + 3 + len(res_name) + len(str(res_amt)) > 291:
+            yield link
+            link = link_base
+        link += f'&{kind[0]}_{res_name}={res_amt}'
+    yield link
 
 
 def war(war_id: str) -> str:
