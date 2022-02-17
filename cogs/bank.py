@@ -253,7 +253,7 @@ class BankCog(discordutils.CogBase):
             return
         await ctx.respond(embed=financeutils.LoanData(**loan).to_embed(), ephemeral=True)
 
-    @commands.user_command(guild_ids=config.guild_ids)
+    @commands.user_command(name='bank transfer', guild_ids=config.guild_ids)
     async def transfer(self, ctx: discord.ApplicationContext, member: discord.Member):
         """Transfer some of your balance to this person"""
         nation_id_t = await self.nations[ctx.author.id].get(None)
@@ -317,12 +317,12 @@ class BankCog(discordutils.CogBase):
                 break
             t_resources[res] = amt
         resources_f_t = resources - t_resources
-        resources_f_r = await bal_r.get() + t_resources
+        resources_f_r = pnwutils.Resources(**await bal_r.get()) + t_resources
         await self.balances[author.id].set(resources_f_t.to_dict())
         await bal_r.set(resources_f_r.to_dict())
-        await author.send(f'You have sent {member.display_name} {t_resources}!')
+        await author.send(f'You have sent {member.display_name} [{t_resources}]!')
         await author.send('Your balance is now:', embed=resources_f_t.create_balance_embed(author.display_name))
-        await member.send(f'You have been transferred {t_resources} from {author.display_name}!')
+        await member.send(f'You have been transferred [{t_resources}] from {author.display_name}!')
         await member.send('Your balance is now:', embed=resources_f_r.create_balance_embed(member.display_name))
 
     @commands.user_command(name='bank adjust', guild_ids=config.guild_ids, default_permission=False)
