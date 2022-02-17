@@ -41,6 +41,7 @@ def bank_split_link(kind: Literal['w', 'd', 'wa'], res: Resources | None = None,
     link_base = bank(kind, recipient=recipient, note=note)
     link = link_base
     for res_name, res_amt in res:
+        # 291 is the limit, 291 = len('https://politicsandwar.com/alliance/') + 255
         if len(link) + 3 + len(res_name) + len(str(res_amt)) > 291:
             yield link
             link = link_base

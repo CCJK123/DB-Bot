@@ -52,7 +52,7 @@ class MarketCog(discordutils.CogBase):
             await ctx.respond(f'The stocks are too low to buy that much {res_name}!', ephemeral=True)
             return
 
-        bal = self.balances[await self.nations[ctx.author.id].get()]
+        bal = self.balances[ctx.author.id]
         res = pnwutils.Resources(**await bal.get())
         res.money -= amt * values[0][res_index]
         if res.money < 0:
@@ -74,7 +74,7 @@ class MarketCog(discordutils.CogBase):
         """Sell some amount of a resource for money"""
         values = await self.market_values.get()
         res_index = pnwutils.constants.market_res.index(res_name)
-        bal = self.balances[await self.nations[ctx.author.id].get()]
+        bal = self.balances[ctx.author.id]
         res = pnwutils.Resources(**await bal.get())
         res[res_name.lower()] -= amt
         if res[res_name.lower()] < 0:

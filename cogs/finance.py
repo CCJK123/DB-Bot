@@ -196,7 +196,7 @@ class FinanceCog(discordutils.CogBase):
                 return None
 
         elif req_data.kind == 'Loan':
-            if await self.loans[req_data.nation_id].get(False):
+            if await self.loans[req_data.requester_id].get(False):
                 await author.send('You already have an active loan! Repay that before requesting another.')
                 return
             await author.send('What are you requesting a loan for?')
@@ -481,14 +481,14 @@ def setup(bot: dbbot.DBBot) -> None:
                     f'<t:{int(data.due_date.timestamp())}:R>. '
                     'You can check your loan status with `bank loan status`.'
                 )
-                bal = bot.get_cog('BankCog').balances[req_data.nation_id]
+                bal = bot.get_cog('BankCog').balances[req_data.requester_id]
                 await bal.set((pnwutils.Resources(**await bal.get()) + req_data.resources).to_dict())
 
                 await interaction.message.edit(embed=interaction.message.embeds[0].add_field(
                     name='Return By',
                     value=data.display_date,
                     inline=True))
-                await cog.loans[req_data.nation_id].set(data.to_dict())
+                await cog.loans[req_data.requester_id].set(data.to_dict())
             else:
                 await req_data.requester.send(
                     f'Your {req_data.kind} request for `{req_data.reason}` '
@@ -534,4 +534,3 @@ def setup(bot: dbbot.DBBot) -> None:
         await req_data.set_requester(bot).send(
             f'Your {req_data.kind} request for `{req_data.reason}` has been sent to your nation!'
         )
-
