@@ -417,7 +417,7 @@ class BankCog(discordutils.CogBase):
 
     @commands.user_command(name='check balance', guild_ids=config.guild_ids, default_permission=False)
     @commands.has_role(config.bank_gov_role_id, guild_id=config.guild_id)
-    async def bal_check(self, ctx: discord.ApplicationContext, member: discord.Member):
+    async def check_bal(self, ctx: discord.ApplicationContext, member: discord.Member):
         """Check the bank balance of this member"""
         nation_id = await self.nations[member.id].get(None)
         if nation_id is None:
@@ -432,7 +432,6 @@ class BankCog(discordutils.CogBase):
             await self.balances[nation_id].set({})
         else:
             resources = pnwutils.Resources(**resources)
-
         await ctx.respond(
             f"{member.mention}'s Balance",
             embed=resources.create_balance_embed(member.display_name),
@@ -449,12 +448,12 @@ class BankCog(discordutils.CogBase):
         loans = await self.loans.get()
         await ctx.respond('\n'.join(
             f'Loan of [{pnwutils.Resources(**loan["resources"])}] due on {loan["due_date"]}'
-            for n, loan in loans.items()) or 'There are no active loans!')
+            for n, loan in loans.items()) or 'There are no active loans!', ephemeral=True)
 
     @_bank.command(guild_ids=config.guild_ids, default_permission=False)
     async def contents(self, ctx: discord.ApplicationContext,
                        adjusted: commands.Option(bool, 'Whether to adjust for balances held by members',
-                                                 default=True)):
+                                                 default=False)):
         """Check the current contents of the bank"""
         data = await pnwutils.api.post_query(
             self.bot.session, bank_info_query,

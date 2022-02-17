@@ -25,7 +25,7 @@ class UtilCog(discordutils.CogBase):
         """Use to manually add your nation to the database"""
         await self.nations.initialise()
         if self.nations.contains_key(ctx.author.id):
-            await ctx.respond('You are already registered!')
+            await ctx.respond('You are already registered!', ephemeral=True)
             return
 
         if not nation_id:
@@ -36,9 +36,9 @@ class UtilCog(discordutils.CogBase):
                     await ctx.respond('Please provide your nation id!')
                     return
                 await self.nations[ctx.author.id].set(nation_id)
-                await ctx.respond('You have been registered to our database!')
+                await ctx.respond('You have been registered to our database!', ephemeral=True)
                 return
-            await ctx.respond('Please provide your nation id!')
+            await ctx.respond('Please provide your nation id!', ephemeral=True)
             return
 
         nation_id.removeprefix(f'{pnwutils.constants.base_url}nation/id=')
@@ -46,11 +46,11 @@ class UtilCog(discordutils.CogBase):
         try:
             int(nation_id)
         except ValueError:
-            await ctx.respond("That isn't a number!")
+            await ctx.respond("The given ID isn't a number!", ephemeral=True)
             return
 
         if self.nations.contains_value(nation_id):
-            await ctx.respond('This nation has been registered before! Aborting...')
+            await ctx.respond('This nation has been registered before! Aborting...', ephemeral=True)
             return
 
         data = await pnwutils.api.post_query(self.bot.session, nation_alliance_query,
@@ -58,7 +58,7 @@ class UtilCog(discordutils.CogBase):
         data = data['data']
         if not data:
             # nation does not exist, empty list returned
-            await ctx.respond('This nation does not exist!')
+            await ctx.respond('This nation does not exist!', ephemeral=True)
             return
         # nation exists, is in one elem list
         bank_cog = self.bot.get_cog('BankCog')
@@ -72,9 +72,9 @@ class UtilCog(discordutils.CogBase):
                           view=nation_confirm_choice, ephemeral=True)
         if await nation_confirm_choice.result() == 'Yes':
             await self.nations[ctx.author.id].set(nation_id)
-            await ctx.respond('You have been registered to our database!')
+            await ctx.respond('You have been registered to our database!', ephemeral=True)
         else:
-            await ctx.respond('Aborting!')
+            await ctx.respond('Aborting...', ephemeral=True)
 
     @register.command(name='list', guild_ids=config.guild_ids)
     async def register_list(self, ctx: discord.ApplicationContext):

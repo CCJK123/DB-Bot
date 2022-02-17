@@ -54,7 +54,7 @@ class Resources:
     def create_embed(self, **kwargs: str) -> discord.Embed:
         embed = discord.Embed(**kwargs)
         for name, amt in self:
-            embed.add_field(name=name.title(), value=amt)
+            embed.add_field(name=name.title(), value=f'{amt:,}')
         if self or kwargs:
             return embed
         raise ValueError('The embed is empty and cannot be sent!')
@@ -88,7 +88,7 @@ class Resources:
         raise KeyError(f'{key} is not a resource!')
 
     def __str__(self) -> str:
-        return '\n'.join(f'{config.resource_emojis[res_name]} {res_amt}' for res_name, res_amt in self)
+        return '\n'.join(f'{config.resource_emojis[res_name]} {res_amt:,}' for res_name, res_amt in self)
 
     def __bool__(self) -> bool:
         return bool(self.to_dict())

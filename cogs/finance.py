@@ -491,7 +491,7 @@ def setup(bot: dbbot.DBBot) -> None:
                 await cog.loans[req_data.nation_id].set(data.to_dict())
             else:
                 await req_data.requester.send(
-                    f'Your {req_data.kind} request for {req_data.reason} '
+                    f'Your {req_data.kind} request for `{req_data.reason}` '
                     'has been accepted! The resources will be sent to you soon. '
                 )
                 channel = await cog.withdrawal_channel.get()
@@ -505,7 +505,7 @@ def setup(bot: dbbot.DBBot) -> None:
         else:
             await interaction.user.send(
                 f'What was the reason for rejecting the {req_data.kind} request '
-                f'for {req_data.reason}?'
+                f'for `{req_data.reason}`?'
             )
 
             def msg_chk(m: discord.Message) -> bool:
