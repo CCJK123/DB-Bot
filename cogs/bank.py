@@ -326,7 +326,7 @@ class BankCog(discordutils.CogBase):
         await member.send('Your balance is now:', embed=resources_f_r.create_balance_embed(member.display_name))
 
     @commands.user_command(name='bank adjust', guild_ids=config.guild_ids, default_permission=False)
-    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
+    @commands.permissions.has_role(config.bank_gov_role_id, guild_id=config.guild_id)
     async def adjust(self, ctx: discord.ApplicationContext, member: discord.Member):
         """Manually adjust the resource values of someone's balance"""
         nation_id = await self.nations[member.id].get(None)
@@ -371,7 +371,7 @@ class BankCog(discordutils.CogBase):
                           allowed_mentions=discord.AllowedMentions.none())
 
     @commands.user_command(name='bank set', guild_ids=config.guild_ids, default_permission=False)
-    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
+    @commands.permissions.has_role(config.bank_gov_role_id, guild_id=config.guild_id)
     async def set(self, ctx: discord.ApplicationContext, member: discord.Member):
         """Manually set the resource values of someone's balance"""
         nation_id = await self.nations[member.id].get(None)
@@ -416,7 +416,7 @@ class BankCog(discordutils.CogBase):
                           allowed_mentions=discord.AllowedMentions.none())
 
     @commands.user_command(name='check balance', guild_ids=config.guild_ids, default_permission=False)
-    @commands.has_role(config.gov_role_id, guild_id=config.guild_id)
+    @commands.has_role(config.bank_gov_role_id, guild_id=config.guild_id)
     async def bal_check(self, ctx: discord.ApplicationContext, member: discord.Member):
         """Check the bank balance of this member"""
         nation_id = await self.nations[member.id].get(None)
@@ -441,10 +441,9 @@ class BankCog(discordutils.CogBase):
         )
     
     _bank = commands.SlashCommandGroup('_bank', "Gov Bank Commands", guild_ids=config.guild_ids,
-                                       default_permission=False, permissions=[config.gov_role_permission])
+                                       default_permission=False, permissions=[config.bank_gov_role_permission])
 
     @_bank.command(guild_ids=config.guild_ids, default_permission=False)
-    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def loan_list(self, ctx: discord.ApplicationContext):
         """List all the loans that are currently active"""
         loans = await self.loans.get()
@@ -453,7 +452,6 @@ class BankCog(discordutils.CogBase):
             for n, loan in loans.items()) or 'There are no active loans!')
 
     @_bank.command(guild_ids=config.guild_ids, default_permission=False)
-    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def contents(self, ctx: discord.ApplicationContext,
                        adjusted: commands.Option(bool, 'Whether to adjust for balances held by members',
                                                  default=True)):
@@ -468,7 +466,6 @@ class BankCog(discordutils.CogBase):
         await ctx.respond(embed=resources.create_embed(title=f'{config.alliance_name} Bank'), ephemeral=True)
 
     @_bank.command(guild_ids=config.guild_ids, default_permission=False)
-    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def safekeep(self, ctx: discord.ApplicationContext):
         """Get a link to send the entire bank to an offshore"""
         off_id = await self.offshore_id.get(None)
@@ -504,7 +501,6 @@ class BankCog(discordutils.CogBase):
         return sum((pnwutils.Resources(**bal) for bal in balances.values()), pnwutils.Resources())
 
     @_bank.command(guild_ids=config.guild_ids, default_permission=False)
-    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def balances_total(self, ctx: discord.ApplicationContext):
         """Find the total value of all balances"""
         total = await self.get_total_balances()

@@ -96,19 +96,20 @@ class OptionsCog(discordutils.CogBase):
 
     bank_options = options.create_subgroup('bank', 'Options for the bank system!')
     bank_options.guild_ids = config.guild_ids
+    bank_options.permissions = [config.bank_gov_role_permission]
 
     @bank_options.command(guild_ids=config.guild_ids)
     async def set_offshore(self, ctx: discord.ApplicationContext,
                            off_id: commands.Option(int, 'ID of the offshore alliance')):
         bank_cog = self.bot.get_cog('BankCog')
-        confirm_view = discordutils.Choices('Yes', 'No')
+        confirm_view = discordutils.Choices('Yes', 'No', user_id=ctx.author.id)
         await ctx.respond(f'Is this the offshore? [Link]({pnwutils.link.alliance(off_id)})',
-                          view=confirm_view, ephemeral=True)
+                          view=confirm_view)
         if await confirm_view.result() == 'Yes':
             await bank_cog.offshore_id.set(str(off_id))
-            await ctx.respond('Offshore id has been set!', ephemeral=True)
+            await ctx.respond('Offshore id has been set!')
             return
-        await ctx.respond('Aborting!', ephemeral=True)
+        await ctx.respond('Aborting!')
 
     application_options = options.create_subgroup('application', 'Options for the application system!')
     application_options.guild_ids = config.guild_ids
