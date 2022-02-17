@@ -88,7 +88,7 @@ class Resources:
         raise KeyError(f'{key} is not a resource!')
 
     def __str__(self) -> str:
-        return '\n'.join(f'{res_name.title()}: {res_amt}' for res_name, res_amt in self)
+        return '\n'.join(f'{config.resource_emojis[res_name]} {res_amt}' for res_name, res_amt in self)
 
     def __bool__(self) -> bool:
         return bool(self.to_dict())

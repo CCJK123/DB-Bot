@@ -5,6 +5,21 @@ from discord.commands import CommandPermission
 token: str = os.environ['bot_token']
 timeout: float = 300
 
+resource_emojis = {
+    'money': '<:money:943807961778765835>',
+    'food': '<:food:943805731994476605>',
+    'coal': '<:coal:943805934495498241>',
+    'oil': '<:oil:943805951406919711>',
+    'uranium': '<:uranium:943805874185601024>',
+    'lead': '<:lead:943805860218552330>',
+    'iron': '<:iron:943805845513330708>',
+    'bauxite': '<:bauxite:943805819940659260>',
+    'gasoline': '<:gasoline:943805790567952405>',
+    'munitions': '<:munitions:943805807441625089>',
+    'steel': '<:steel:943805758263414795>',
+    'aluminum': '<:aluminum:943805716001603615>'
+}
+
 guild_id: int = 321984630720954379
 guild_ids: list[int] = [guild_id, 941590062540414987]
 member_role_id: int = 322071813469241344

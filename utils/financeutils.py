@@ -176,7 +176,7 @@ class WithdrawalView(discordutils.CallbackPersistentView):
 # noinspection PyAttributeOutsideInit
 class ResourceSelector(discord.ui.Select['ResourceSelectView']):
     def __init__(self, res: Iterable[str]):
-        options = [discord.SelectOption(label=s) for s in res]
+        options = [discord.SelectOption(label=s, emoji=config.resource_emojis[s]) for s in res]
         super().__init__(placeholder='Choose the resources you want',
                          min_values=1,
                          max_values=len(options),
