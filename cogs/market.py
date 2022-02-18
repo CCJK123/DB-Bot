@@ -49,14 +49,18 @@ class MarketCog(discordutils.CogBase):
         values = await self.market_values.get()
         res_index = pnwutils.constants.market_res.index(res_name)
         if values[2][res_index] < amt:
-            await ctx.respond(f'The stocks are too low to buy that much {res_name}!', ephemeral=True)
+            await ctx.respond(f'The stocks are too low to buy that much {res_name}! '
+                              f'(Requested to purchase {amt} out of {values[2][res_index]} stock remaining.))',
+                              ephemeral=True)
             return
 
         bal = self.balances[ctx.author.id]
         res = pnwutils.Resources(**await bal.get())
         res.money -= amt * values[0][res_index]
         if res.money < 0:
-            await ctx.respond('You do not have enough money deposited to do that!', ephemeral=True)
+            await ctx.respond(f'You do not have enough money deposited to do that! '
+                              f'(Trying to spend {amt * values[0][res_index]} out of {res.money} dollars.)',
+                              ephemeral=True)
             return
         res[res_name] += amt
         await bal.set(res.to_dict())
@@ -76,10 +80,12 @@ class MarketCog(discordutils.CogBase):
         res_index = pnwutils.constants.market_res.index(res_name)
         bal = self.balances[ctx.author.id]
         res = pnwutils.Resources(**await bal.get())
-        res[res_name.lower()] -= amt
-        if res[res_name.lower()] < 0:
-            await ctx.respond('You do not have enough money deposited to do that!', ephemeral=True)
+        if res[res_name.lower()] < amt:
+            await ctx.respond(f'You do not have enough {res_name} deposited to do that! '
+                              f'(Trying to sell {amt} when balance only contains {res[res_name.lower()]})',
+                              ephemeral=True)
             return
+        res[res_name.lower()] -= amt
         res.money += amt * values[1][res_index]
         await bal.set(res.to_dict())
         values = await self.market_values.get()
