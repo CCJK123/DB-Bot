@@ -6,10 +6,12 @@ from .. import config
 
 
 def nation(nation_id: str) -> str:
+    """Creates link to a nation given its ID."""
     return f'{constants.base_url}nation/id={nation_id}'
 
 
 def alliance(alliance_id: str | None = None) -> str:
+    """Creates link to an alliance given its ID."""
     if alliance_id is None:
         alliance_id = config.alliance_id
     return f'{constants.base_url}alliance/id={alliance_id}'
@@ -17,6 +19,7 @@ def alliance(alliance_id: str | None = None) -> str:
 
 def bank(kind: Literal['w', 'd', 'wa'], res: Resources | None = None,
          recipient: str | None = None, note: str | None = None) -> str:
+    """Creates a link to the bank page of our alliance."""
     if kind == 'd' and recipient is not None:
         raise ValueError('Do not provide recipient for deposits!')
 
@@ -50,4 +53,5 @@ def bank_split_link(kind: Literal['w', 'd', 'wa'], res: Resources | None = None,
 
 
 def war(war_id: str) -> str:
+    """Creates a link to a war given its ID."""
     return f'{constants.base_url}nation/war/timeline/war={war_id}'

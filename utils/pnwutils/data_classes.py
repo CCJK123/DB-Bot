@@ -45,6 +45,10 @@ class Resources:
 
     # Output all resources with values associated
     def to_dict(self) -> ResourceDict:
+        """
+        Write a dictionary with equivalent values.
+        You can convert this dict back into `pnwutils.Resources` by passing it as `pnwutils.Resources(**resource_dict)`.
+        """
         return {
             res_name: res_amount
             for res_name in constants.all_res
@@ -68,12 +72,20 @@ class Resources:
         return all(a >= 0 for a in self.values())
 
     def keys_nonzero(self) -> Iterable[str]:
+        """Returns an iterable of all the resource keys for which the value is not zero."""
         return (res_name for res_name in constants.all_res if self[res_name])
 
     def values_nonzero(self) -> Iterable[int]:
+        """Returns an iterable of all the resource values for which the value is not zero."""
         return (amt for res_name in constants.all_res if (amt := self[res_name]))
 
+    @staticmethod
+    def keys() -> Iterable[str]:
+        """Returns an iterable of all the resource keys. Equal to `constants.all_res`"""
+        return constants.all_res
+
     def values(self) -> Iterable[int]:
+        """Returns an iterable of all the resource values."""
         return (self[res_name] for res_name in constants.all_res)
 
     def __getitem__(self, key) -> int:
