@@ -12,7 +12,7 @@ async def main():
         nations = await database.get('cogs.util.nations')
         loans = await database.get('cogs.finance.loans')
         balances = await database.get('cogs.bank.balances')
-
+        print(nations, loans, balances)
         if not set(nations.values()) <= (set(loans.keys()) | set(balances.keys())):
             raise ValueError('Some nation ids in loans or balances arent recorded in nations!')
         new_loans = {}

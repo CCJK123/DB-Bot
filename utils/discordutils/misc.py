@@ -1,5 +1,6 @@
 import sys
 import traceback
+import itertools
 from typing import Callable, Iterable
 
 import discord
@@ -33,11 +34,11 @@ def get_dm_msg_chk(auth_id: int) -> Callable[[discord.Message], bool]:
     return msg_chk
 
 
-def split_blocks(joiner: str, items: Iterable[str], limit: int) -> Iterable[str]:
+def split_blocks(joiner: str, *iterables: Iterable[str], limit: int = 2000) -> Iterable[str]:
     """split a message from a string.join into blocks smaller than limit"""
     s = ''
     join_no_sep = True
-    for i in items:
+    for i in itertools.chain.from_iterable(iterables):
         if len(s) + len(joiner) + len(i) > limit:
             yield s
             s = ''

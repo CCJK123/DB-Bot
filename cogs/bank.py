@@ -428,7 +428,7 @@ class BankCog(discordutils.CogBase):
         embeds = []
         if loans:
             for s in discordutils.split_blocks('\n', (f'<@{d}> owes [{pnwutils.Resources(**loan["resources"])}] '
-                                                      f'at {loan["due_date"]}' for d, loan in loans.items()), 2000):
+                                                      f'at {loan["due_date"]}' for d, loan in loans.items())):
                 await ctx.respond(s, ephemeral=True)
         await ctx.respond('There are no active loans!', ephemeral=True)
 

@@ -180,10 +180,10 @@ class UtilCog(discordutils.CogBase):
                 inactives_discord[n] = i
 
         await ctx.respond('Inactives:')
-        for m in discordutils.split_blocks('\n', (f'<@{d_id}>' for d_id in inactives_discord.values()), 2000):
+        for m in discordutils.split_blocks('\n', (f'<@{d_id}>' for d_id in inactives_discord.values())):
             await ctx.respond(m)
         for m in discordutils.split_blocks('\n', (f'[{nation_names[n]}]({pnwutils.link.nation(n)})'
-                                                  for n in inactives - inactives_discord.keys()), 2000):
+                                                  for n in inactives - inactives_discord.keys())):
             await ctx.respond(m)
 
     @commands.command(guild_ids=config.guild_ids)
