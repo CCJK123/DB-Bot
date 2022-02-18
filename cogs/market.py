@@ -9,7 +9,7 @@ from utils import discordutils, pnwutils, config
 class MarketCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
-        self.market_values = discordutils.CogProperty[list[list[int]]](self, 'market.values')
+        self.market_values = discordutils.CogProperty[list[list[int]]](self, 'values')
 
     @property
     def nations(self) -> discordutils.MappingProperty[int, str]:
@@ -26,7 +26,7 @@ class MarketCog(discordutils.CogBase):
     async def _prices(self, ctx: discord.ApplicationContext):
         """List out the prices of resources in the market"""
         if await self.market_values.get(None) is None:
-            await self.market_values.set([[0] * len(pnwutils.constants.market_res)] * 3)
+            await self.market_values.set([[0] * len(pnwutils.constants.market_res) for i in range(3)])
         values = await self.market_values.get()
         await ctx.respond(embeds=(
             discordutils.construct_embed(pnwutils.constants.market_res, values[0], description='Buying Prices',

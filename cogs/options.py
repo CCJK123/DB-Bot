@@ -77,10 +77,10 @@ class OptionsCog(discordutils.CogBase):
                         res_name: commands.Option(str, 'Resource to set price', choices=pnwutils.constants.market_res),
                         price: commands.Option(int, 'Resource price', min_value=0)):
         """Set the buying/selling price of a resource"""
-        bank_cog = self.bot.get_cog('BankCog')
-        values = await bank_cog.market_values.get()
+        market_cog = self.bot.get_cog('MarketCog')
+        values = await market_cog.market_values.get()
         values[b_s == 'selling'][pnwutils.constants.market_res.index(res_name)] = price
-        await bank_cog.market_values.set(values)
+        await market_cog.market_values.set(values)
         await ctx.respond(f'The {b_s} price of {res_name} has been set to {price} ppu.')
 
     @market_options.command(guild_ids=config.guild_ids)
@@ -88,10 +88,10 @@ class OptionsCog(discordutils.CogBase):
                         res_name: commands.Option(str, 'resource to set stock', choices=pnwutils.constants.market_res),
                         stock: commands.Option(int, 'Resource stock', min_value=0)):
         """Set the stocks of a resource"""
-        bank_cog = self.bot.get_cog('BankCog')
-        values = await bank_cog.market_values.get()
+        market_cog = self.bot.get_cog('MarketCog')
+        values = await market_cog.market_values.get()
         values[2][pnwutils.constants.market_res.index(res_name)] = stock
-        await bank_cog.market_values.set(values)
+        await market_cog.market_values.set(values)
         await ctx.respond(f'The stock of {res_name} has been set to {stock} tons.')
 
     bank_options = options.create_subgroup('bank', 'Options for the bank system!')
