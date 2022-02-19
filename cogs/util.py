@@ -66,15 +66,14 @@ class UtilCog(discordutils.CogBase):
         if data[0]['alliance_id'] not in (config.alliance_id, off_id):
             await ctx.respond(f'This nation is not in {config.alliance_name}!')
             return
-
-        nation_confirm_choice = discordutils.Choices('Yes', 'No', user_id=ctx.author.id)
-        await ctx.respond(f'Is this your nation? ' + pnwutils.link.nation(nation_id),
-                          view=nation_confirm_choice, ephemeral=True)
-        if await nation_confirm_choice.result() == 'Yes':
+        async with self.bot.session.get(pnwutils.link.nation(nation_id)) as response:
+            m = pnwutils.constants.discord_tag_pattern.search(await response.text())
+        if m and m.group(1) == ctx.author.name:
             await self.nations[ctx.author.id].set(nation_id)
             await ctx.respond('You have been registered to our database!', ephemeral=True)
-        else:
-            await ctx.respond('Aborting...', ephemeral=True)
+            return
+        await ctx.respond('Your Discord Username is not set! Please edit your nation and set your discord tag to '
+                          f'{ctx.author.name}, then try this command again.')
 
     @register.command(name='list', guild_ids=config.guild_ids)
     async def register_list(self, ctx: discord.ApplicationContext):
