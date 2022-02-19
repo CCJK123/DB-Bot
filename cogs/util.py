@@ -88,9 +88,9 @@ class UtilCog(discordutils.CogBase):
                 for disc_id, nation_id in n:
                     embed.add_field(name=pnwutils.link.nation(nation_id), value=f'<@{disc_id}>')
                 nation_pages.append(embed)
-            await pages.Paginator(nation_pages, timeout=config.timeout).respond(ctx.interaction)
+            await pages.Paginator(nation_pages, timeout=config.timeout).respond(ctx.interaction, ephemeral=True)
             return
-        await ctx.respond('There are no registrations!')
+        await ctx.respond('There are no registrations!', ephemeral=True)
 
     @commands.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_any_role(config.gov_role_id, config.staff_role_id, guild_id=config.guild_id)
@@ -190,7 +190,6 @@ class UtilCog(discordutils.CogBase):
     @commands.command(guild_ids=config.guild_ids)
     async def war(self, ctx: discord.ApplicationContext, war: commands.Option(str, 'War ID or link')):
         """Gives information on a war given an ID or link!"""
-        war: str
         war = war.removeprefix(f'{pnwutils.constants.base_url}nation/war/timeline/war=')
 
         try:
@@ -200,6 +199,7 @@ class UtilCog(discordutils.CogBase):
             return
 
         data = await pnwutils.api.post_query(self.bot.session, individual_war_query, {'war_id': war})
+        print(data)
         if data:
             data = data.pop()  # type: ignore
             embed = discord.Embed(description=self.bot.get_cog('WarDetectorCog').war_description(data))

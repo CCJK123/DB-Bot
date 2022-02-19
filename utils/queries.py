@@ -237,8 +237,9 @@ query alliance_wars($alliance_id: [ID]) {
 
 individual_war_query = '''
 query individual_war($war_id: [Int]) {
-    wars(id: $war_id, days_ago: 0) {
+    wars(id: $war_id, days_ago: 0, active: false) {
         id
+        war_type
         attid
         defid
         att_alliance_id

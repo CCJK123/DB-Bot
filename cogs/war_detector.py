@@ -124,7 +124,7 @@ class WarDetectorCog(discordutils.CogBase):
 
     @staticmethod
     def war_description(w) -> str:
-        s = f'[War Page]({pnwutils.link.war(w["id"])})\n\n'
+        s = f'[War Page]({pnwutils.link.war(w["id"])})\n{w["war_type"].capitalize()} War\n\n'
         for k in WarType.ATT, WarType.DEF:
             n = w[k.string]
             aa_text = 'None' if n['alliance'] is None else \
