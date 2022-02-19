@@ -21,8 +21,8 @@ class OptionsCog(discordutils.CogBase):
     async def channel(self, ctx: discord.ApplicationContext,
                       kind: commands.Option(str, 'Channel type', name='type', choices=('process', 'withdraw'))
                       ) -> None:
+        """Set this channel to either the finance process or the withdrawal channel"""
         finance_cog = self.bot.get_cog('FinanceCog')
-        """Set this channel to either the process or the withdrawal channel"""
         if kind == 'process':
             await finance_cog.process_channel.set(ctx.channel)
         else:
@@ -100,6 +100,7 @@ class OptionsCog(discordutils.CogBase):
     @bank_options.command(guild_ids=config.guild_ids)
     async def set_offshore(self, ctx: discord.ApplicationContext,
                            off_id: commands.Option(int, 'ID of the offshore alliance')):
+        """Set the ID of the alliance's offshore."""
         bank_cog = self.bot.get_cog('BankCog')
         confirm_view = discordutils.Choices('Yes', 'No', user_id=ctx.author.id)
         await ctx.respond(f'Is this the offshore? [Link]({pnwutils.link.alliance(off_id)})',
@@ -116,6 +117,7 @@ class OptionsCog(discordutils.CogBase):
     @application_options.command(guild_ids=config.guild_ids)
     async def set(self, ctx: discord.ApplicationContext,
                   kind: commands.Option(str, choices=('category', 'log'))):
+        """Set the application category and logging channel"""
         application_cog = self.bot.get_cog('ApplicationCog')
         if kind == 'log':
             await application_cog.application_log.set(ctx.channel)

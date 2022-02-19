@@ -50,18 +50,19 @@ class MarketCog(discordutils.CogBase):
         res_index = pnwutils.constants.market_res.index(res_name)
         if values[2][res_index] < amt:
             await ctx.respond(f'The stocks are too low to buy that much {res_name}! '
-                              f'(Requested to purchase {amt} out of {values[2][res_index]} stock remaining.))',
+                              f'(Requested to purchase {amt} out of {values[2][res_index]} stock remaining))',
                               ephemeral=True)
             return
 
         bal = self.balances[ctx.author.id]
         res = pnwutils.Resources(**await bal.get())
-        res.money -= amt * values[0][res_index]
-        if res.money < 0:
+        total_price = amt * values[0][res_index]
+        if res.money < total_price:
             await ctx.respond(f'You do not have enough money deposited to do that! '
-                              f'(Trying to spend {amt * values[0][res_index]} out of {res.money} dollars.)',
+                              f'(Trying to spend {total_price} out of {res.money} dollars)',
                               ephemeral=True)
             return
+        res.money -= amt * values[0][res_index]
         res[res_name] += amt
         await bal.set(res.to_dict())
         values = await self.market_values.get()
@@ -89,7 +90,7 @@ class MarketCog(discordutils.CogBase):
         res.money += amt * values[1][res_index]
         await bal.set(res.to_dict())
         values = await self.market_values.get()
-        values[2][res_index] += amt
+        values[2][res_index] += amt # increase stocks
         await self.market_values.set(values)
         await ctx.respond('Transaction complete!', embed=res.create_balance_embed(ctx.author.display_name),
                           ephemeral=True)

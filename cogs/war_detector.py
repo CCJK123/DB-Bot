@@ -151,13 +151,19 @@ class WarDetectorCog(discordutils.CogBase):
                                   'in the respective channels.')
                 return
 
-        print(await self.running.get())
+        running_state = await self.running.get()
         if self.detect_wars.is_running():
             self.detect_wars.stop()
-            await self.running.set(False)
-            await ctx.respond('War detector stopped!')
+            if running_state:
+                await ctx.respond('War Detector stopping!')
+                await self.running.set(False)
+            else:
+                await ctx.respond('War Detector is in the process of stopping!')
             return
         self.detect_wars.start()
+        if running_state:
+            # not sure if valueerror is appropriate here
+            raise ValueError('state is running but detector is not running!')
         await self.running.set(True)
         await ctx.respond('War detector started!')
 
