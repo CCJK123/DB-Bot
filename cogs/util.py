@@ -24,7 +24,7 @@ class UtilCog(discordutils.CogBase):
                      nation_id: commands.Option(str, 'Your nation id or link', default='')):
         """Use to manually add your nation to the database"""
         await self.nations.initialise()
-        if self.nations.contains_key(ctx.author.id):
+        if await self.nations.contains_key(ctx.author.id):
             await ctx.respond('You are already registered!', ephemeral=True)
             return
 
@@ -49,7 +49,7 @@ class UtilCog(discordutils.CogBase):
             await ctx.respond("The given ID isn't a number!", ephemeral=True)
             return
 
-        if self.nations.contains_value(nation_id):
+        if await self.nations.contains_value(nation_id):
             await ctx.respond('This nation has been registered before! Aborting...', ephemeral=True)
             return
 
@@ -68,12 +68,14 @@ class UtilCog(discordutils.CogBase):
             return
         async with self.bot.session.get(pnwutils.link.nation(nation_id)) as response:
             m = pnwutils.constants.discord_tag_pattern.search(await response.text())
-        if m and m.group(1) == ctx.author.name:
+        
+        username = f'{ctx.author.name}#{ctx.author.discriminator}'
+        if m and m.group(1) == username:
             await self.nations[ctx.author.id].set(nation_id)
             await ctx.respond('You have been registered to our database!', ephemeral=True)
             return
         await ctx.respond('Your Discord Username is not set! Please edit your nation and set your discord tag to '
-                          f'{ctx.author.name}, then try this command again.')
+                          f'{username}, then try this command again.', ephemeral=True)
 
     @register.command(name='list', guild_ids=config.guild_ids)
     async def register_list(self, ctx: discord.ApplicationContext):

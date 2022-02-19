@@ -39,6 +39,13 @@ class DebugCog(discordutils.CogBase):
         embed.add_field(name=config.resource_emojis['credits'], value=config.resource_emojis['money'])
         await ctx.respond(embed=embed)
 
+    @commands.command(guild_ids=config.guild_ids, default_permission=False)
+    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
+    async def del_nation(self, ctx: discord.ApplicationContext):
+        cog = self.bot.get_cog('UtilCog')
+        await cog.nations[ctx.author.id].delete()
+        await ctx.respond('done')
+
 
 def setup(bot: dbbot.DBBot):
     bot.add_cog(DebugCog(bot))
