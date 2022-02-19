@@ -199,7 +199,6 @@ class UtilCog(discordutils.CogBase):
             return
 
         data = await pnwutils.api.post_query(self.bot.session, individual_war_query, {'war_id': war})
-        print(data)
         if data:
             data = data.pop()  # type: ignore
             embed = discord.Embed(description=self.bot.get_cog('WarDetectorCog').war_description(data))

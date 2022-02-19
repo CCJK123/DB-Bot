@@ -118,7 +118,6 @@ class WarDetectorCog(discordutils.CogBase):
         score = 0
         for e_0, e_1 in zip(a, b):
             for k in e_0:
-                print(k)
                 score += e_0[k] != e_1[k]
         return score <= 2
 
