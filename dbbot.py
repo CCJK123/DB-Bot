@@ -33,7 +33,8 @@ class DBBot(discord.Bot):
 
         Loads extensions found in [directory] into the bot.
         """
-        cogs = (file.split('.')[0] for file in os.listdir(directory) if file.endswith('.py') and not file.startswith('_'))
+        cogs = (file.split('.')[0] for file in os.listdir(directory)
+                if file.endswith('.py') and not file.startswith('_'))
         for ext in cogs:
             self.load_extension(f'{directory}.{ext}')
 

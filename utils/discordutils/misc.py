@@ -6,8 +6,8 @@ from typing import Callable, Iterable
 import discord
 
 # Setup what is exported by default
-__all__ = ('construct_embed', 'split_blocks', 'get_msg_chk', 'get_dm_msg_chk',
-           'default_error_handler')
+__all__ = ('construct_embed', 'get_msg_chk', 'get_dm_msg_chk',
+           'split_blocks', 'default_error_handler')
 
 
 def construct_embed(names: Iterable[str], values: Iterable[str], /, **kwargs: str) -> discord.Embed:

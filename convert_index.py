@@ -1,7 +1,6 @@
 # use to convert the loans and balances index to discord id rather than nation id
 import asyncio
 
-from utils import discordutils
 from replit.database import AsyncDatabase
 from replit import db
 

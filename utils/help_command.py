@@ -56,7 +56,7 @@ def create_cog_embed(ctx: discord.ApplicationContext, cog: discord.Cog) -> disco
 
 
 def walk_commands(cmds: Iterable[discord.ApplicationCommand]
-                 ) -> Iterable[discord.ApplicationCommand]:
+                  ) -> Iterable[discord.ApplicationCommand]:
     for command in cmds:
         yield command
         if isinstance(command, discord.SlashCommandGroup):

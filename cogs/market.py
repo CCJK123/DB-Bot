@@ -26,7 +26,7 @@ class MarketCog(discordutils.CogBase):
     async def _prices(self, ctx: discord.ApplicationContext):
         """List out the prices of resources in the market"""
         if await self.market_values.get(None) is None:
-            await self.market_values.set([[0] * len(pnwutils.constants.market_res) for i in range(3)])
+            await self.market_values.set([[0] * len(pnwutils.constants.market_res) for _ in range(3)])
         values = await self.market_values.get()
         await ctx.respond(embeds=(
             discordutils.construct_embed(pnwutils.constants.market_res, values[0], description='Buying Prices',
@@ -90,7 +90,7 @@ class MarketCog(discordutils.CogBase):
         res.money += amt * values[1][res_index]
         await bal.set(res.to_dict())
         values = await self.market_values.get()
-        values[2][res_index] += amt # increase stocks
+        values[2][res_index] += amt  # increase stocks
         await self.market_values.set(values)
         await ctx.respond('Transaction complete!', embed=res.create_balance_embed(ctx.author.display_name),
                           ephemeral=True)
