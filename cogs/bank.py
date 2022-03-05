@@ -32,7 +32,7 @@ class BankCog(discordutils.CogBase):
             raise ValueError('Please provide entity id!')
 
         data = await pnwutils.API.post_query(self.bot.session, bank_transactions_query,
-                                             {'alliance_id': pnwutils.Config.aa_id}, 'alliances')
+                                             {'alliance_id': int(pnwutils.Config.aa_id)}, 'alliances')
 
         bank_recs = data['data'][0]['bankrecs']
         if entity_id is None:
@@ -225,7 +225,8 @@ class BankCog(discordutils.CogBase):
             await auth.send('You took too long to reply! Aborting.')
             return
 
-        data = await pnwutils.API.post_query(self.bot.session, nation_name_query, {'nation_id': nation_id}, 'nations')
+        data = await pnwutils.API.post_query(self.bot.session, nation_name_query,
+                                             {'nation_id': int(nation_id)}, 'nations')
         name = data['data'][0]['nation_name']
         link = pnwutils.Link.bank('w', req_resources, name, 'Withdrawal from balance')
 
@@ -463,7 +464,7 @@ class BankCog(discordutils.CogBase):
     async def contents(self, ctx: commands.Context):
         data = await pnwutils.API.post_query(
             self.bot.session, bank_info_query,
-            {'alliance_id': pnwutils.Config.aa_id},
+            {'alliance_id': int(pnwutils.Config.aa_id)},
             'alliances'
         )
         resources = pnwutils.Resources(**data['data'].pop())

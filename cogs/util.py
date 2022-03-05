@@ -48,7 +48,7 @@ class UtilCog(discordutils.CogBase):
             return
 
         data = await pnwutils.API.post_query(self.bot.session, nation_alliance_query,
-                                             {'nation_id': nation_id},
+                                             {'nation_id': int(nation_id)},
                                              'nations')
         data = data['data']
         if not data:
@@ -87,7 +87,7 @@ class UtilCog(discordutils.CogBase):
     async def check_ran_out(self, ctx: commands.Context):
         """Use to list all nations that have run out of food or uranium in the alliance."""
         data = (await pnwutils.API.post_query(self.bot.session, alliance_member_res_query,
-                                              {'alliance_id': pnwutils.Config.aa_id},
+                                              {'alliance_id': int(pnwutils.Config.aa_id)},
                                               'nations', True))['data']
         result = defaultdict(str)
         for nation in data:
@@ -119,7 +119,7 @@ class UtilCog(discordutils.CogBase):
     @commands.command()
     async def activity_check(self, ctx: commands.Context):
         data = (await pnwutils.API.post_query(self.bot.session, alliance_activity_query,
-                                              {'alliance_id': pnwutils.Config.aa_id},
+                                              {'alliance_id': int(pnwutils.Config.aa_id)},
                                               'nations', True))['data']
 
         inactives = set()

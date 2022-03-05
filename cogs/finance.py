@@ -59,7 +59,7 @@ class FinanceCog(discordutils.CogBase):
             return
 
         data = await pnwutils.API.post_query(self.bot.session, nation_query,
-                                             {'nation_id': nation_id}, 'nations')
+                                             {'nation_id': int(nation_id)}, 'nations')
         data = data['data']
         if data:
             # Data contains a nation, hence nation with given id exists
