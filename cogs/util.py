@@ -7,7 +7,7 @@ from discord.ext import pages
 
 import dbbot
 from utils import discordutils, pnwutils, config, help_command
-from utils.queries import (nation_alliance_query, alliance_member_res_query,
+from utils.queries import (nation_register_query, alliance_member_res_query,
                            alliance_activity_query, individual_war_query)
 
 
@@ -53,7 +53,7 @@ class UtilCog(discordutils.CogBase):
             await ctx.respond('This nation has been registered before! Aborting...', ephemeral=True)
             return
 
-        data = await nation_alliance_query.query(self.bot.session, nation_id=nation_id)
+        data = await nation_register_query.query(self.bot.session, nation_id=nation_id)
         data = data['data']
         if not data:
             # nation does not exist, empty list returned
@@ -65,16 +65,13 @@ class UtilCog(discordutils.CogBase):
         if data[0]['alliance_id'] not in (config.alliance_id, off_id):
             await ctx.respond(f'This nation is not in {config.alliance_name}!')
             return
-        async with self.bot.session.get(pnwutils.link.nation(nation_id)) as response:
-            m = pnwutils.constants.discord_tag_pattern.search(await response.text())
-        
         username = f'{ctx.author.name}#{ctx.author.discriminator}'
-        if m and m.group(1) == username:
-            await self.nations[ctx.author.id].set(nation_id)
-            await ctx.respond('You have been registered to our database!', ephemeral=True)
-            return
-        await ctx.respond('Your Discord Username is not set! Please edit your nation and set your discord tag to '
-                          f'{username}, then try this command again.', ephemeral=True)
+        if data['discord'] != username:
+            await ctx.respond('Your Discord Username is not set! Please edit your nation and set your discord tag to '
+                              f'{username}, then try this command again.', ephemeral=True)
+        await self.nations[ctx.author.id].set(nation_id)
+        await ctx.respond('You have been registered to our database!', ephemeral=True)
+        return
 
     @register.command(name='list', guild_ids=config.guild_ids)
     async def register_list(self, ctx: discord.ApplicationContext):

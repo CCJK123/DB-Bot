@@ -144,16 +144,17 @@ alliance_name_query = APIQuery(alliance_name_query_text, alliance_id=int)
 
 # util.py
 
-nation_alliance_query_text = '''
+nation_register_query_text = '''
 query nation_info($nation_id: [Int]) {
     nations(id: $nation_id, first: 1) {
         data {
             alliance_id
+            discord
         }
     }
 }
 '''
-nation_alliance_query = APIQuery(nation_alliance_query_text, True, nation_id=int)
+nation_register_query = APIQuery(nation_register_query_text, True, nation_id=int)
 
 alliance_member_res_query_text = '''
 query alliance_members_res($alliance_id: [Int], $page: Int) {
