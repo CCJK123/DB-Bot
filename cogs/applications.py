@@ -6,7 +6,8 @@ import discord
 from discord import commands
 from discord.ext import commands as cmds
 
-from utils import discordutils, pnwutils, queries, config
+from utils import discordutils, config
+from utils.queries import acceptance_query
 import dbbot
 
 
@@ -155,8 +156,7 @@ class ApplicationCog(discordutils.CogBase):
         applicant = ctx.guild.get_member(applicant_id)
         util_cog = self.bot.get_cog('UtilCog')
         nation_id = await util_cog.nations[applicant_id].get()
-        data = await pnwutils.api.post_query(self.bot.session, queries.acceptance_query,
-                                             {'nation_id': nation_id})
+        data = await acceptance_query.query(self.bot.session, nation_id=nation_id)
         data = data['data'].pop()
         acc_str = 'Accepted' if accepted else 'Rejected'
         info_str = f'Leader Name: {data["leader_name"]}, Nation Name: {data["nation_name"]}, ' \

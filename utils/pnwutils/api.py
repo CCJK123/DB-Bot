@@ -3,7 +3,7 @@ from typing import Any, Iterable
 
 import aiohttp
 
-__all__ = ('APIError', 'construct_query', 'post_query')
+__all__ = ('APIError', 'APIQuery')
 
 from . import constants
 
@@ -12,42 +12,50 @@ class APIError(Exception):
     """Error raised when an exception occurs when trying to call the API."""
 
 
-def construct_query(q: str, var: dict[str, Any]) -> dict[str, str | dict[str, Any]]:
-    return {'query': q, 'variables': var}
+class APIQuery:
+    def __init__(self, query_text: str, check_more: bool = False, **variable_types: dict[str: type]):
+        self.query_text = query_text
+        self.variable_types = variable_types
+        self.check_more = check_more
 
+        if check_more:
+            self.variable_types['pages'] = int
 
-async def post_query(sess: aiohttp.ClientSession,
-                     query_string: str,
-                     query_variables: dict[str, Any],
-                     check_more: bool = False
-                     ) -> Iterable[dict[str, Any]] | dict[str, Any]:
+    def get_query(self, variables: dict[str, Any]) -> dict[str, str | dict[str, Any]]:
+        return {'query': self.query_text, 'variables': variables}
 
-    # "alex put a limit of 500 entries returned per call, check_more decides if i should try check if i should be
-    # getting the next 500 entries" - chez
-    # Set page to first page if more entries than possible in 1 call wanted
-    if check_more and query_variables.get('page') is None:
-        query_variables['page'] = 1
+    async def query(self, session: aiohttp.ClientSession, **variables) -> Iterable[dict[str, Any]] | dict[str, Any]:
+        # alex put a limit of 500 entries returned per call, check_more decides if we should
+        # try to get the next 500 entries
+        # Set page to first page if more entries than possible in 1 call wanted
+        if self.check_more:
+            variables.setdefault('page', 1)
 
-    # Create query and get data
-    query = construct_query(query_string, query_variables)
-    async with sess.post(constants.api_url, json=query) as response:
-        data = await response.json()
-    try:
-        data = data['data']
-    except KeyError:
-        raise APIError(f'Error in fetching data: {data["errors"]}') from None
-    except TypeError:
-        if isinstance(data, list):
-            raise APIError(f'Error in fetching data: {data[0]["errors"][0]["message"]}') from None
-        raise
-    # get the only child of the dict
-    data = next(iter(data.values()))
-    # Get data from other pages, if they exist
-    if check_more and data['paginatorInfo']['hasMorePages']:
-        query_variables = query_variables.copy()
-        query_variables['page'] += 1
+        if variables.keys() != self.variable_types.keys():
+            raise APIError(f'Key mismatch! Variables: {self.variable_types}, Passed: {variables}')
 
-        # linter does not realise that in this case, the post_query call will always return Iterable[dict[str, Any]]
-        return chain(data, await post_query(sess, query_string, query_variables, True))
+        for k in variables:
+            variables[k] = self.variable_types[k](variables[k])
 
-    return data
+        async with session.post(constants.api_url, json=self.get_query(variables)) as response:
+            data = await response.json()
+
+        try:
+            data = data['data']
+        except KeyError:
+            raise APIError(f'Error in fetching data: {data["errors"]}') from None
+        except TypeError:
+            if isinstance(data, list):
+                raise APIError(f'Error in fetching data: {data[0]["errors"][0]["message"]}') from None
+            raise
+
+        # get the only child of the dict
+        data = next(iter(data.values()))
+
+        if self.check_more and data['paginatorInfo']['hasMorePages']:
+            variables['page'] += 1
+
+            # linter does not realise that in this case, the query call will always return Iterable[dict[str, Any]]
+            return chain(data, await self.query(session, **variables))
+
+        return data

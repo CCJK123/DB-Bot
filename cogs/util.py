@@ -53,8 +53,7 @@ class UtilCog(discordutils.CogBase):
             await ctx.respond('This nation has been registered before! Aborting...', ephemeral=True)
             return
 
-        data = await pnwutils.api.post_query(self.bot.session, nation_alliance_query,
-                                             {'nation_id': nation_id})
+        data = await nation_alliance_query.query(self.bot.session, nation_id=nation_id)
         data = data['data']
         if not data:
             # nation does not exist, empty list returned
@@ -120,8 +119,8 @@ class UtilCog(discordutils.CogBase):
     @check.command(name='ran_out', guild_ids=config.guild_ids)
     async def check_ran_out(self, ctx: discord.ApplicationContext):
         """List all nations that have run out of food or uranium in the alliance."""
-        data = (await pnwutils.api.post_query(self.bot.session, alliance_member_res_query,
-                                              {'alliance_id': config.alliance_id}, True))['data']
+        data = await alliance_member_res_query.query(self.bot.session, alliance_id=config.alliance_id)
+        data = data['data']
         result = {'Food': [], 'Food And Uranium': [], 'Uranium': []}
         ids = set()
         for nation in data:
@@ -160,8 +159,8 @@ class UtilCog(discordutils.CogBase):
     async def activity_check(self, ctx: discord.ApplicationContext,
                              days: commands.Option(int, 'How many days inactive', default=3)):
         """Lists nations that have not been active in the last n days (defaults to 3 days)"""
-        data = (await pnwutils.api.post_query(self.bot.session, alliance_activity_query,
-                                              {'alliance_id': config.alliance_id}, True))['data']
+        data = (await alliance_activity_query.query(self.bot.session, alliance_id=config.alliance_id))
+        data = data['data']
 
         inactives = set()
         nation_names = {}
@@ -198,7 +197,7 @@ class UtilCog(discordutils.CogBase):
             await ctx.respond("That isn't a number!")
             return
 
-        data = await pnwutils.api.post_query(self.bot.session, individual_war_query, {'war_id': war})
+        data = await individual_war_query.query(self.bot.session, war_id=war)
         if data:
             data = data.pop()  # type: ignore
             embed = discord.Embed(description=self.bot.get_cog('WarDetectorCog').war_description(data))

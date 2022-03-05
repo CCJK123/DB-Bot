@@ -54,7 +54,7 @@ class FinanceCog(discordutils.CogBase):
         # Check that reply was sent from same author in DMs
         msg_chk = discordutils.get_dm_msg_chk(author.id)
 
-        data = await pnwutils.api.post_query(self.bot.session, nation_query, {'nation_id': nation_id})
+        data = await nation_query.query(self.bot.session, nation_id=nation_id)
         data = data['data']
         if data:
             # Data contains a nation, hence nation with given id exists

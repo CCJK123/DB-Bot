@@ -30,8 +30,7 @@ class BankCog(discordutils.CogBase):
         if entity_id is None and kind is not None:
             raise ValueError('Please provide entity id!')
 
-        data = await pnwutils.api.post_query(self.bot.session, bank_transactions_query,
-                                             {'alliance_id': config.alliance_id})
+        data = await bank_transactions_query.query(self.bot.session, alliance_id=config.alliance_id)
 
         bank_recs = data['data'][0]['bankrecs']
         if entity_id is None:
@@ -189,7 +188,7 @@ class BankCog(discordutils.CogBase):
             await author.send('You took too long to reply! Aborting.')
             return
 
-        data = await pnwutils.api.post_query(self.bot.session, nation_name_query, {'nation_id': nation_id})
+        data = await nation_name_query.query(self.bot.session, nation_id=nation_id)
         name = data['data'][0]['nation_name']
         link = pnwutils.link.bank('w', req_resources, name, 'Withdrawal from balance')
 
@@ -425,7 +424,6 @@ class BankCog(discordutils.CogBase):
     async def loan_list(self, ctx: discord.ApplicationContext):
         """List all the loans that are currently active"""
         loans = await self.loans.get()
-        embeds = []
         if loans:
             for s in discordutils.split_blocks('\n', (f'<@{d}> owes [{pnwutils.Resources(**loan["resources"])}] '
                                                       f'at {loan["due_date"]}' for d, loan in loans.items())):
@@ -437,10 +435,7 @@ class BankCog(discordutils.CogBase):
                        adjusted: commands.Option(bool, 'Whether to adjust for balances held by members',
                                                  default=False)):
         """Check the current contents of the bank"""
-        data = await pnwutils.api.post_query(
-            self.bot.session, bank_info_query,
-            {'alliance_id': config.alliance_id}
-        )
+        data = await bank_info_query.query(self.bot.session, alliance_id=config.alliance_id)
         resources = pnwutils.Resources(**data['data'].pop())
         if adjusted:
             resources -= await self.get_total_balances()
@@ -454,16 +449,11 @@ class BankCog(discordutils.CogBase):
             await ctx.respond('Offshore alliance has not been set!', ephemeral=True)
             return
 
-        data = await pnwutils.api.post_query(
-            self.bot.session, bank_info_query,
-            {'alliance_id': config.alliance_id}
-        )
+        data = await bank_info_query.query(self.bot.session, alliance_id=config.alliance_id)
         resources = pnwutils.Resources(**data['data'].pop())
 
         try:
-            aa_name = (await pnwutils.api.post_query(
-                self.bot.session, alliance_name_query, {'alliance_id': off_id}
-            ))['data'][0]['name']
+            aa_name = (await alliance_name_query.query(self.bot.session, alliance_id=off_id))['data'][0]['name']
         except IndexError:
             # failed on trying to access 0th elem, list is empty
             await ctx.respond(f'It appears an alliance with the set ID {off_id} does not exist! '
@@ -496,7 +486,6 @@ def setup(bot: dbbot.DBBot):
                 'Your withdrawal request has been sent to your nation!',
                 embed=req_res.create_embed(title='Withdrawn Resources'))
         else:
-            nation_id = await bot.get_cog('UtilCog').nations[requester_id].get()
             bal = bot.get_cog('BankCog').balances[requester_id]
             await bal.set((pnwutils.Resources(**await bal.get()) + req_res).to_dict())
             await interaction.user.send(
