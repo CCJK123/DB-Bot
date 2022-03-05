@@ -117,7 +117,7 @@ class BankCog(discordutils.CogBase):
         auth = ctx.author
         msg_chk = discordutils.get_dm_msg_chk(auth.id)
 
-        start_time = datetime.datetime.now()
+        start_time = datetime.datetime.now(tz=datetime.timezone.utc)
         await auth.send('You now have 5 minutes to deposit your resources into the bank. '
                         'Once you are done, send a message here.',
                         view=discordutils.LinkView('Deposit Link', pnwutils.Link.bank('d', note='Deposit to balance'))
