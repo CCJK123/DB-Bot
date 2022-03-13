@@ -482,7 +482,11 @@ def setup(bot: dbbot.DBBot) -> None:
                     'You can check your loan status with `bank loan status`.'
                 )
                 bal = bot.get_cog('BankCog').balances[req_data.requester_id]
-                await bal.set((pnwutils.Resources(**await bal.get()) + req_data.resources).to_dict())
+                if (res_dict := await bal.get(None)) is None:
+                    res = pnwutils.Resources()
+                else:
+                    res = pnwutils.Resources(**res_dict)
+                await bal.set((res + req_data.resources).to_dict())
 
                 await interaction.message.edit(embed=interaction.message.embeds[0].add_field(
                     name='Return By',
