@@ -473,12 +473,12 @@ def setup(bot: dbbot.DBBot) -> None:
         if status == RequestStatus.ACCEPTED:
             if req_data.kind == 'Loan':
                 data = LoanData(datetime.datetime.now() + datetime.timedelta(days=30), req_data.resources)
+                await req_data.requester.send('Your loan has been added to your bank balance.',
+                                              embed=req_data.resources.create_embed(title='Loaned Resources'))
                 await req_data.requester.send(
-                    'The loan has been added to your bank balance. '
                     'You will have to use `bank withdraw` to withdraw the loan from your bank balance to your nation. '
                     'Kindly remember to return the requested resources by depositing it back into your bank balance '
-                    'and using `bank loan return` by '
-                    f'<t:{int(data.due_date.timestamp())}:R>. '
+                    f'and using `bank loan return` by <t:{int(data.due_date.timestamp())}:R>. '
                     'You can check your loan status with `bank loan status`.'
                 )
                 bal = bot.get_cog('BankCog').balances[req_data.requester_id]

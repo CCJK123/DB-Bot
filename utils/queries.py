@@ -1,4 +1,4 @@
-from pnwutils.api import APIQuery
+from .pnwutils.api import APIQuery
 
 # finance.py
 
