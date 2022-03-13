@@ -1,14 +1,18 @@
+import collections
 import datetime
+import io
 import operator
 
 import discord
 from discord import commands
 from discord.ext import pages
 
+import matplotlib.pyplot as plt
+
 import dbbot
 from utils import discordutils, pnwutils, config, help_command
 from utils.queries import (nation_register_query, alliance_member_res_query,
-                           alliance_activity_query, individual_war_query)
+                           alliance_activity_query, individual_war_query, alliance_tiers_query)
 
 
 class UtilCog(discordutils.CogBase):
@@ -212,6 +216,28 @@ class UtilCog(discordutils.CogBase):
         await ctx.respond(f"{member.mention}'s nation:",
                           view=discordutils.LinkView('Nation link', pnwutils.link.nation(nation_id)),
                           allowed_mentions=discord.AllowedMentions.none())
+
+    plot = commands.SlashCommandGroup('plot', 'Plotting commands!', guild_ids=config.guild_ids)
+
+    @plot.command()
+    async def alliance_tiers(self, ctx: discord.ApplicationContext,
+                             alliances: commands.Option(str, 'Comma separated string of alliance ids',
+                                                        default=config.alliance_id)):
+        try:
+            alliance_ids = map(int, alliances.split(','))
+        except ValueError:
+            await ctx.respond('Improper input! Please provide a comma separated list of ids, e.g. `4221,1234`')
+            return
+        fig, ax = plt.subplots()
+        data = await alliance_tiers_query.query(self.bot.session, alliance_ids=alliance_ids)
+        files = []
+        for aa in data['data']:
+            counter = collections.Counter(map(operator.itemgetter('nation_id'), aa['nations']))
+            ax.step(*counter.items())
+            buf = io.BytesIO()
+            fig.savefig(buf)
+            files.append(discord.File(buf, aa['name']))
+        await ctx.respond(files=files)
 
     @commands.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)

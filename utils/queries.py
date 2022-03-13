@@ -195,6 +195,20 @@ query alliance_activity($alliance_id: [Int], $page: Int) {
 '''
 alliance_activity_query = APIQuery(alliance_activity_query_text, True, alliance_id=int)
 
+alliance_tiers_query_text = '''
+query nation_discord($alliance_ids: [Int]) {
+    alliances(id: $alliance_ids) {
+        data {
+            nations {
+                num_cities
+            }
+            name
+        }
+    }
+}
+'''
+alliance_tiers_query = APIQuery(alliance_tiers_query_text, alliance_ids=[int])
+
 # war_detector.py
 
 alliance_wars_query_text = '''

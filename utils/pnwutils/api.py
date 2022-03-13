@@ -35,7 +35,10 @@ class APIQuery:
             raise APIError(f'Key mismatch! Variables: {self.variable_types}, Passed: {variables}')
 
         for k in variables:
-            variables[k] = self.variable_types[k](variables[k])
+            ty = self.variable_types[k]
+            if isinstance(ty, list):
+                ty = list
+            variables[k] = ty(variables[k])
 
         async with session.post(constants.api_url, json=self.get_query(variables)) as response:
             data = await response.json()
