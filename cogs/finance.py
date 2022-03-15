@@ -479,7 +479,7 @@ def setup(bot: dbbot.DBBot) -> None:
                 await req_data.requester.send(
                     'You will have to use `bank withdraw` to withdraw the loan from your bank balance to your nation. '
                     'Kindly remember to return the requested resources by depositing it back into your bank balance '
-                    f'and using `bank loan return` by <t:{int(data.due_date.timestamp())}:R>. '
+                    f'and using `bank loan return` by {discord.utils.format_dt(data.due_date, "R")} '
                     'You can check your loan status with `bank loan status`.'
                 )
                 bal = bot.get_cog('BankCog').balances[req_data.requester_id]

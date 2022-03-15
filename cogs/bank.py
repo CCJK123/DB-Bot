@@ -67,7 +67,7 @@ class BankCog(discordutils.CogBase):
                           ephemeral=True)
         if loan is not None:
             await ctx.respond(
-                f'You have a loan due <t:{int(datetime.datetime.fromisoformat(loan["due_date"]).timestamp())}:R>',
+                f'You have a loan due {discord.utils.format_dt(loan["due_date"], "R")}',
                 embed=pnwutils.Resources(**loan['resources']).create_embed(title='Loaned Resources'), ephemeral=True)
 
     @bank.command(guild_ids=config.guild_ids)
