@@ -1,28 +1,59 @@
 import os
+import pickle
 import random
 import traceback
-from typing import Callable
+from typing import Any
 
+import aiofiles
 import aiohttp
-from replit.database import AsyncDatabase
 import discord
 from discord.ext import tasks, commands as cmds
 
 from utils import discordutils
 
 
+class RudimentaryDatabase:
+    def __init__(self, filename: str):
+        self.filename = filename
+        self.data = {}
+
+    async def get(self, key: str) -> Any:
+        return self.data[key]
+
+    async def set(self, key: str, value: Any) -> None:
+        self.data[key] = value
+
+    async def load(self):
+        try:
+            async with aiofiles.open(self.filename, 'rb') as f:
+                self.data = pickle.loads(await f.read())
+        except FileNotFoundError:
+            pass
+
+    async def save(self):
+        pickled = pickle.dumps(self.data, 5)
+        async with aiofiles.open(self.filename, 'wb') as f:
+            await f.write(pickled)
+
+    async def __aenter__(self) -> 'RudimentaryDatabase':
+        await self.load()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.save()
+
+
 # pycharm complains about sync_commands not being written,
-# cause in the library they have not written it and it just raises NotImplemented
+# cause in the library they have not written it, it just raises NotImplemented
 # noinspection PyAbstractClass
 class DBBot(discord.Bot):
-    def __init__(self, db_url: str, on_ready_func: Callable[[], None]):
+    def __init__(self, db_url: str):
         intents = discord.Intents(guilds=True, messages=True, members=True)
         super().__init__(command_prefix=os.environ['command_prefix'],
                          intents=intents)
 
-        self.on_ready_func = on_ready_func
         self.session = None
-        self.database = AsyncDatabase(db_url)
+        self.database = RudimentaryDatabase(db_url)
         self.views = discordutils.ViewStorage[discordutils.PersistentView](self, 'views')
         self.prepped = False
 
@@ -41,7 +72,7 @@ class DBBot(discord.Bot):
     async def prep(self):
         if await self.views.get(None) is None:
             await self.views.set({})
-        
+
         self.session = await aiohttp.ClientSession().__aenter__()
         self.database = await self.database.__aenter__()
 
@@ -81,7 +112,7 @@ class DBBot(discord.Bot):
             await self.add_view(view)
             print(f'Adding a {type(view)} from storage!')
 
-        self.on_ready_func()
+        print('Ready!')
 
     async def on_application_command_error(self, ctx: discord.ApplicationContext, exception):
         command = ctx.command

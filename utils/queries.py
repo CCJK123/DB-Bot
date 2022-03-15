@@ -201,6 +201,7 @@ query nation_discord($alliance_ids: [Int]) {
         data {
             nations {
                 num_cities
+                alliance_position
             }
             name
         }

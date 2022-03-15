@@ -407,6 +407,7 @@ class FinanceCog(discordutils.CogBase):
 
     async def on_request_fixed(self, req_data: RequestData) -> None:
         auth = req_data.requester
+        assert auth is not None
         agree_terms = discordutils.Choices('Yes', 'No')
         await auth.send(
             'Do you agree to return the money and/or resources in a timely manner in the event that you leave the '

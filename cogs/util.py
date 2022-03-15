@@ -7,6 +7,7 @@ import discord
 from discord import commands
 from discord.ext import pages
 
+import numpy as np
 import matplotlib.pyplot as plt
 
 import dbbot
@@ -157,7 +158,7 @@ class UtilCog(discordutils.CogBase):
             await ctx.respond('No one has ran out of food or uranium!')
 
     @check.command(name='activity', guild_ids=config.guild_ids)
-    async def activity_check(self, ctx: discord.ApplicationContext,
+    async def check_activity(self, ctx: discord.ApplicationContext,
                              days: commands.Option(int, 'How many days inactive', default=3)):
         """Lists nations that have not been active in the last n days (defaults to 3 days)"""
         data = (await alliance_activity_query.query(self.bot.session, alliance_id=config.alliance_id))
@@ -187,6 +188,10 @@ class UtilCog(discordutils.CogBase):
                                                   for n in inactives - inactives_discord.keys())):
             await ctx.respond(m)
 
+    @commands.command(name='military', guild_ids=config.guild_ids)
+    async def check_military(self, ctx: discord.ApplicationContext):
+        await ctx.respond('Not Implemented!')
+
     @commands.command(guild_ids=config.guild_ids)
     async def war(self, ctx: discord.ApplicationContext, war: commands.Option(str, 'War ID or link')):
         """Gives information on a war given an ID or link!"""
@@ -199,8 +204,8 @@ class UtilCog(discordutils.CogBase):
             return
 
         data = await individual_war_query.query(self.bot.session, war_id=war)
-        if data:
-            data = data.pop()  # type: ignore
+        if data['data']:
+            data = data['data'].pop()  # type: ignore
             embed = discord.Embed(description=self.bot.get_cog('WarDetectorCog').war_description(data))
             await ctx.respond(embed=embed)
         else:
@@ -228,16 +233,33 @@ class UtilCog(discordutils.CogBase):
         except ValueError:
             await ctx.respond('Improper input! Please provide a comma separated list of ids, e.g. `4221,1234`')
             return
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(20, 12))
         data = await alliance_tiers_query.query(self.bot.session, alliance_ids=alliance_ids)
-        files = []
+        max_i = 0
         for aa in data['data']:
-            counter = collections.Counter(map(operator.itemgetter('nation_id'), aa['nations']))
-            ax.step(*counter.items())
-            buf = io.BytesIO()
-            fig.savefig(buf)
-            files.append(discord.File(buf, aa['name']))
-        await ctx.respond(files=files)
+            counter = collections.Counter(nation['num_cities'] for nation in aa['nations']
+                                          if nation['alliance_position'] != 'APPLICANT')
+            i = 1
+            n = len(counter)
+            values = []
+            while n > 0:
+                if counter[i]:
+                    values.append(counter[i])
+                    n -= 1
+                else:
+                    values.append(0)
+                i += 1
+            ax.bar(np.arange(1, i), values, width=1, edgecolor='white', alpha=0.7, label=aa['name'])
+            max_i = max(i, max_i)
+        ax.set(xlabel='City Count', ylabel='Nation Count', xlim=(1, max_i), xticks=np.arange(1, max_i))
+        ax.legend()
+        for item in (ax.title, ax.xaxis.label, ax.yaxis.label, *ax.get_xticklabels(), *ax.get_yticklabels(),
+                     *ax.get_legend().get_texts()):
+            item.set_fontsize(18)
+        buf = io.BytesIO()
+        fig.savefig(buf)
+        buf.seek(0)
+        await ctx.respond(file=discord.File(buf, 'tiers.png'))
 
     @commands.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
@@ -255,7 +277,8 @@ class UtilCog(discordutils.CogBase):
 
     @commands.command(name='help', guild_ids=config.guild_ids)
     async def help_(self, ctx: discord.ApplicationContext,
-                    command: commands.Option(str, 'Cog or Command name', required=False) = None):
+                    command: commands.Option(str, 'Cog or Command name', required=False,
+                                             autocomplete=help_command.autocomplete) = None):
         """Get help on DBBot's cogs and commands."""
         await help_command.help_command(self.bot, ctx, command)
 

@@ -6,6 +6,8 @@ from discord import commands
 
 from utils import config
 
+__all__ = ('help_command', 'autocomplete')
+
 ApplicationCommandList = list[discord.ApplicationCommand]
 
 
@@ -23,30 +25,28 @@ async def help_command(bot: discord.Bot, ctx: discord.ApplicationContext, name: 
             await ctx.respond('No command, cog or group by that name found.', ephemeral=True)
         return
     # command
-    for cmd_type in discord.SlashCommand, discord.UserCommand, discord.MessageCommand:
-        cmd = bot.get_application_command(name, config.guild_ids, cmd_type)
-        if cmd is not None:
+    for command in bot.walk_application_commands():
+        if command.qualified_name == name:
             break
-
-    if cmd is not None:
-        await ctx.respond(embed=discord.Embed(
-            title=get_command_name(cmd),
-            description=get_command_description(cmd)
-        ), ephemeral=True)
+    else:
+        group = bot.get_application_command(name, config.guild_ids, discord.SlashCommandGroup)
+        if group is not None:
+            embed = discord.Embed(title=group.qualified_name, description=group.description)
+            for cmd in group.walk_commands():
+                embed.add_field(name=get_command_name(cmd), value=get_command_description(cmd))
+            await ctx.respond(embed=embed, ephemeral=True)
+            return
+        await ctx.respond('No command, cog or group by that name found.', ephemeral=True)
         return
-    group = bot.get_application_command(name, config.guild_ids, discord.SlashCommandGroup)
-    if group is not None:
-        embed = discord.Embed(title=group.qualified_name, description=group.description)
-        for cmd in group.walk_commands():
-            embed.add_field(name=get_command_name(cmd), value=get_command_description(cmd))
-        await ctx.respond(embed=embed, ephemeral=True)
-        return
-    await ctx.respond('No command, cog or group by that name found.', ephemeral=True)
+    await ctx.respond(embed=discord.Embed(
+        title=get_command_name(command),
+        description=get_command_description(command)
+    ), ephemeral=True)
 
 
 def create_cog_embed(ctx: discord.ApplicationContext, cog: discord.Cog) -> discord.Embed | None:
     # cog.walk_commands doesn't actually walk down the slashcommandgroups
-    filtered = filter(functools.partial(check_permissions, ctx), walk_commands(cog.get_commands()))
+    filtered = filter(functools.partial(check_permissions, ctx.author), walk_commands(cog.get_commands()))
     embed = discord.Embed(title=cog.qualified_name, description=cog.description)
     for cmd in filtered:
         embed.add_field(name=get_command_name(cmd),
@@ -63,16 +63,16 @@ def walk_commands(cmds: Iterable[discord.ApplicationCommand]
             yield from walk_commands(command.subcommands)
 
 
-def check_permissions(ctx: discord.ApplicationContext, command: discord.ApplicationCommand):
+def check_permissions(user: discord.Member, command: discord.ApplicationCommand):
     if command.parent is not None:
-        return check_permissions(ctx, command.parent)
+        return check_permissions(user, command.parent)
     if hasattr(command, 'permissions'):
         perm: commands.CommandPermission
         for perm in command.permissions:
             if perm.type == 1:
-                check = any(role.id == perm.id for role in ctx.author.roles)
+                check = any(role.id == perm.id for role in user.roles)
             else:
-                check = ctx.author.id == perm.id
+                check = user.id == perm.id
             if not (not check) ^ perm.permission:
                 return False
     return True
@@ -93,3 +93,11 @@ def get_command_description(command: discord.ApplicationCommand) -> str:
     if isinstance(command, (discord.UserCommand, discord.MessageCommand)):
         return command.callback.__doc__ or default
     return command.description or default
+
+
+async def _autocomplete(ctx: discord.AutocompleteContext):
+    return (command.qualified_name for command in ctx.bot.walk_application_commands()
+            if check_permissions(ctx.interaction.user, command))
+
+
+autocomplete = discord.utils.basic_autocomplete(_autocomplete)
