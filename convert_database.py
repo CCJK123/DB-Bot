@@ -1,17 +1,18 @@
-# use to convert the replit db to a file
+# use to convert the dict to the file database
 import asyncio
 
-from replit.database import AsyncDatabase
-from replit import db
+import aiofiles
+
 from database import RudimentaryDatabase
 
 
 async def main():
-    database = AsyncDatabase(db.db_url)
+    async with aiofiles.open('dict.txt') as f:
+        data = await f.read()
     new_db = RudimentaryDatabase('data')
-    async with database:
-        new_db.data = await database.to_dict()
+    new_db.data = dict(data)
     await new_db.save()
+    print('done')
 
 if __name__ == '__main__':
     asyncio.run(main())

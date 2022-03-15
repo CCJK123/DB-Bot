@@ -68,7 +68,7 @@ class BankCog(discordutils.CogBase):
         if loan is not None:
             await ctx.respond(
                 f'You have a loan due <t:{int(datetime.datetime.fromisoformat(loan["due_date"]).timestamp())}:R>',
-                embed=pnwutils.Resources(**loan['resources']).create_embed(title='Loaned Resources'))
+                embed=pnwutils.Resources(**loan['resources']).create_embed(title='Loaned Resources'), ephemeral=True)
 
     @bank.command(guild_ids=config.guild_ids)
     @cmds.max_concurrency(1, cmds.BucketType.user)
@@ -427,7 +427,9 @@ class BankCog(discordutils.CogBase):
         if loans:
             for s in discordutils.split_blocks('\n', (f'<@{d}> owes [{pnwutils.Resources(**loan["resources"])}] '
                                                       f'at {loan["due_date"]}' for d, loan in loans.items())):
-                await ctx.respond(s, ephemeral=True)
+                print(s)
+                await ctx.respond(s, ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
+            return
         await ctx.respond('There are no active loans!', ephemeral=True)
 
     @_bank.command(guild_ids=config.guild_ids, default_permission=False)

@@ -15,6 +15,15 @@ class RudimentaryDatabase:
     async def set(self, key: str, value: Any) -> None:
         self.data[key] = value
 
+    async def keys(self):
+        return self.data.keys()
+
+    async def values(self):
+        return self.data.values()
+
+    async def items(self):
+        return self.data.items()
+
     async def load(self):
         try:
             async with aiofiles.open(self.filename, 'rb') as f:
