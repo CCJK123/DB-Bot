@@ -40,9 +40,7 @@ class DebugCog(discordutils.CogBase):
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def a(self, ctx: discord.ApplicationContext):
         """Temp test command"""
-        embed = discord.Embed()
-        embed.add_field(name=config.resource_emojis['credits'], value=config.resource_emojis['money'])
-        await ctx.respond(embed=embed)
+        pass
 
     @commands.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)

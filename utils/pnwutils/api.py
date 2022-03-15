@@ -19,7 +19,7 @@ class APIQuery:
         self.check_more = check_more
 
         if check_more:
-            self.variable_types['pages'] = int
+            self.variable_types['page'] = int
 
     def get_query(self, variables: dict[str, Any]) -> dict[str, str | dict[str, Any]]:
         return {'query': self.query_text, 'variables': variables}

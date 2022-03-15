@@ -1,6 +1,7 @@
 import collections
 import datetime
 import io
+import itertools
 import operator
 
 import discord
@@ -166,7 +167,7 @@ class UtilCog(discordutils.CogBase):
 
         inactives = set()
         nation_names = {}
-        now = datetime.datetime.now()
+        now = datetime.datetime.now(tz=datetime.timezone.utc)
         for nation in data:
             if nation['alliance_position'] == 'APPLICANT':
                 continue
@@ -181,15 +182,16 @@ class UtilCog(discordutils.CogBase):
             if n in inactives:
                 inactives_discord[n] = i
 
-        await ctx.respond('Inactives:')
-        for m in discordutils.split_blocks('\n', (f'<@{d_id}>' for d_id in inactives_discord.values())):
+        for m in discordutils.split_blocks('\n', itertools.chain(
+                ('Inactives:',), (f'<@{d_id}>' for d_id in inactives_discord.values()))):
             await ctx.respond(m)
         for m in discordutils.split_blocks('\n', (f'[{nation_names[n]}]({pnwutils.link.nation(n)})'
                                                   for n in inactives - inactives_discord.keys())):
             await ctx.respond(m)
 
-    @commands.command(name='military', guild_ids=config.guild_ids)
+    @check.command(name='military', guild_ids=config.guild_ids)
     async def check_military(self, ctx: discord.ApplicationContext):
+        """Not Implemented as of now. Check back soon!"""
         await ctx.respond('Not Implemented!')
 
     @commands.command(guild_ids=config.guild_ids)

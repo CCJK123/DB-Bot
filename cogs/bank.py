@@ -1,5 +1,5 @@
 import asyncio
-import datetime
+from datetime import datetime
 from typing import Any
 
 import discord
@@ -66,8 +66,9 @@ class BankCog(discordutils.CogBase):
                           allowed_mentions=discord.AllowedMentions.none(),
                           ephemeral=True)
         if loan is not None:
+            date = datetime.fromisoformat(loan["due_date"])
             await ctx.respond(
-                f'You have a loan due {discord.utils.format_dt(loan["due_date"], "R")}',
+                f'You have a loan due {discord.utils.format_dt(date)} ({discord.utils.format_dt(date, "R")})',
                 embed=pnwutils.Resources(**loan['resources']).create_embed(title='Loaned Resources'), ephemeral=True)
 
     @bank.command(guild_ids=config.guild_ids)
@@ -83,7 +84,7 @@ class BankCog(discordutils.CogBase):
         author = ctx.author
         msg_chk = discordutils.get_dm_msg_chk(author.id)
 
-        start_time = datetime.datetime.now()
+        start_time = datetime.now()
         await author.send('You now have 5 minutes to deposit your resources into the bank. '
                           'Once you are done, send a message here.',
                           view=discordutils.LinkView('Deposit Link', pnwutils.link.bank('d', note='Deposit to balance'))
@@ -251,6 +252,9 @@ class BankCog(discordutils.CogBase):
     @commands.user_command(name='bank transfer', guild_ids=config.guild_ids)
     async def transfer(self, ctx: discord.ApplicationContext, member: discord.Member):
         """Transfer some of your balance to this person"""
+        if member == ctx.author:
+            await ctx.respond('You cannot transfer resources to yourself!')
+            return
         nation_id_t = await self.nations[ctx.author.id].get(None)
         if nation_id_t is None:
             await ctx.respond('Your nation id has not been set!', ephemeral=True)
@@ -416,17 +420,20 @@ class BankCog(discordutils.CogBase):
             allowed_mentions=discord.AllowedMentions.none(),
             ephemeral=True
         )
-    
+
     _bank = commands.SlashCommandGroup('_bank', "Gov Bank Commands", guild_ids=config.guild_ids,
-                                       default_permission=False, permissions=[config.bank_gov_role_permission])
+                                       )#default_permission=False, permissions=[config.bank_gov_role_permission])
 
     @_bank.command(guild_ids=config.guild_ids, default_permission=False)
     async def loan_list(self, ctx: discord.ApplicationContext):
         """List all the loans that are currently active"""
         loans = await self.loans.get()
         if loans:
-            for s in discordutils.split_blocks('\n', (f'<@{d}> owes [{pnwutils.Resources(**loan["resources"])}] '
-                                                      f'at {loan["due_date"]}' for d, loan in loans.items())):
+            await ctx.respond(str(pnwutils.Resources(money=4, oil=17, gasoline=255, steel=1000)))
+            for s in discordutils.split_blocks(
+                    '\n', (f'<@{d}> owes [{pnwutils.Resources(**loan["resources"]).to_string(" ")}] at ' +
+                           discord.utils.format_dt(datetime.fromisoformat(loan["due_date"]))
+                           for d, loan in loans.items())):
                 print(s)
                 await ctx.respond(s, ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
             return
@@ -465,7 +472,7 @@ class BankCog(discordutils.CogBase):
         view = discordutils.MultiLinkView({f'Withdrawal Link {i + 1}': link for i, link in enumerate(
             pnwutils.link.bank_split_link('wa', resources, aa_name, 'Safekeeping'))})
         await ctx.respond('Safekeeping Link', view=view, ephemeral=True)
-    
+
     async def get_total_balances(self) -> pnwutils.Resources:
         balances = await self.balances.get()
         return sum((pnwutils.Resources(**bal) for bal in balances.values()), pnwutils.Resources())
@@ -509,4 +516,3 @@ def setup(bot: dbbot.DBBot):
                 f'has been rejected!\nReason: `{reject_reason}`')
             await interaction.message.edit(embed=interaction.message.embeds.pop().add_field(
                 name='Rejection Reason', value=reject_reason, inline=True))
-            

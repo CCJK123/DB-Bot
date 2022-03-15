@@ -16,8 +16,7 @@ from database import RudimentaryDatabase
 class DBBot(discord.Bot):
     def __init__(self, db_url: str):
         intents = discord.Intents(guilds=True, messages=True, members=True)
-        super().__init__(command_prefix=os.environ['command_prefix'],
-                         intents=intents)
+        super().__init__(intents=intents)
 
         self.session = None
         self.database = RudimentaryDatabase(db_url)

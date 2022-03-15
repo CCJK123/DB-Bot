@@ -29,14 +29,15 @@ async def help_command(bot: discord.Bot, ctx: discord.ApplicationContext, name: 
         if command.qualified_name == name:
             break
     else:
-        group = bot.get_application_command(name, config.guild_ids, discord.SlashCommandGroup)
-        if group is not None:
-            embed = discord.Embed(title=group.qualified_name, description=group.description)
-            for cmd in group.walk_commands():
-                embed.add_field(name=get_command_name(cmd), value=get_command_description(cmd))
-            await ctx.respond(embed=embed, ephemeral=True)
-            return
         await ctx.respond('No command, cog or group by that name found.', ephemeral=True)
+        return
+    if isinstance(command, discord.SlashCommandGroup):
+        embed = discord.Embed(title=command.qualified_name, description=command.description)
+        print(command.subcommands)
+        for cmd in walk_commands(command.subcommands):
+            print(cmd)
+            embed.add_field(name=get_command_name(cmd), value=get_command_description(cmd))
+        await ctx.respond(embed=embed, ephemeral=True)
         return
     await ctx.respond(embed=discord.Embed(
         title=get_command_name(command),
@@ -95,9 +96,12 @@ def get_command_description(command: discord.ApplicationCommand) -> str:
     return command.description or default
 
 
-async def _autocomplete(ctx: discord.AutocompleteContext):
-    return (command.qualified_name for command in ctx.bot.walk_application_commands()
-            if check_permissions(ctx.interaction.user, command))
+@functools.lru_cache(5)
+def _autocomplete_options(ctx: discord.AutocompleteContext) -> Iterable[str]:
+    # stupid pycord walk things dont fricking work
+    for cog in ctx.bot.cogs.values():
+        yield from (command.qualified_name for command in walk_commands(cog.get_commands()))
 
 
-autocomplete = discord.utils.basic_autocomplete(_autocomplete)
+async def autocomplete(ctx: discord.AutocompleteContext):
+    return (c for c in _autocomplete_options(ctx) if c.startswith(ctx.value))
