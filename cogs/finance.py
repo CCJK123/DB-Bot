@@ -436,6 +436,7 @@ class FinanceCog(discordutils.CogBase):
                 'Your request has been sent. Thank you for using the DB Finance Request Interface.'
             )
             embed.title = None
+            embed.colour = discord.Colour.blue()
             process_view = RequestChoices('on_processed', req_data)
 
             msg = await (await self.process_channel.get()).send(
@@ -489,16 +490,19 @@ def setup(bot: dbbot.DBBot) -> None:
                     res = pnwutils.Resources(**res_dict)
                 await bal.set((res + req_data.resources).to_dict())
 
-                await interaction.message.edit(embed=interaction.message.embeds[0].add_field(
-                    name='Return By',
-                    value=data.display_date,
-                    inline=True))
+                embed = interaction.message.embeds[0]
+                embed.add_field(name='Return By', value=data.display_date, inline=True)
+                embed.colour = discord.Colour.green()
+                await interaction.message.edit(embed=embed)
                 await cog.loans[req_data.requester_id].set(data.to_dict())
             else:
                 await req_data.requester.send(
                     f'Your {req_data.kind} request for `{req_data.reason}` '
                     'has been accepted! The resources will be sent to you soon. '
                 )
+                embed = interaction.message.embeds[0]
+                embed.colour = discord.Colour.green()
+                await interaction.message.edit(embed=embed)
                 channel = await cog.withdrawal_channel.get()
                 withdrawal_view = WithdrawalView('request_on_sent', req_data.create_link(), req_data, can_reject=False)
                 msg = await channel.send(f'Withdrawal Request from {req_data.requester.mention}',
@@ -526,8 +530,10 @@ def setup(bot: dbbot.DBBot) -> None:
             await req_data.requester.send(
                 f'Your {req_data.kind} request for `{req_data.reason}`'
                 f'has been rejected!\nReason: `{reject_reason}`')
-            await interaction.message.edit(embed=interaction.message.embeds.pop().add_field(
-                name='Rejection Reason', value=reject_reason, inline=True))
+            embed = interaction.message.embeds[0]
+            embed.add_field(name='Rejection Reason', value=reject_reason, inline=True)
+            embed.colour = discord.Colour.red()
+            await interaction.message.edit(embed=embed)
 
         await interaction.message.edit(
             content=f'{status.value} Request from {req_data.requester.mention}',
