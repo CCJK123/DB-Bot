@@ -43,7 +43,7 @@ class WarDetectorCog(discordutils.CogBase):
         if await self.running.get(None) is None:
             await self.running.set(False)
 
-        if await self.running.get():
+        if await self.running.get() and not self.detect_wars.is_running():
             self.detect_wars.start()
 
     @staticmethod
