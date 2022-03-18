@@ -420,7 +420,7 @@ class FinanceCog(discordutils.CogBase):
             auth.send('You took too long to respond! Exiting...')
             return
 
-        embed = req_data.create_embed(title='Please confirm your request.')
+        embed = req_data.create_embed(title='Please confirm your request.', colour=discord.Colour.blue())
         confirm_request_choice = discordutils.Choices('Yes', 'No')
         await auth.send('Is this your request?',
                         embed=embed,
@@ -436,7 +436,6 @@ class FinanceCog(discordutils.CogBase):
                 'Your request has been sent. Thank you for using the DB Finance Request Interface.'
             )
             embed.title = None
-            embed.colour = discord.Colour.blue()
             process_view = RequestChoices('on_processed', req_data)
 
             msg = await (await self.process_channel.get()).send(
@@ -506,7 +505,7 @@ def setup(bot: dbbot.DBBot) -> None:
                 channel = await cog.withdrawal_channel.get()
                 withdrawal_view = WithdrawalView('request_on_sent', req_data.create_link(), req_data, can_reject=False)
                 msg = await channel.send(f'Withdrawal Request from {req_data.requester.mention}',
-                                         embed=req_data.create_withdrawal_embed(),
+                                         embed=req_data.create_withdrawal_embed(colour=discord.Colour.blue()),
                                          view=withdrawal_view,
                                          allowed_mentions=discord.AllowedMentions.none())
                 await bot.add_view(withdrawal_view, message_id=msg.id)

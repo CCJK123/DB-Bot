@@ -196,7 +196,8 @@ class BankCog(discordutils.CogBase):
         view = financeutils.WithdrawalView('withdrawal_on_sent', link, author.id, req_resources, reason)
 
         msg = await channel.send(f'Withdrawal Request from {author.mention}',
-                                 embed=financeutils.withdrawal_embed(name, nation_id, reason, req_resources),
+                                 embed=financeutils.withdrawal_embed(name, nation_id, reason, req_resources,
+                                                                     colour=discord.Colour.blue()),
                                  allowed_mentions=discord.AllowedMentions.none(),
                                  view=view)
         await self.bot.add_view(view, message_id=msg.id)
@@ -494,6 +495,9 @@ def setup(bot: dbbot.DBBot):
             await bot.get_user(requester_id).send(
                 'Your withdrawal request has been sent to your nation!',
                 embed=req_res.create_embed(title='Withdrawn Resources'))
+            embed = interaction.message.embeds[0]
+            embed.colour = discord.Colour.green()
+            await interaction.message.edit(embed=embed)
         else:
             bal = bot.get_cog('BankCog').balances[requester_id]
             await bal.set((pnwutils.Resources(**await bal.get()) + req_res).to_dict())
@@ -514,5 +518,7 @@ def setup(bot: dbbot.DBBot):
             await bot.get_user(requester_id).send(
                 f'Your withdrawal request for `{reason}` '
                 f'has been rejected!\nReason: `{reject_reason}`')
-            await interaction.message.edit(embed=interaction.message.embeds.pop().add_field(
-                name='Rejection Reason', value=reject_reason, inline=True))
+            embed = interaction.message.embeds[0]
+            embed.add_field(name='Rejection Reason', value=reject_reason, inline=True)
+            embed.colour = discord.Colour.green()
+            await interaction.message.edit(embed=embed)

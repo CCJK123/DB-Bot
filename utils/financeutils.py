@@ -30,7 +30,7 @@ class RequestData:
     def nation_link(self):
         return pnwutils.link.nation(self.nation_id)
 
-    def create_embed(self, **kwargs: str) -> discord.Embed:
+    def create_embed(self, **kwargs) -> discord.Embed:
         embed = discord.Embed(**kwargs)
         embed.add_field(name='Nation', value=f'[{self.nation_name}]({self.nation_link})')
         embed.add_field(name='Request Type', value=self.kind)
@@ -43,8 +43,8 @@ class RequestData:
     def create_link(self) -> str:
         return pnwutils.link.bank("w", self.resources, self.nation_name, self.note if self.note else self.reason)
 
-    def create_withdrawal_embed(self) -> discord.Embed:
-        return withdrawal_embed(self.nation_name, self.nation_id, self.reason, self.resources)
+    def create_withdrawal_embed(self, **kwargs) -> discord.Embed:
+        return withdrawal_embed(self.nation_name, self.nation_id, self.reason, self.resources, **kwargs)
 
     def __getstate__(self) -> tuple:
         if self.requester_id is None:
@@ -135,8 +135,8 @@ class RequestChoices(discordutils.CallbackPersistentView):
         return {}, self.key, self.data
 
 
-def withdrawal_embed(name: str, nation_id: str, reason: str, resources: pnwutils.Resources) -> discord.Embed:
-    embed = discord.Embed()
+def withdrawal_embed(name: str, nation_id: str, reason: str, resources: pnwutils.Resources, **kwargs) -> discord.Embed:
+    embed = discord.Embed(**kwargs)
     embed.add_field(name='Nation', value=f'[{name}]({pnwutils.link.nation(nation_id)})')
     embed.add_field(name='Reason', value=reason)
     embed.add_field(name='Requested Resources', value=str(resources))
