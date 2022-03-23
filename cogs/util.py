@@ -14,7 +14,8 @@ import matplotlib.pyplot as plt
 import dbbot
 from utils import discordutils, pnwutils, config, help_command
 from utils.queries import (nation_register_query, alliance_member_res_query,
-                           alliance_activity_query, individual_war_query, alliance_tiers_query)
+                           alliance_activity_query, individual_war_query, alliance_tiers_query,
+                           nation_active_wars_query)
 
 
 class UtilCog(discordutils.CogBase):
@@ -208,10 +209,35 @@ class UtilCog(discordutils.CogBase):
         data = await individual_war_query.query(self.bot.session, war_id=war)
         if data['data']:
             data = data['data'].pop()  # type: ignore
-            embed = discord.Embed(description=self.bot.get_cog('WarDetectorCog').war_description(data))
-            await ctx.respond(embed=embed)
+            await ctx.respond(embed=discord.Embed(description=pnwutils.war_description(data)))
         else:
             await ctx.respond('No such war exists!')
+
+    @commands.command(guild_ids=config.guild_ids)
+    async def wars(self, ctx: discord.ApplicationContext,
+                   member: discord.Option(discord.Member, 'Member to check the wars of', required=False, default=None),
+                   nation_id: discord.Option(str, 'Nation ID of checked nation', required=False, default=None)):
+        """Check the active wars of the given member/nation (default yourself)"""
+        if member is None and nation_id is None:
+            member = ctx.author
+        if member is not None:
+            nation_id = await self.nations[member.id].get(None)
+            if nation_id is None:
+                await ctx.respond(f'{member.mention} does not have a nation registered!',
+                                  allowed_mentions=discord.AllowedMentions.none(), ephemeral=True)
+                return
+
+        data = await nation_active_wars_query.query(self.bot.session, nation_id=nation_id)
+        nation_link = pnwutils.link.nation(nation_id)
+        if data['data']:
+            await ctx.respond(
+                f"{nation_link if member is None else member.mention}'s Active Wars",
+                embeds=[discord.Embed(description=pnwutils.war_description(war)) for war in data['data']],
+                allowed_mentions=discord.AllowedMentions.none()
+            )
+        else:
+            await ctx.respond(f'{nation_link if member is None else member.mention} does not have any active wars!',
+                              allowed_mentions=discord.AllowedMentions.none())
 
     @commands.user_command(guild_ids=config.guild_ids)
     async def nation(self, ctx: discord.ApplicationContext, member: discord.Member):

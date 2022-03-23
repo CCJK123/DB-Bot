@@ -1,7 +1,10 @@
-from typing import TypedDict
+import enum
+from typing import Any, TypedDict
+
+from . import link
 
 # Setup what is exported by default
-__all__ = ('war_range', 'infra_value', 'infra_price', 'mil_text')
+__all__ = ('war_range', 'infra_value', 'infra_price', 'WarType', 'war_description', 'mil_text')
 
 
 def war_range(score: str | float) -> tuple[float, float]:
@@ -26,6 +29,44 @@ def infra_price(start: float, end: float) -> float:
     if diff > 100:
         return infra_value(start) * 100 + infra_price(start + 100, end)
     return infra_value(start) * diff
+
+
+class WarType(enum.Enum):
+    def __init__(self, v):
+        if v:
+            self.string = 'attacker'
+            self.string_short = 'att'
+        else:
+            self.string = 'defender'
+            self.string_short = 'def'
+
+    ATT = True
+    DEF = False
+
+
+def war_description(w: dict[str, Any]) -> str:
+    s = f'[War Page]({link.war(w["id"])})\n{w["war_type"].capitalize()} War\n\n'
+    for k in WarType.ATT, WarType.DEF:
+        n = w[k.string]
+        a = n['alliance']
+        aa_text = 'None' if a is None else f'[{a["name"]}]({link.alliance(a["id"])})'
+        resist = w[f"{k.string_short}_resistance"]
+        t, o = divmod(resist, 10)
+        if not t:
+            central = '🟧' if o >= 8 else '🟥'
+        elif t == 10 or o >= 8:
+            central = '🟩'
+        elif o <= 3:
+            central = '⬛'
+        else:
+            central = '🟧'
+        bar = t * '🟩' + central + (9 - t) * '⬛'
+        s += (f'{k.string.capitalize()}: [{n["nation_name"]}]'
+              f'({link.nation(n["id"])})\n'
+              f'{aa_text}\n\n'
+              f'{bar} {resist} Resistance\n\n'
+              f'{mil_text(n, w[f"{k.string_short}points"])}\n\n')
+    return s
 
 
 class MilDict(TypedDict):

@@ -87,7 +87,7 @@ class DBBot(discord.Bot):
             return
 
         for s in discordutils.split_blocks('', 'Sorry, an exception occurred.\n\n',
-                                           traceback.format_exception(exception),
+                                           traceback.format_exception(exception),  # type: ignore
                                            limit=1994):
             await ctx.respond(f'```{s}```')
 

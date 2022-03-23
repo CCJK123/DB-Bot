@@ -211,57 +211,50 @@ query nation_discord($alliance_ids: [Int]) {
 alliance_tiers_query = APIQuery(alliance_tiers_query_text, alliance_ids=[int])
 
 # war_detector.py
+nation_war_data_fragment = '''
+fragment nation_data on Nation {
+    id
+    nation_name
+    score
+    num_cities
+    warpolicy
+    soldiers
+    tanks
+    aircraft
+    ships
+    missiles
+    nukes
+    alliance_position
+    alliance {
+        id
+        name
+    }
+}
+'''
 
 alliance_wars_query_text = '''
 query alliance_wars($alliance_id: [Int]) {
     wars(alliance_id: $alliance_id, first: 1000) {
         data {
             id
+            war_type
             turnsleft
             attid
             defid
-            att_alliance_id
-            def_alliance_id
             att_resistance
             def_resistance
             attpoints
             defpoints
             attacker {
-                nation_name
-                score
-                num_cities
-                warpolicy
-                soldiers
-                tanks
-                aircraft
-                ships
-                missiles
-                nukes
-                alliance_position
-                alliance {
-                    name
-                }
+                ...nation_data
             }
             defender {
-                nation_name
-                score
-                num_cities
-                warpolicy
-                soldiers
-                tanks
-                aircraft
-                ships
-                missiles
-                nukes
-                alliance_position
-                alliance {
-                    name
-                }
+                ...nation_data
             }
         }
     }
 }
-'''
+''' + nation_war_data_fragment
 alliance_wars_query = APIQuery(alliance_wars_query_text, alliance_id=int)
 
 individual_war_query_text = '''
@@ -272,49 +265,43 @@ query individual_war($war_id: [Int]) {
             war_type
             attid
             defid
-            att_alliance_id
-            def_alliance_id
             att_resistance
             def_resistance
             attpoints
             defpoints
             attacker {
-                nation_name
-                score
-                num_cities
-                warpolicy
-                soldiers
-                tanks
-                aircraft
-                ships
-                missiles
-                nukes
-                alliance_position
-                alliance {
-                    name
-                }
+                ...nation_data
             }
             defender {
-                nation_name
-                score
-                num_cities
-                warpolicy
-                soldiers
-                tanks
-                aircraft
-                ships
-                missiles
-                nukes
-                alliance_position
-                alliance {
-                    name
-                }
+                ...nation_data
             }
         }
     }
 }
-'''
+''' + nation_war_data_fragment
 individual_war_query = APIQuery(individual_war_query_text, war_id=int)
+
+nation_active_wars_query_text = '''
+query nation_active_wars($nation_id: [Int]) {
+    wars(nation_id: $nation_id) {
+        data {
+            id
+            war_type
+            attpoints
+            defpoints
+            att_resistance
+            def_resistance
+            attacker {
+                ...nation_data
+            }
+            defender {
+                ...nation_data
+            }
+        }
+    }
+}
+''' + nation_war_data_fragment
+nation_active_wars_query = APIQuery(nation_active_wars_query_text, nation_id=int)
 
 # applications.py
 

@@ -38,9 +38,9 @@ class DebugCog(discordutils.CogBase):
 
     @commands.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def a(self, ctx: discord.ApplicationContext):
+    async def a(self, ctx: discord.ApplicationContext, member: discord.Member):
         """Temp test command"""
-        pass
+        await ctx.respond(member.mention)
 
     @commands.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)

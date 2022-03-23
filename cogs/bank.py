@@ -325,86 +325,6 @@ class BankCog(discordutils.CogBase):
         await member.send(f'You have been transferred [{t_resources}] from {author.display_name}!')
         await member.send('Your balance is now:', embed=resources_f_r.create_balance_embed(member.display_name))
 
-    @commands.user_command(name='bank adjust', guild_ids=config.guild_ids, default_permission=False)
-    @commands.permissions.has_role(config.bank_gov_role_id, guild_id=config.guild_id)
-    async def adjust(self, ctx: discord.ApplicationContext, member: discord.Member):
-        """Manually adjust the resource values of someone's balance"""
-        await ctx.respond('Please check your DMs!', ephemeral=True)
-        author = ctx.author
-        res_select_view = financeutils.ResourceSelectView(author.id)
-        msg_chk = discordutils.get_dm_msg_chk(author.id)
-        await author.send('What resources would you like to adjust?', view=res_select_view)
-
-        resources = await self.balances[ctx.author.id].get(None)
-        if resources is None:
-            resources = pnwutils.Resources()
-            await self.balances[ctx.author.id].set({})
-        else:
-            resources = pnwutils.Resources(**resources)
-
-        for res in await res_select_view.result():
-            await author.send(f'How much would you like to adjust {res} by?')
-            while True:
-                try:
-                    amt = (await self.bot.wait_for('message', check=msg_chk, timeout=config.timeout)
-                           ).content
-                except asyncio.TimeoutError:
-                    await author.send('You took too long to reply! Aborting.')
-                    return
-
-                try:
-                    amt = int(amt)
-                except ValueError:
-                    await author.send("That isn't a number! Please try again.")
-                    continue
-                break
-            resources[res] += amt
-
-        await self.balances[ctx.author.id].set(resources.to_dict())
-        await author.send(f'The balance of {member.mention} has been modified!',
-                          embed=resources.create_balance_embed(member.display_name),
-                          allowed_mentions=discord.AllowedMentions.none())
-
-    @commands.user_command(name='bank set', guild_ids=config.guild_ids, default_permission=False)
-    @commands.permissions.has_role(config.bank_gov_role_id, guild_id=config.guild_id)
-    async def set(self, ctx: discord.ApplicationContext, member: discord.Member):
-        """Manually set the resource values of someone's balance"""
-        await ctx.respond('Please check your DMs!', ephemeral=True)
-
-        author = ctx.author
-        res_select_view = financeutils.ResourceSelectView(author.id)
-        msg_chk = discordutils.get_dm_msg_chk(author.id)
-        await author.send('What resources would you like to set?', view=res_select_view)
-
-        resources = await self.balances[ctx.author.id].get(None)
-        if resources is None:
-            resources = pnwutils.Resources()
-            await self.balances[ctx.author.id].set({})
-        else:
-            resources = pnwutils.Resources(**resources)
-
-        for res in await res_select_view.result():
-            await author.send(f'What would you like to set {res} to?')
-            while True:
-                try:
-                    amt = (await self.bot.wait_for('message', check=msg_chk, timeout=config.timeout)
-                           ).content
-                except asyncio.TimeoutError:
-                    await author.send('You took too long to reply! Aborting.')
-                    return
-                try:
-                    amt = int(amt)
-                except ValueError:
-                    await author.send("That isn't a number! Please try again.")
-                    continue
-                break
-            resources[res] = amt
-
-        await self.balances[ctx.author.id].set(resources.to_dict())
-        await author.send(f'The balance of {member.mention} has been modified!',
-                          embed=resources.create_balance_embed(member.display_name),
-                          allowed_mentions=discord.AllowedMentions.none())
-
     @commands.user_command(name='check balance', guild_ids=config.guild_ids, default_permission=False)
     @commands.has_role(config.bank_gov_role_id, guild_id=config.guild_id)
     async def check_bal(self, ctx: discord.ApplicationContext, member: discord.Member):
@@ -423,19 +343,17 @@ class BankCog(discordutils.CogBase):
         )
 
     _bank = commands.SlashCommandGroup('_bank', "Gov Bank Commands", guild_ids=config.guild_ids,
-                                       )#default_permission=False, permissions=[config.bank_gov_role_permission])
+                                       default_permission=False, permissions=[config.bank_gov_role_permission])
 
     @_bank.command(guild_ids=config.guild_ids, default_permission=False)
     async def loan_list(self, ctx: discord.ApplicationContext):
         """List all the loans that are currently active"""
         loans = await self.loans.get()
         if loans:
-            await ctx.respond(str(pnwutils.Resources(money=4, oil=17, gasoline=255, steel=1000)))
             for s in discordutils.split_blocks(
-                    '\n', (f'<@{d}> owes [{pnwutils.Resources(**loan["resources"]).to_string(" ")}] at ' +
+                    '\n', (f'<@{d}> owes [{pnwutils.Resources(**loan["resources"]).to_string(" ")}], due by ' +
                            discord.utils.format_dt(datetime.fromisoformat(loan["due_date"]))
                            for d, loan in loans.items())):
-                print(s)
                 await ctx.respond(s, ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
             return
         await ctx.respond('There are no active loans!', ephemeral=True)
@@ -483,6 +401,53 @@ class BankCog(discordutils.CogBase):
         """Find the total value of all balances"""
         total = await self.get_total_balances()
         await ctx.respond(embed=total.create_embed(title=f'Total Balances Value'), ephemeral=True)
+
+    @_bank.command(guild_ids=config.guild_ids, default_permission=False)
+    @commands.permissions.has_role(config.bank_gov_role_id, guild_id=config.guild_id)
+    async def edit(self, ctx: discord.ApplicationContext, member: discord.Member):
+        """Manually edit the resource values of someone's balance"""
+        await ctx.respond('Please check your DMs!', ephemeral=True)
+
+        author = ctx.author
+        res_select_view = financeutils.ResourceSelectView(author.id)
+        kind_view = discordutils.Choices('set', 'adjust')
+        await author.send('Do you wish to set or adjust the balance?', view=kind_view)
+        adjust = await kind_view.result() == 'adjust'
+        text = 'adjust' if adjust else 'set'
+        msg_chk = discordutils.get_dm_msg_chk(author.id)
+        await author.send(f'What resources would you like to {text}?', view=res_select_view)
+
+        resources = await self.balances[ctx.author.id].get(None)
+        if resources is None:
+            resources = pnwutils.Resources()
+            await self.balances[ctx.author.id].set({})
+        else:
+            resources = pnwutils.Resources(**resources)
+
+        for res in await res_select_view.result():
+            await author.send(f'What would you like to {text} {res} to?')
+            while True:
+                try:
+                    amt = (await self.bot.wait_for('message', check=msg_chk, timeout=config.timeout)
+                           ).content
+                except asyncio.TimeoutError:
+                    await author.send('You took too long to reply! Aborting.')
+                    return
+                try:
+                    amt = int(amt)
+                except ValueError:
+                    await author.send("That isn't a number! Please try again.")
+                    continue
+                break
+            if adjust:
+                resources[res] += amt
+            else:
+                resources[res] = amt
+
+        await self.balances[ctx.author.id].set(resources.to_dict())
+        await author.send(f'The balance of {member.mention} has been modified!',
+                          embed=resources.create_balance_embed(member.mention),
+                          allowed_mentions=discord.AllowedMentions.none())
 
 
 def setup(bot: dbbot.DBBot):
