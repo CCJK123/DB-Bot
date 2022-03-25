@@ -7,9 +7,7 @@ from . import link
 __all__ = ('war_range', 'infra_value', 'infra_price', 'WarType', 'war_description', 'mil_text')
 
 
-def war_range(score: str | float) -> tuple[float, float]:
-    if isinstance(score, str):
-        score = float(score)
+def war_range(score: float) -> tuple[float, float]:
     return score * 0.75, score * 1.75
 
 
@@ -53,7 +51,7 @@ def war_description(w: dict[str, Any]) -> str:
         resist = w[f"{k.string_short}_resistance"]
         t, o = divmod(resist, 10)
         if not t:
-            central = '🟧' if o >= 8 else '🟥'
+            central = '🟧' if o >= 7 else '🟥'
         elif t == 10 or o >= 8:
             central = '🟩'
         elif o <= 3:
@@ -78,7 +76,7 @@ class MilDict(TypedDict):
     nukes: int
 
 
-def mil_text(nation: MilDict, action_points: int):
+def mil_text(nation: MilDict, action_points: int) -> str:
     return (f'{action_points} ⚔️\n'
             f'{nation["soldiers"]} 🪖\n'
             f'{nation["tanks"]} :truck:\n'

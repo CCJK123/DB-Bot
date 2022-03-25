@@ -142,6 +142,30 @@ query alliance_name($alliance_id: [Int]) {
 '''
 alliance_name_query = APIQuery(alliance_name_query_text, alliance_id=int)
 
+
+nation_resources_query_text = '''
+query nation_resources($nation_id: [Int]) {
+    nations(id: $nation_id) {
+        data {
+            nation_name
+            money
+            coal
+            oil
+            uranium
+            iron
+            bauxite
+            lead
+            gasoline
+            munitions
+            steel
+            aluminum
+            food
+        }
+    }
+}
+'''
+nation_resources_query = APIQuery(nation_resources_query_text, nation_id=int)
+
 # util.py
 
 nation_register_query_text = '''

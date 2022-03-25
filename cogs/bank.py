@@ -7,7 +7,8 @@ from discord import commands
 from discord.ext import commands as cmds
 
 from utils import financeutils, discordutils, pnwutils, config
-from utils.queries import bank_transactions_query, bank_info_query, nation_name_query, alliance_name_query
+from utils.queries import bank_transactions_query, bank_info_query, nation_name_query, alliance_name_query, \
+    nation_resources_query
 import dbbot
 
 
@@ -329,10 +330,10 @@ class BankCog(discordutils.CogBase):
     @commands.has_role(config.bank_gov_role_id, guild_id=config.guild_id)
     async def check_bal(self, ctx: discord.ApplicationContext, member: discord.Member):
         """Check the bank balance of this member"""
-        resources = await self.balances[ctx.author.id].get(None)
+        resources = await self.balances[member.id].get(None)
         if resources is None:
             resources = pnwutils.Resources()
-            await self.balances[ctx.author.id].set({})
+            await self.balances[member.id].set({})
         else:
             resources = pnwutils.Resources(**resources)
         await ctx.respond(
@@ -341,6 +342,25 @@ class BankCog(discordutils.CogBase):
             allowed_mentions=discord.AllowedMentions.none(),
             ephemeral=True
         )
+
+    @commands.user_command(name='check resources', guild_ids=config.guild_ids, default_permission=False)
+    @commands.has_role(config.bank_gov_role_id, guild_id=config.guild_id)
+    async def check_res(self, ctx: discord.ApplicationContext, member: discord.Member):
+        """Check the resources this member has"""
+        nation_id = await self.nations[member.id].get(None)
+        if nation_id is None:
+            await ctx.respond('This member has not registered their nation!', ephemeral=True)
+            return
+
+        data = await nation_resources_query.query(self.bot.session, nation_id=nation_id)
+        data = data['data'][0]
+        if data['money'] is None:
+            await ctx.respond('That member is not part of the alliance!', ephemeral=True)
+            return
+        name = data['nation_name']
+        del data['nation_name']
+        await ctx.respond(embed=pnwutils.Resources(**data).create_embed(title=f"{name}'s Resources"),
+                          ephemeral=True)
 
     _bank = commands.SlashCommandGroup('_bank', "Gov Bank Commands", guild_ids=config.guild_ids,
                                        default_permission=False, permissions=[config.bank_gov_role_permission])
