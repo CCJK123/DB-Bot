@@ -90,13 +90,13 @@ class ViewStorage(BotProperty[dict[V, str]]):
         return {pickle.loads(bytes.fromhex(p_view)): p_view for p_view in await super().get_()}
 
     async def set_(self, value: dict[V, str]) -> None:
-        await super().set_(list(value.values()))
+        await super().set_(tuple(value.values()))
 
     async def get_views(self) -> tuple[V]:
         return tuple((await self.get()).keys())
 
     async def add(self, v: V) -> None:
-        if v in self.value:
+        if v in await self.get():
             return
         self.value[v] = pickle.dumps(v, 5).hex()
         await self.set_(self.value)
@@ -159,10 +159,10 @@ class MappingProperty(Generic[T0, T1], CogProperty[dict[T0, T1]]):
     __slots__ = ()
 
     def __getitem__(self, key: T0) -> MappingPropertyItem[T0, T1]:
-        return MappingPropertyItem[T0, T1](self, str(key))
+        return MappingPropertyItem[T0, T1](self, key)
 
     async def contains_key(self, item: T0) -> bool:
-        return str(item) in await self.get()
+        return item in await self.get()
 
     async def contains_value(self, item: T1) -> bool:
         return item in (await self.get()).values()

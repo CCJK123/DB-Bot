@@ -2,6 +2,7 @@ import discord
 from discord import commands
 
 import dbbot
+from cogs.bank import BankCog
 from utils import discordutils, config
 
 
@@ -38,9 +39,10 @@ class DebugCog(discordutils.CogBase):
 
     @commands.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
-    async def a(self, ctx: discord.ApplicationContext, member: discord.Member):
+    async def views(self, ctx: discord.ApplicationContext):
         """Temp test command"""
-        await ctx.respond(member.mention)
+        await ctx.respond(await self.bot.views.get())
+        await ctx.respond(await self.bot.views.get_views())
 
     @commands.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
@@ -49,6 +51,32 @@ class DebugCog(discordutils.CogBase):
         cog = self.bot.get_cog('UtilCog')
         await cog.nations[ctx.author.id].delete()
         await ctx.respond('done')
+
+    @commands.command(guild_ids=config.guild_ids, default_permission=False)
+    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
+    async def fix_types(self, ctx: discord.ApplicationContext):
+        bank_cog = self.bot.get_cog('BankCog')
+        assert isinstance(bank_cog, BankCog)
+
+        n = await bank_cog.nations.get()
+        new = {}
+        for k, v in n.items():
+            new[int(k)] = int(v)
+        await bank_cog.nations.set(new)
+
+        b = await bank_cog.balances.get()
+        new = {}
+        for k, v in b.items():
+            new[int(k)] = v
+        await bank_cog.balances.set(new)
+
+        l = await self.bot.get_cog('FinanceCog').loans.get()
+        new = {}
+        for k, v in l.items():
+            new[int(k)] = v
+        await self.bot.get_cog('FinanceCog').loans.set(new)
+
+        await ctx.respond('Complete!')
 
 
 def setup(bot: dbbot.DBBot):

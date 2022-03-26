@@ -86,10 +86,10 @@ class DBBot(discord.Bot):
             print(f'Ignoring {exception}, already has handler')
             return
 
-        for s in discordutils.split_blocks('', 'Sorry, an exception occurred.\n\n',
-                                           traceback.format_exception(exception),  # type: ignore
-                                           limit=1994):
-            await ctx.respond(f'```{s}```')
+        exs = traceback.format_exception(exception)  # type: ignore
+        await ctx.respond(f'Sorry, an exception occurred.\n\n```{exs.pop(0)}```')
+        for ex in exs:
+            await ctx.respond(f'```{ex}```')
 
         ignored = (
             cmds.CommandNotFound,

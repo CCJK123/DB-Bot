@@ -12,6 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import dbbot
+from cogs.bank import BankCog
 from utils import discordutils, pnwutils, config, help_command
 from utils.queries import (nation_register_query, alliance_member_res_query,
                            alliance_activity_query, individual_war_query, alliance_tiers_query,
@@ -21,21 +22,22 @@ from utils.queries import (nation_register_query, alliance_member_res_query,
 class UtilCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
-        self.nations: discordutils.MappingProperty[int, str] = discordutils.MappingProperty[int, str](self, 'nations')
+        self.nations: discordutils.MappingProperty[int, int] = discordutils.MappingProperty[int, int](self, 'nations')
 
     register = commands.SlashCommandGroup('register', 'Commands related to the user to nation registry the bot keeps!',
                                           guild_ids=config.guild_ids)
 
     @register.command(guild_ids=config.guild_ids)
     async def nation(self, ctx: discord.ApplicationContext,
-                     nation_id: commands.Option(str, 'Your nation id or link', default='')):
-        """Use to manually add your nation to the database"""
+                     nation_id: commands.Option(int, 'Your Nation ID', default=None),
+                     nation_link: commands.Option(str, 'Your Nation ID', default=None)):
+        """Use to manually add your nation to the database, with either an ID or a link"""
         await self.nations.initialise()
         if await self.nations.contains_key(ctx.author.id):
             await ctx.respond('You are already registered!', ephemeral=True)
             return
 
-        if not nation_id:
+        if nation_id is None and nation_link is None:
             if '/' in ctx.author.display_name:
                 try:
                     int(nation_id := ctx.author.display_name.split('/')[-1])
@@ -47,14 +49,12 @@ class UtilCog(discordutils.CogBase):
                 return
             await ctx.respond('Please provide your nation id!', ephemeral=True)
             return
-
-        nation_id.removeprefix(f'{pnwutils.constants.base_url}nation/id=')
-
-        try:
-            int(nation_id)
-        except ValueError:
-            await ctx.respond("The given ID isn't a number!", ephemeral=True)
-            return
+        elif nation_id is None:
+            try:
+                nation_id = int(nation_link.removeprefix(f'{pnwutils.constants.base_url}nation/id='))
+            except ValueError:
+                await ctx.respond("The given ID isn't a number!", ephemeral=True)
+                return
 
         if await self.nations.contains_value(nation_id):
             await ctx.respond('This nation has been registered before! Aborting...', ephemeral=True)
@@ -68,6 +68,7 @@ class UtilCog(discordutils.CogBase):
             return
         # nation exists, is in one elem list
         bank_cog = self.bot.get_cog('BankCog')
+        assert isinstance(bank_cog, BankCog)
         off_id = await bank_cog.offshore_id.get(None)
         if data[0]['alliance_id'] not in (config.alliance_id, off_id):
             await ctx.respond(f'This nation is not in {config.alliance_name}!')

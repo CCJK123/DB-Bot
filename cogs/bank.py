@@ -19,11 +19,11 @@ class BankCog(discordutils.CogBase):
         self.offshore_id = discordutils.CogProperty[str](self, 'offshore_id')
 
     @property
-    def nations(self) -> discordutils.MappingProperty[int, str]:
+    def nations(self) -> discordutils.MappingProperty[int, int]:
         return self.bot.get_cog('UtilCog').nations  # type: ignore
 
     @property
-    def loans(self) -> discordutils.MappingProperty[str, dict[str, Any]]:
+    def loans(self) -> discordutils.MappingProperty[int, dict[str, Any]]:
         return self.bot.get_cog('FinanceCog').loans  # type: ignore
 
     async def get_transactions(self, entity_id: str | None = None, kind: pnwutils.TransactionType | None = None
@@ -430,9 +430,9 @@ class BankCog(discordutils.CogBase):
 
         author = ctx.author
         res_select_view = financeutils.ResourceSelectView(author.id)
-        kind_view = discordutils.Choices('set', 'adjust')
+        kind_view = discordutils.Choices('Set', 'Adjust')
         await author.send('Do you wish to set or adjust the balance?', view=kind_view)
-        adjust = await kind_view.result() == 'adjust'
+        adjust = await kind_view.result() == 'Adjust'
         text = 'adjust' if adjust else 'set'
         msg_chk = discordutils.get_dm_msg_chk(author.id)
         await author.send(f'What resources would you like to {text}?', view=res_select_view)
@@ -484,7 +484,9 @@ def setup(bot: dbbot.DBBot):
             embed.colour = discord.Colour.green()
             await interaction.message.edit(embed=embed)
         else:
-            bal = bot.get_cog('BankCog').balances[requester_id]
+            bank_cog = bot.get_cog('BankCog')
+            assert isinstance(bank_cog, BankCog)
+            bal = bank_cog.balances[requester_id]
             await bal.set((pnwutils.Resources(**await bal.get()) + req_res).to_dict())
             await interaction.user.send(
                 f'What was the reason for rejecting the withdrawal request for `{reason}`?'

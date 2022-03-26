@@ -76,11 +76,11 @@ class MilDict(TypedDict):
     nukes: int
 
 
-def mil_text(nation: MilDict, action_points: int) -> str:
-    return (f'{action_points} ⚔️\n'
-            f'{nation["soldiers"]} 🪖\n'
-            f'{nation["tanks"]} :truck:\n'
-            f'{nation["aircraft"]} ✈\n'
-            f'{nation["ships"]} 🚢\n'
-            f'{nation["missiles"]} 🚀\n'
-            f'{nation["nukes"]} ☢️')
+def mil_text(nation: MilDict, action_points: int | None = None) -> str:
+    s = (f'{nation["soldiers"]} 🪖\n'
+         f'{nation["tanks"]} :truck:\n'
+         f'{nation["aircraft"]} ✈\n'
+         f'{nation["ships"]} 🚢\n'
+         f'{nation["missiles"]} 🚀\n'
+         f'{nation["nukes"]} ☢️')
+    return s if action_points is None else f'{action_points} ⚔️\n{s}'

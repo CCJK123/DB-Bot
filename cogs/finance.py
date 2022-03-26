@@ -7,6 +7,7 @@ import discord
 from discord import commands
 from discord.ext import commands as cmds
 
+from cogs.bank import BankCog
 from utils import discordutils, pnwutils, config
 from utils.financeutils import RequestData, LoanData, RequestStatus, RequestChoices, ResourceSelectView, WithdrawalView
 from utils.queries import nation_query
@@ -24,6 +25,7 @@ class FinanceCog(discordutils.CogBase):
         self.process_channel = discordutils.ChannelProperty(self, 'process_channel')
         self.withdrawal_channel = discordutils.ChannelProperty(self, 'withdraw_channel')
         self.loans = discordutils.MappingProperty[int, dict[str, Any]](self, 'loans')
+        # discord_id : LoanData dict
 
     @property
     def nations(self) -> discordutils.MappingProperty[int, str]:
@@ -482,7 +484,9 @@ def setup(bot: dbbot.DBBot) -> None:
                     f'and using `bank loan return` by {discord.utils.format_dt(data.due_date, "R")} '
                     'You can check your loan status with `bank loan status`.'
                 )
-                bal = bot.get_cog('BankCog').balances[req_data.requester_id]
+                bank_cog = bot.get_cog('BankCog')
+                assert isinstance(bank_cog, BankCog)
+                bal = bank_cog.balances[req_data.requester_id]
                 if (res_dict := await bal.get(None)) is None:
                     res = pnwutils.Resources()
                 else:

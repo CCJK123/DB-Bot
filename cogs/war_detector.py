@@ -55,7 +55,7 @@ class WarDetectorCog(discordutils.CogBase):
             embed.add_field(name='Range', value=f'{r[0]:.2f}-{r[1]:.2f}')
             embed.add_field(name='Cities', value=nation['num_cities'], inline=False)
             embed.add_field(name='War Policy', value=nation['warpolicy'], inline=False)
-            embed.add_field(name='Military', value=pnwutils.mil_text(nation, data[f'{t.string_short}points']))
+            embed.add_field(name='Military', value=pnwutils.mil_text(nation))
         return embed
 
     @tasks.loop(minutes=2)
