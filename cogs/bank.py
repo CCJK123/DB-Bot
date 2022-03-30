@@ -176,7 +176,7 @@ class BankCog(discordutils.CogBase):
                     await author.send('You must withdraw at more than 0 of this resource!')
                     continue
                 if amt > resources[res]:
-                    await author.send(f'You cannot withdraw that much {res}! You only have {resources[res]} {res}!')
+                    await author.send(f'You cannot withdraw that much {res}! You only have {resources[res]:,} {res}!')
                     continue
 
                 break
@@ -265,8 +265,8 @@ class BankCog(discordutils.CogBase):
         if nation_id_r is None:
             await ctx.respond("The recipient's nation id has not been set!", ephemeral=True)
             return
-        bal_r = self.balances[ctx.author.id]
-        resources = await self.balances[member.id].get(None)
+        bal_r = self.balances[member.id]
+        resources = await self.balances[ctx.author.id].get(None)
 
         if resources is None:
             await self.balances[ctx.author.id].set({})
@@ -312,7 +312,7 @@ class BankCog(discordutils.CogBase):
                     await author.send('You must transfer at least 0 of this resource!')
                     continue
                 if amt > resources[res]:
-                    await author.send(f'You cannot transfer that much {res}! You only have {resources[res]} {res}!')
+                    await author.send(f'You cannot transfer that much {res}! You only have {resources[res]:,} {res}!')
                     continue
 
                 break
