@@ -173,7 +173,7 @@ class BankCog(discordutils.CogBase):
                     await author.send("That isn't a number! Please try again.")
                     continue
                 if amt <= 0:
-                    await author.send('You must withdraw at more than 0 of this resource!')
+                    await author.send('You must withdraw at more than 0 of this resource! Please try again.')
                     continue
                 if amt > resources[res]:
                     await author.send(f'You cannot withdraw that much {res}! You only have {resources[res]:,} {res}!')
@@ -308,8 +308,8 @@ class BankCog(discordutils.CogBase):
                 except ValueError:
                     await author.send("That isn't a number! Please try again.")
                     continue
-                if amt <= 0:
-                    await author.send('You must transfer at least 0 of this resource!')
+                if amt < 0:
+                    await author.send('You must transfer at least 0 of this resource! Please try again.')
                     continue
                 if amt > resources[res]:
                     await author.send(f'You cannot transfer that much {res}! You only have {resources[res]:,} {res}!')
@@ -317,6 +317,9 @@ class BankCog(discordutils.CogBase):
 
                 break
             t_resources[res] = amt
+        if not t_resources:
+            await author.send('You cannot transfer nothing! Aborting...')
+            return
         resources_f_t = resources - t_resources
         resources_f_r = pnwutils.Resources(**await bal_r.get()) + t_resources
         await self.balances[author.id].set(resources_f_t.to_dict())
