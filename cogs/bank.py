@@ -16,6 +16,7 @@ class BankCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
         self.balances = discordutils.MappingProperty[str, pnwutils.ResourceDict](self, 'balances')
+        # discord id : resources in dict form
         self.offshore_id = discordutils.CogProperty[str](self, 'offshore_id')
 
     @property

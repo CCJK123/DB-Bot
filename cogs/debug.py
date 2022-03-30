@@ -41,6 +41,7 @@ class DebugCog(discordutils.CogBase):
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def views(self, ctx: discord.ApplicationContext):
         """Temp test command"""
+        await ctx.respond(self.bot.views.value)
         await ctx.respond(await self.bot.views.get())
         await ctx.respond(await self.bot.views.get_views())
 

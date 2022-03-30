@@ -23,6 +23,7 @@ class UtilCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
         self.nations: discordutils.MappingProperty[int, int] = discordutils.MappingProperty[int, int](self, 'nations')
+        # discord id : nation id
 
     register = commands.SlashCommandGroup('register', 'Commands related to the user to nation registry the bot keeps!',
                                           guild_ids=config.guild_ids)

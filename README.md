@@ -89,6 +89,9 @@
     </ul></details>
 
 
+### Migration of data
+To migrate data from earlier versions, use the convert directory. Instructions can be found in instructions.txt there.
+
 
 ### Links to relevant resources
 

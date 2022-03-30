@@ -24,6 +24,7 @@ class FinanceCog(discordutils.CogBase):
         self.infra_rebuild_cap = discordutils.CogProperty[int](self, 'infra_rebuild_cap')
         self.process_channel = discordutils.ChannelProperty(self, 'process_channel')
         self.withdrawal_channel = discordutils.ChannelProperty(self, 'withdraw_channel')
+
         self.loans = discordutils.MappingProperty[int, dict[str, Any]](self, 'loans')
         # discord_id : LoanData dict
 

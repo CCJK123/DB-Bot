@@ -1,3 +1,4 @@
+import asyncio
 import os
 import random
 import traceback
@@ -7,7 +8,7 @@ import discord
 from discord.ext import tasks, commands as cmds
 
 from utils import discordutils
-from database import RudimentaryDatabase
+from utils.database import RudimentaryDatabase
 
 
 # pycharm complains about sync_commands not being written,
@@ -36,17 +37,18 @@ class DBBot(discord.Bot):
             self.load_extension(f'{directory}.{ext}')
 
     async def prep(self):
-        if await self.views.get(None) is None:
-            await self.views.set({})
-
         self.session = await aiohttp.ClientSession().__aenter__()
         self.database = await self.database.__aenter__()
+
+        if await self.views.get(None) is None:
+            await self.views.set({})
 
         self.change_status.start()
 
     async def cleanup(self):
         await self.session.__aexit__(None, None, None)
         await self.database.__aexit__(None, None, None)
+        await asyncio.sleep(.25)
 
     # Change bot status (background task for 24/7 functionality)
     status = (

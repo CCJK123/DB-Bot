@@ -8,7 +8,7 @@ cog_logger = logging.getLogger('cogs')
 cog_logger.addHandler(logging.FileHandler('logs.txt'))
 
 if __name__ == '__main__':
-    bot = dbbot.DBBot('data')
+    bot = dbbot.DBBot('data.db')
 
     # Load cogs
     bot.load_cogs('cogs')
