@@ -11,9 +11,8 @@ from discord.ext import pages
 import numpy as np
 import matplotlib.pyplot as plt
 
-import dbbot
 from cogs.bank import BankCog
-from utils import discordutils, pnwutils, config, help_command
+from utils import discordutils, pnwutils, config, help_command, dbbot
 from utils.queries import (nation_register_query, alliance_member_res_query,
                            alliance_activity_query, individual_war_query, alliance_tiers_query,
                            nation_active_wars_query)

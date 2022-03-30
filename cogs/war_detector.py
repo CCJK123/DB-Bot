@@ -4,8 +4,7 @@ import discord
 from discord import commands
 from discord.ext import tasks
 
-import dbbot
-from utils import discordutils, pnwutils, config
+from utils import discordutils, pnwutils, config, dbbot
 from utils.queries import alliance_wars_query
 
 

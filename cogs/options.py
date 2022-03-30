@@ -3,8 +3,7 @@ import operator
 import discord
 from discord import commands
 
-from utils import discordutils, pnwutils, config
-import dbbot
+from utils import discordutils, pnwutils, config, dbbot
 
 
 class OptionsCog(discordutils.CogBase):

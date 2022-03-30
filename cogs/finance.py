@@ -8,10 +8,9 @@ from discord import commands
 from discord.ext import commands as cmds
 
 from cogs.bank import BankCog
-from utils import discordutils, pnwutils, config
+from utils import discordutils, pnwutils, config, dbbot
 from utils.financeutils import RequestData, LoanData, RequestStatus, RequestChoices, ResourceSelectView, WithdrawalView
 from utils.queries import nation_query
-import dbbot
 
 logger = logging.getLogger(__name__)
 

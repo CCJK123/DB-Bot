@@ -6,9 +6,8 @@ import discord
 from discord import commands
 from discord.ext import commands as cmds
 
-from utils import discordutils, config
+from utils import discordutils, config, dbbot
 from utils.queries import acceptance_query
-import dbbot
 
 
 class ApplicationCog(discordutils.CogBase):

@@ -6,10 +6,9 @@ import discord
 from discord import commands
 from discord.ext import commands as cmds
 
-from utils import financeutils, discordutils, pnwutils, config
+from utils import financeutils, discordutils, pnwutils, config, dbbot
 from utils.queries import bank_transactions_query, bank_info_query, nation_name_query, alliance_name_query, \
     nation_resources_query
-import dbbot
 
 
 class BankCog(discordutils.CogBase):

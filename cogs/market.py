@@ -1,9 +1,7 @@
-import dbbot
-
 import discord
 from discord import commands
 
-from utils import discordutils, pnwutils, config
+from utils import discordutils, pnwutils, config, dbbot
 
 
 class MarketCog(discordutils.CogBase):

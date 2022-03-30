@@ -1,9 +1,8 @@
 import discord
 from discord import commands
 
-import dbbot
 from cogs.bank import BankCog
-from utils import discordutils, config
+from utils import discordutils, config, dbbot
 
 
 class DebugCog(discordutils.CogBase):

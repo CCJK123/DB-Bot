@@ -1,8 +1,7 @@
 import asyncio
 import logging
 
-import dbbot
-from utils import config
+from utils import config, dbbot
 
 cog_logger = logging.getLogger('cogs')
 cog_logger.addHandler(logging.FileHandler('logs.txt'))

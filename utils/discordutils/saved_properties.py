@@ -8,7 +8,7 @@ import discord
 from .views import PersistentView
 
 if TYPE_CHECKING:
-    from ... import dbbot
+    from .. import dbbot
 
 __all__ = ('CogBase', 'BotProperty', 'ViewStorage', 'CogProperty', 'WrappedProperty',
            'ChannelProperty', 'MappingProperty', 'SetProperty')
