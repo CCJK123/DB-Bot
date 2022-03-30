@@ -154,7 +154,7 @@ class Transaction:
     resources: Resources
     time: datetime.datetime
     kind: TransactionType
-    entity_id: str
+    entity_id: int
 
     @classmethod
     def from_api_dict(cls, data: dict) -> 'Transaction':
@@ -164,10 +164,10 @@ class Transaction:
         if data['stype'] == 2 and data['sid'] == config.alliance_id:
             # sender is our alliance
             kind = TransactionType.rec if data['rtype'] == 1 else TransactionType.a_rec
-            entity_id = data['rid']
+            entity_id = int(data['rid'])
         else:
             # receiver is our alliance
             kind = TransactionType.dep if data['stype'] == 1 else TransactionType.a_dep
-            entity_id = data['sid']
+            entity_id = int(data['sid'])
 
         return cls(res, t, kind, entity_id)

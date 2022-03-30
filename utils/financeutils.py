@@ -135,7 +135,8 @@ class RequestChoices(discordutils.CallbackPersistentView):
         return {}, self.key, self.data
 
 
-def withdrawal_embed(name: str, nation_id: str, reason: str, resources: pnwutils.Resources, **kwargs) -> discord.Embed:
+def withdrawal_embed(name: str, nation_id: str | int, reason: str, resources: pnwutils.Resources, **kwargs
+                     ) -> discord.Embed:
     embed = discord.Embed(**kwargs)
     embed.add_field(name='Nation', value=f'[{name}]({pnwutils.link.nation(nation_id)})')
     embed.add_field(name='Reason', value=reason)

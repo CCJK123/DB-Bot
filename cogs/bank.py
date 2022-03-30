@@ -26,20 +26,23 @@ class BankCog(discordutils.CogBase):
     def loans(self) -> discordutils.MappingProperty[int, dict[str, Any]]:
         return self.bot.get_cog('FinanceCog').loans  # type: ignore
 
-    async def get_transactions(self, entity_id: str | None = None, kind: pnwutils.TransactionType | None = None
+    async def get_transactions(self, entity_id: str | int | None = None, kind: pnwutils.TransactionType | None = None
                                ) -> list[pnwutils.Transaction]:
         if entity_id is None and kind is not None:
             raise ValueError('Please provide entity id!')
 
+        # get data from api
         data = await bank_transactions_query.query(self.bot.session, alliance_id=config.alliance_id)
 
         bank_recs = data['data'][0]['bankrecs']
         if entity_id is None:
+            # if not filtering by ID
             return [pnwutils.Transaction.from_api_dict(rec) for rec in bank_recs]
-
+        entity_id = int(entity_id)
         transactions = []
         for bank_rec in bank_recs:
             transaction = pnwutils.Transaction.from_api_dict(bank_rec)
+            # otherwise, check before adding transaction
             if transaction.entity_id == entity_id and (kind is None or transaction.kind == kind):
                 transactions.append(transaction)
 
@@ -50,7 +53,7 @@ class BankCog(discordutils.CogBase):
     @bank.command()
     async def balance(self, ctx: discord.ApplicationContext):
         """Check your bank balance"""
-
+        # various data access
         await self.balances.initialise()
 
         resources = await self.balances[ctx.author.id].get(None)
@@ -62,6 +65,7 @@ class BankCog(discordutils.CogBase):
 
         loan = await self.loans[ctx.author.id].get(None)
 
+        # actual displaying
         await ctx.respond(f"{ctx.author.mention}'s Balance",
                           embed=resources.create_balance_embed(ctx.author.display_name),
                           allowed_mentions=discord.AllowedMentions.none(),
@@ -76,6 +80,7 @@ class BankCog(discordutils.CogBase):
     @cmds.max_concurrency(1, cmds.BucketType.user)
     async def deposit(self, ctx: discord.ApplicationContext):
         """Deposit resources into your balance"""
+        # various data access
         nation_id = await self.nations[ctx.author.id].get(None)
         if nation_id is None:
             await ctx.respond('Your nation id has not been set!', ephemeral=True)
@@ -85,6 +90,7 @@ class BankCog(discordutils.CogBase):
         author = ctx.author
         msg_chk = discordutils.get_dm_msg_chk(author.id)
 
+        # deposit check
         start_time = datetime.now()
         await author.send('You now have 5 minutes to deposit your resources into the bank. '
                           'Once you are done, send a message here.',
@@ -99,6 +105,7 @@ class BankCog(discordutils.CogBase):
             await author.send('You have not responded for 5 minutes! '
                               'Automatically checking for deposits...')
 
+        # get balance
         resources = await self.balances[ctx.author.id].get(None)
         if resources is None:
             resources = pnwutils.Resources()
@@ -106,6 +113,7 @@ class BankCog(discordutils.CogBase):
         else:
             resources = pnwutils.Resources(**resources)
 
+        # get transactions since start_time involving deposits by nation
         dep_transactions = list(filter(lambda t: t.time >= start_time,
                                        await self.get_transactions(nation_id, pnwutils.TransactionType.dep)))
         if dep_transactions:
