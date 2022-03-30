@@ -7,8 +7,7 @@ import aiohttp
 import discord
 from discord.ext import tasks, commands as cmds
 
-from utils import discordutils
-from utils.database import RudimentaryDatabase
+from utils import discordutils, databases
 
 
 # pycharm complains about sync_commands not being written,
@@ -20,7 +19,7 @@ class DBBot(discord.Bot):
         super().__init__(intents=intents)
 
         self.session = None
-        self.database = RudimentaryDatabase(db_url)
+        self.database = databases.RudimentaryDatabase(db_url)
         self.views = discordutils.ViewStorage[discordutils.PersistentView](self, 'views')
         self.prepped = False
 

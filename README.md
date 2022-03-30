@@ -8,6 +8,30 @@
 ### Commands
 
 
+### Directory
+<ul>
+    <li>cogs<ul>
+       Contains discord.py extensions, each with a Cog that implements some of the bot's functionality
+    </ul></li>
+    <li>convert<ul>
+        One time use files for migrating data from earlier versions
+    </ul></li>
+    <li>loopedfunctions<ul>
+        to be run locally, it runs some function periodically
+    </ul></li>
+    <li>utils<ul>
+        Various functions that are used throughout the bot's code
+    </ul></li>
+    <li>main.py<ul>
+        The entry point to the bot. Run it to start the bot up!
+    </ul></li>
+    <li>data.db<ul>
+        Stores the data (as of current version)
+    </ul></li>
+    <li>logs.txt<ul>
+        From the start of a logging project that never took off. Does not do anything as of now.
+    </ul></li>
+</ul>
 
 ### Formatting
 
