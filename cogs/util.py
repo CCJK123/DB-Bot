@@ -290,6 +290,14 @@ class UtilCog(discordutils.CogBase):
         buf.seek(0)
         await ctx.respond(file=discord.File(buf, 'tiers.png'))
 
+    @commands.command(guild_ids=config.guild_ids)
+    async def time_in(self, ctx: discord.ApplicationContext, turns: commands.Option(int, 'Time in how many turns')):
+        """Express the time in n turns."""
+        now = datetime.datetime.now()
+        t = now + datetime.timedelta(hours=turns * 2 - now.hour % 2, minutes=-now.minute, seconds=-now.second)
+        s = discord.utils.format_dt(t)
+        await ctx.respond(f'It would be {s} (`{s}`) in {turns} turns.')
+
     @commands.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def reload(self, ctx: discord.ApplicationContext, extension: str) -> None:
