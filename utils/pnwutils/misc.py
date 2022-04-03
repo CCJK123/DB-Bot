@@ -1,10 +1,13 @@
+import datetime
 import enum
 from typing import Any, TypedDict
+
+import discord
 
 from . import link
 
 # Setup what is exported by default
-__all__ = ('war_range', 'infra_value', 'infra_price', 'WarType', 'war_description', 'mil_text')
+__all__ = ('war_range', 'infra_value', 'infra_price', 'WarType', 'war_description', 'mil_text', 'time_after_turns')
 
 
 def war_range(score: float) -> tuple[float, float]:
@@ -84,3 +87,10 @@ def mil_text(nation: MilDict, action_points: int | None = None) -> str:
          f'{nation["missiles"]} 🚀\n'
          f'{nation["nukes"]} ☢️')
     return s if action_points is None else f'{action_points} ⚔️\n{s}'
+
+
+def time_after_turns(turns):
+    now = datetime.datetime.now()
+    return discord.utils.format_dt(
+        now + datetime.timedelta(hours=turns * 2 - now.hour % 2, minutes=-now.minute, seconds=-now.second)
+    )

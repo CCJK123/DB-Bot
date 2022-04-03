@@ -8,7 +8,7 @@ from utils import discordutils, pnwutils, config, dbbot
 from utils.queries import alliance_wars_query
 
 
-class WarDetectorCog(discordutils.CogBase):
+class DetectorCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
         self.last_monitoring: list[tuple[dict[str, Any], pnwutils.WarType]] | None = None
@@ -167,4 +167,4 @@ class WarDetectorCog(discordutils.CogBase):
 
 # Setup War Detector Cog as an extension
 def setup(bot: dbbot.DBBot) -> None:
-    bot.add_cog(WarDetectorCog(bot))
+    bot.add_cog(DetectorCog(bot))

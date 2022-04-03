@@ -1,6 +1,7 @@
 import collections
 import datetime
 import io
+import re
 import itertools
 import operator
 
@@ -14,11 +15,12 @@ import matplotlib.pyplot as plt
 from cogs.bank import BankCog
 from utils import discordutils, pnwutils, config, help_command, dbbot
 from utils.queries import (nation_register_query, alliance_member_res_query,
-                           alliance_activity_query, individual_war_query, alliance_tiers_query,
-                           nation_active_wars_query)
+                           alliance_activity_query, alliance_tiers_query)
 
 
 class UtilCog(discordutils.CogBase):
+    nation_link_pattern = re.compile(rf'{pnwutils.constants.base_url}nation/id=(\d+)')
+
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
         self.nations: discordutils.MappingProperty[int, int] = discordutils.MappingProperty[int, int](self, 'nations')
@@ -196,50 +198,6 @@ class UtilCog(discordutils.CogBase):
         """Not Implemented as of now. Check back soon!"""
         await ctx.respond('Not Implemented!')
 
-    @commands.command(guild_ids=config.guild_ids)
-    async def war(self, ctx: discord.ApplicationContext, war: commands.Option(str, 'War ID or link')):
-        """Gives information on a war given an ID or link!"""
-        war = war.removeprefix(f'{pnwutils.constants.base_url}nation/war/timeline/war=')
-
-        try:
-            int(war)
-        except ValueError:
-            await ctx.respond("That isn't a number!")
-            return
-
-        data = await individual_war_query.query(self.bot.session, war_id=war)
-        if data['data']:
-            data = data['data'].pop()  # type: ignore
-            await ctx.respond(embed=discord.Embed(description=pnwutils.war_description(data)))
-        else:
-            await ctx.respond('No such war exists!')
-
-    @commands.command(guild_ids=config.guild_ids)
-    async def wars(self, ctx: discord.ApplicationContext,
-                   member: discord.Option(discord.Member, 'Member to check the wars of', required=False, default=None),
-                   nation_id: discord.Option(str, 'Nation ID of checked nation', required=False, default=None)):
-        """Check the active wars of the given member/nation (default yourself)"""
-        if member is None and nation_id is None:
-            member = ctx.author
-        if member is not None:
-            nation_id = await self.nations[member.id].get(None)
-            if nation_id is None:
-                await ctx.respond(f'{member.mention} does not have a nation registered!',
-                                  allowed_mentions=discord.AllowedMentions.none(), ephemeral=True)
-                return
-
-        data = await nation_active_wars_query.query(self.bot.session, nation_id=nation_id)
-        nation_link = pnwutils.link.nation(nation_id)
-        if data['data']:
-            await ctx.respond(
-                f"{nation_link if member is None else member.mention}'s Active Wars",
-                embeds=[discord.Embed(description=pnwutils.war_description(war)) for war in data['data']],
-                allowed_mentions=discord.AllowedMentions.none()
-            )
-        else:
-            await ctx.respond(f'{nation_link if member is None else member.mention} does not have any active wars!',
-                              allowed_mentions=discord.AllowedMentions.none())
-
     @commands.user_command(guild_ids=config.guild_ids)
     async def nation(self, ctx: discord.ApplicationContext, member: discord.Member):
         """Get the nation of this member"""
@@ -250,6 +208,27 @@ class UtilCog(discordutils.CogBase):
         await ctx.respond(f"{member.mention}'s nation:",
                           view=discordutils.LinkView('Nation link', pnwutils.link.nation(nation_id)),
                           allowed_mentions=discord.AllowedMentions.none())
+
+    @commands.message_command(guild_ids=config.guild_ids)
+    async def nations(self, ctx: discord.ApplicationContext, message: discord.Message):
+        """Look for the discord accounts of the nation links in the message!"""
+        nations = await self.nations.get()
+        nation_ids = tuple(map(int, self.nation_link_pattern.findall(message.content)))
+        found = {}
+        for discord_id, nation_id in nations.items():
+            if nation_id in nation_ids:
+                found[nation_id] = discord_id
+                if len(found) == len(nation_ids):
+                    break
+
+        if found:
+            await ctx.respond(embed=discord.Embed(
+                title='Discord Accounts Found:',
+                description='\n'.join(f'{pnwutils.link.nation(n)} - <@{d}>' for n, d in found.items())))
+        elif nation_ids:
+            await ctx.respond('No discord accounts associated with those nations found in our registry!')
+        else:
+            await ctx.respond('No nation links found in this message!')
 
     plot = commands.SlashCommandGroup('plot', 'Plotting commands!', guild_ids=config.guild_ids)
 
@@ -293,9 +272,7 @@ class UtilCog(discordutils.CogBase):
     @commands.command(guild_ids=config.guild_ids)
     async def time_in(self, ctx: discord.ApplicationContext, turns: commands.Option(int, 'Time in how many turns')):
         """Express the time in n turns."""
-        now = datetime.datetime.now()
-        t = now + datetime.timedelta(hours=turns * 2 - now.hour % 2, minutes=-now.minute, seconds=-now.second)
-        s = discord.utils.format_dt(t)
+        s = pnwutils.time_after_turns(turns)
         await ctx.respond(f'It would be {s} (`{s}`) in {turns} turns.')
 
     @commands.command(guild_ids=config.guild_ids, default_permission=False)

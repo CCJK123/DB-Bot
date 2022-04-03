@@ -31,14 +31,15 @@ class APIQuery:
         if self.check_more:
             variables.setdefault('page', 1)
 
-        if variables.keys() != self.variable_types.keys():
+        if not set(variables.keys()) <= set(self.variable_types.keys()):
             raise APIError(f'Key mismatch! Variables: {self.variable_types}, Passed: {variables}')
 
         for k in variables:
             ty = self.variable_types[k]
             if isinstance(ty, list):
-                ty = list
-            variables[k] = ty(variables[k])
+                variables[k] = list(map(ty[0], variables[k]))
+            else:
+                variables[k] = ty(variables[k])
 
         async with session.post(constants.api_url, json=self.get_query(variables)) as response:
             data = await response.json()

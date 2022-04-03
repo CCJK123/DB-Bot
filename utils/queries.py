@@ -142,7 +142,6 @@ query alliance_name($alliance_id: [Int]) {
 '''
 alliance_name_query = APIQuery(alliance_name_query_text, alliance_id=int)
 
-
 nation_resources_query_text = '''
 query nation_resources($nation_id: [Int]) {
     nations(id: $nation_id) {
@@ -234,7 +233,9 @@ query nation_discord($alliance_ids: [Int]) {
 '''
 alliance_tiers_query = APIQuery(alliance_tiers_query_text, alliance_ids=[int])
 
-# war_detector.py
+# war related queries
+# both detector.py and war.py
+
 nation_war_data_fragment = '''
 fragment nation_data on Nation {
     id
@@ -326,6 +327,40 @@ query nation_active_wars($nation_id: [Int]) {
 }
 ''' + nation_war_data_fragment
 nation_active_wars_query = APIQuery(nation_active_wars_query_text, nation_id=int)
+
+nation_score_query_text = '''
+query nation_score_query($nation_id: [Int]) {
+    nations(id: $nation_id) {
+        data {
+            score
+        }
+    }
+}
+'''
+nation_score_query = APIQuery(nation_score_query_text, nation_id=int)
+
+find_slots_query_text = '''
+query find_slots_query($alliance_id: [Int], $min_score: Float, $max_score: Float) {
+    nations(alliance_id: $alliance_id, first: 500,
+            min_score: $min_score, max_score: $max_score) {
+        paginatorInfo {
+            hasMorePages
+        }
+        data {
+            id
+            vmode
+            alliance_position
+            beigeturns
+            wars {
+                attid
+                defid
+                turnsleft
+            }
+        }
+    }
+}
+'''
+find_slots_query = APIQuery(find_slots_query_text, alliance_id=[int], min_score=float, max_score=float)
 
 # applications.py
 

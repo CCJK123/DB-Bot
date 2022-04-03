@@ -87,11 +87,6 @@ class DBBot(discord.Bot):
             print(f'Ignoring {exception}, already has handler')
             return
 
-        exs = traceback.format_exception(exception)  # type: ignore
-        await ctx.respond(f'Sorry, an exception occurred.\n\n```{exs.pop(0)}```')
-        for ex in exs:
-            await ctx.respond(f'```{ex}```')
-
         ignored = (
             cmds.CommandNotFound,
             cmds.MissingRole,
@@ -99,6 +94,17 @@ class DBBot(discord.Bot):
         )
         if not isinstance(exception, ignored):
             await super().on_application_command_error(ctx, exception)
+
+        exs = traceback.format_exception(exception)  # type: ignore
+        await ctx.respond(f'Sorry, an exception occurred.')
+        s = ''
+        for ex in exs:
+            if ex == 'The above exception was the direct cause of the following exception:':
+                await ctx.respond(f'```{s}```')
+                s = ex
+            else:
+                s += ex
+        await ctx.respond(f'```{s}```')
 
 
 # the new bot doesnt seem to have a help command, the help command has not been ported over to slash yet i believe
