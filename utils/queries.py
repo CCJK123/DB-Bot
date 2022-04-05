@@ -362,6 +362,20 @@ query find_slots_query($alliance_id: [Int], $min_score: Float, $max_score: Float
 '''
 find_slots_query = APIQuery(find_slots_query_text, alliance_id=[int], min_score=float, max_score=float)
 
+spy_sat_query_text = '''
+query spy_sat_query($alliance_id: [Int], $min_score: Float, $max_score: Float) {
+    nations(alliance_id: $alliance_id, first: 500,
+            min_score: $min_score, max_score: $max_score) {
+        data {
+            id
+            spy_satellite
+            spies
+        }
+    }
+}
+'''
+spy_sat_query = APIQuery(spy_sat_query_text, alliance_id=int, min_score=float, max_score=float)
+
 # applications.py
 
 acceptance_query_text = '''

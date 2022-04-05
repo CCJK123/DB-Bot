@@ -5,7 +5,8 @@ from discord import commands
 import discord
 
 from utils import discordutils, pnwutils, config, dbbot
-from utils.queries import individual_war_query, nation_active_wars_query, find_slots_query, nation_score_query
+from utils.queries import individual_war_query, nation_active_wars_query, find_slots_query, nation_score_query, \
+    spy_sat_query
 
 
 class WarCog(discordutils.CogBase):
@@ -78,7 +79,7 @@ class WarCog(discordutils.CogBase):
         score_data = await nation_score_query.query(self.bot.session, nation_id=nation_id)
         score = score_data['data'][0]['score']
         try:
-            mi, ma = pnwutils.war_range(score)
+            mi, ma = pnwutils.formulas.war_range(score)
             data = await find_slots_query.query(self.bot.session, alliance_id=ids.split(','),
                                                 min_score=mi, max_score=ma)
             # data = await find_slots_query.query(self.bot.session, alliance_id=ids.split(','))
@@ -112,6 +113,18 @@ class WarCog(discordutils.CogBase):
         else:
             await ctx.respond(embed=discord.Embed(title='Nations with free slots',
                                                   description='\n'.join(map(pnwutils.link.nation, found[0]))))
+
+    @commands.command(guild_ids=config.guild_ids)
+    async def find_spy_sat(self, ctx: discord.ApplicationContext, target_score: int):
+        mi, ma = pnwutils.formulas.inverse_spy_range(target_score)
+        data = await spy_sat_query.query(self.bot.session, alliance_id=config.alliance_id,
+                                         min_score=mi, max_score=ma)
+        ids = []
+        for n in data['data']:
+            if n['spy_satellite']:
+                ids.append(n['id'])
+        await ctx.respond(embed=discord.Embed(title='Nations with spy satellite who can attack:',
+                                              description='\n'.join(map(pnwutils.link.nation, ids))))
 
 
 def setup(bot: dbbot.DBBot) -> None:

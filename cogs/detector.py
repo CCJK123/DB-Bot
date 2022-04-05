@@ -50,7 +50,7 @@ class DetectorCog(discordutils.CogBase):
             aa_text = 'None' if a is None else f'[{a["name"]}]({pnwutils.link.alliance(a["id"])})'
             embed.add_field(name='Alliance', value=aa_text, inline=False)
             embed.add_field(name='Score', value=nation['score'])
-            r = pnwutils.war_range(nation['score'])
+            r = pnwutils.formulas.war_range(nation['score'])
             embed.add_field(name='Range', value=f'{r[0]:.2f}-{r[1]:.2f}')
             embed.add_field(name='Cities', value=nation['num_cities'], inline=False)
             embed.add_field(name='War Policy', value=nation['warpolicy'], inline=False)
