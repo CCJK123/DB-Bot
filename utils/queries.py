@@ -177,7 +177,7 @@ query nation_info($nation_id: [Int]) {
     }
 }
 '''
-nation_register_query = APIQuery(nation_register_query_text, True, nation_id=int)
+nation_register_query = APIQuery(nation_register_query_text, nation_id=int)
 
 alliance_member_res_query_text = '''
 query alliance_members_res($alliance_id: [Int], $page: Int) {

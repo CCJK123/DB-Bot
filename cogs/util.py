@@ -42,7 +42,7 @@ class UtilCog(discordutils.CogBase):
         if nation_id is None and nation_link is None:
             if '/' in ctx.author.display_name:
                 try:
-                    int(nation_id := ctx.author.display_name.split('/')[-1])
+                    nation_id = int(ctx.author.display_name.split('/')[-1])
                 except ValueError:
                     await ctx.respond('Please provide your nation id!')
                     return
@@ -68,17 +68,19 @@ class UtilCog(discordutils.CogBase):
             # nation does not exist, empty list returned
             await ctx.respond('This nation does not exist!', ephemeral=True)
             return
+        data = data[0]
         # nation exists, is in one elem list
         bank_cog = self.bot.get_cog('BankCog')
         assert isinstance(bank_cog, BankCog)
         off_id = await bank_cog.offshore_id.get(None)
-        if data[0]['alliance_id'] not in (config.alliance_id, off_id):
+        if data['alliance_id'] not in (config.alliance_id, off_id):
             await ctx.respond(f'This nation is not in {config.alliance_name}!')
             return
         username = f'{ctx.author.name}#{ctx.author.discriminator}'
         if data['discord'] != username:
             await ctx.respond('Your Discord Username is not set! Please edit your nation and set your discord tag to '
                               f'{username}, then try this command again.', ephemeral=True)
+            return
         await self.nations[ctx.author.id].set(nation_id)
         await ctx.respond('You have been registered to our database!', ephemeral=True)
         return
@@ -115,6 +117,43 @@ class UtilCog(discordutils.CogBase):
         await self.nations.set(nations)
         # there are no await statements between get and set, so this is fine
         await ctx.respond(f'{count} members have been added to the database.')
+
+    @commands.command(guild_ids=config.guild_ids, default_permission=False)
+    @commands.permissions.has_any_role(config.gov_role_id, config.staff_role_id, guild_id=config.guild_id)
+    async def register_other(self, ctx: discord.ApplicationContext, member: discord.Member, nation_id: int):
+        """Update someone else's nation in the registry for them"""
+        if self.nations[member.id].get(None) is None:
+            await ctx.respond('This member has already been registered! Aborting...', ephemeral=True)
+            return
+        if await self.nations.contains_value(nation_id):
+            await ctx.respond('This nation has been registered before! Aborting...', ephemeral=True)
+            return
+
+        data = await nation_register_query.query(self.bot.session, nation_id=nation_id)
+        data = data['data']
+        if not data:
+            # nation does not exist, empty list returned
+            await ctx.respond('This nation does not exist!', ephemeral=True)
+            return
+        data = data[0]
+        # nation exists, is in one elem list
+        bank_cog = self.bot.get_cog('BankCog')
+        assert isinstance(bank_cog, BankCog)
+        off_id = await bank_cog.offshore_id.get(None)
+        if data['alliance_id'] not in (config.alliance_id, off_id):
+            await ctx.respond(f'This nation is not in {config.alliance_name}!')
+            return
+        username = f'{member.name}#{member.discriminator}'
+        if data['discord'] != username:
+            await ctx.respond(
+                "This nation's Discord Username is not set! "
+                f'Please ask {member.mention} to edit their nation and set their discord tag to {username}, '
+                'then try this command again.', ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
+            return
+        await self.nations[member.id].set(nation_id)
+        await ctx.respond(f'{member.mention} has been registered to our database!',
+                          ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
+        return
 
     check = commands.SlashCommandGroup(
         'check', 'Various checks on members of the alliance', guild_ids=config.guild_ids,
