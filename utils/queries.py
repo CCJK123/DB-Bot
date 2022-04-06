@@ -2,8 +2,8 @@ from .pnwutils.api import APIQuery
 
 # finance.py
 
-nation_query_text = '''
-query nation_info($nation_id: [Int]) {
+finance_nation_info_query_text = '''
+query finance_nation_info($nation_id: [Int]) {
     nations(id: $nation_id, first: 1) {
         data {
             # Display Request, Withdrawal Link
@@ -51,7 +51,7 @@ query nation_info($nation_id: [Int]) {
     }
 }
 '''
-nation_query = APIQuery(nation_query_text, nation_id=int)
+finance_nation_info_query = APIQuery(finance_nation_info_query_text, nation_id=int)
 
 # bank.py
 
@@ -217,6 +217,25 @@ query alliance_activity($alliance_id: [Int], $page: Int) {
 }
 '''
 alliance_activity_query = APIQuery(alliance_activity_query_text, True, alliance_id=int)
+
+nation_info_query_text = '''
+query nation_info_query($nation_id: [Int]) {
+    nations(id: $nation_id) {
+        data {
+            nation_name
+            warpolicy
+            dompolicy
+            score
+            wars {
+                attid
+                navalblockade
+                turnsleft
+            }
+        }
+    }
+}
+'''
+nation_info_query = APIQuery(nation_info_query_text, nation_id=int)
 
 alliance_tiers_query_text = '''
 query nation_discord($alliance_ids: [Int]) {

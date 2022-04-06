@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 from cogs.bank import BankCog
 from utils import discordutils, pnwutils, config, help_command, dbbot
 from utils.queries import (nation_register_query, alliance_member_res_query,
-                           alliance_activity_query, alliance_tiers_query)
+                           alliance_activity_query, alliance_tiers_query, nation_info_query)
 
 
 class UtilCog(discordutils.CogBase):
@@ -244,12 +244,33 @@ class UtilCog(discordutils.CogBase):
         if nation_id is None:
             await ctx.respond('This user does not have their nation registered!')
             return
-        await ctx.respond(f"{member.mention}'s nation:",
-                          view=discordutils.LinkView('Nation link', pnwutils.link.nation(nation_id)),
-                          allowed_mentions=discord.AllowedMentions.none())
+        data = await nation_info_query.query(self.bot.session, nation_id=nation_id)
+        if not data['data']:
+            await ctx.respond("This member's registered nation does not exist! Aborting...")
+            return
+        data = data['data'][0]
+        embed = discord.Embed(title=data['nation_name'], description=f"{member.mention}'s Nation")
+        embed.add_field(name='Score', value=data['score'])
+        embed.add_field(name='Domestic Policy', value=data['dompolicy'])
+        embed.add_field(name='War Policy', value=data['warpolicy'])
+        wars = [w for w in data['wars'] if w['turnsleft'] > 0]
+        if wars:
+            offensive = sum(w['attid'] == str(nation_id) for w in wars)
+            block = any(w['navalblockade'] not in (str(nation_id), '0') for w in wars)
+            s = ''
+            if offensive:
+                s = f'{offensive} Offensive Wars\n'
+            if defensive := len(wars) - offensive:
+                s += f'{defensive} Defensive Wars\n'
+            if block:
+                s += 'Currently under a naval blockade!'
+        else:
+            s = 'None'
+        embed.add_field(name='Current Wars', value=s)
+        await ctx.respond(embed=embed, view=discordutils.LinkView('Nation Link', pnwutils.link.nation(nation_id)))
 
     @commands.message_command(guild_ids=config.guild_ids)
-    async def nations(self, ctx: discord.ApplicationContext, message: discord.Message):
+    async def discords(self, ctx: discord.ApplicationContext, message: discord.Message):
         """Look for the discord accounts of the nation links in the message!"""
         nations = await self.nations.get()
         nation_ids = tuple(map(int, self.nation_link_pattern.findall(message.content)))

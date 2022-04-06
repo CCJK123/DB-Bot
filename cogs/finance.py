@@ -10,7 +10,7 @@ from discord.ext import commands as cmds
 from cogs.bank import BankCog
 from utils import discordutils, pnwutils, config, dbbot
 from utils.financeutils import RequestData, LoanData, RequestStatus, RequestChoices, ResourceSelectView, WithdrawalView
-from utils.queries import nation_query
+from utils.queries import finance_nation_info_query
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ class FinanceCog(discordutils.CogBase):
         # Check that reply was sent from same author in DMs
         msg_chk = discordutils.get_dm_msg_chk(author.id)
 
-        data = await nation_query.query(self.bot.session, nation_id=nation_id)
+        data = await finance_nation_info_query.query(self.bot.session, nation_id=nation_id)
         data = data['data']
         if data:
             # Data contains a nation, hence nation with given id exists
