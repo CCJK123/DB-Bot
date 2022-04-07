@@ -338,7 +338,7 @@ class FinanceCog(discordutils.CogBase):
                 # Calculate infra cost for each city
                 for city in data['cities']:
                     if city['infrastructure'] < irc:
-                        req_data.resources.money += pnwutils.infra_price(city['infrastructure'], irc)
+                        req_data.resources.money += pnwutils.formulas.infra_price(city['infrastructure'], irc)
                 # Account for Urbanisation and cost reducing projects (CCE and AEC)
                 req_data.resources.money *= 0.95 - 0.05 * (data['cfce'] +
                                                            data['adv_engineering_corps'])

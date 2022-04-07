@@ -13,7 +13,7 @@ if __name__ == '__main__':
     bot.load_cogs('cogs')
 
     # bot.help_command.cog = bot.get_cog('UtilCog')
-    # the new bot does not seem to have a help command, the help command has not been ported over to slash yet i believe
+    # the new bot does not seem to have a help command, the help command has not been ported over to slash yet I believe
 
     try:
         bot.run(config.token)

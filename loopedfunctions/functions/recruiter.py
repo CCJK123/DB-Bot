@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 from datetime import datetime, timezone, timedelta
 
@@ -59,7 +61,7 @@ class Recruiter:
         async with self.session.post(f'{constants.base_url}inbox/message', data=payload):
             pass
 
-    async def should_contact(self, nation: "dict[str, str | int]", now: datetime):
+    async def should_contact(self, nation: dict[str, str | int], now: datetime):
         if now - datetime.fromisoformat(nation['last_active']).replace(tzinfo=timezone.utc) > timedelta(
                 seconds=self.settings['restrictions']['max_inactive']):
             return False

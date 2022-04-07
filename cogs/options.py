@@ -57,15 +57,15 @@ class OptionsCog(discordutils.CogBase):
         war_detector_cog = self.bot.get_cog('DetectorCog')
         if kind == 'attack':
             channel = war_detector_cog.att_channel
-            kind_text = 'Offensive'
+            kind_text = 'Offensive wars'
         elif kind == 'defend':
             channel = war_detector_cog.def_channel
-            kind_text = 'Defensive'
+            kind_text = 'Defensive wars'
         else:
             channel = war_detector_cog.updates_channel
-            kind_text = 'Losing'
+            kind_text = 'Updates'
         await channel.set(ctx.channel)
-        await ctx.respond(f'{kind_text} wars channel set!')
+        await ctx.respond(f'{kind_text} channel set!')
 
     market_options = options.create_subgroup('market', 'Options for the market system!')
     market_options.guild_ids = config.guild_ids

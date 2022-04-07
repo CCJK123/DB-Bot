@@ -98,7 +98,6 @@ class WarCog(discordutils.CogBase):
                 continue
             min_turns = min(def_war_turns)
             if min_turns <= turns:
-                print(n['id'], n['beigeturns'], n['vmode'], min_turns)
                 found[max(n['beigeturns'], n['vmode'], min_turns)].add(n['id'])
 
         if not found:

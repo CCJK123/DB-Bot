@@ -1,10 +1,10 @@
+from __future__ import annotations
+
 import functools
 from typing import Iterable
 
 import discord
 from discord import commands
-
-from utils import config
 
 __all__ = ('help_command', 'autocomplete')
 
@@ -98,7 +98,7 @@ def get_command_description(command: discord.ApplicationCommand) -> str:
 
 @functools.lru_cache(5)
 def _autocomplete_options(ctx: discord.AutocompleteContext) -> Iterable[str]:
-    # stupid pycord walk things dont fricking work
+    # stupid pycord walk things don't fricking work
     for cog in ctx.bot.cogs.values():
         yield from (command.qualified_name for command in walk_commands(cog.get_commands()))
 

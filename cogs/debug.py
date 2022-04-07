@@ -70,9 +70,9 @@ class DebugCog(discordutils.CogBase):
             new[int(k)] = v
         await bank_cog.balances.set(new)
 
-        l = await self.bot.get_cog('FinanceCog').loans.get()
+        loans = await self.bot.get_cog('FinanceCog').loans.get()
         new = {}
-        for k, v in l.items():
+        for k, v in loans.items():
             new[int(k)] = v
         await self.bot.get_cog('FinanceCog').loans.set(new)
 
