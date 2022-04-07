@@ -54,7 +54,7 @@ class OptionsCog(discordutils.CogBase):
                                              choices=('attack', 'defend', 'updates'))
                        ) -> None:
         """Sets the attack, defend and lose channels"""
-        war_detector_cog = self.bot.get_cog('WarDetectorCog')
+        war_detector_cog = self.bot.get_cog('DetectorCog')
         if kind == 'attack':
             channel = war_detector_cog.att_channel
             kind_text = 'Offensive'
