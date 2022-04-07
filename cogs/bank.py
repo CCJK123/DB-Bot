@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import asyncio
 from datetime import datetime
 from typing import Any
@@ -28,8 +26,8 @@ class BankCog(discordutils.CogBase):
     def loans(self) -> discordutils.MappingProperty[int, dict[str, Any]]:
         return self.bot.get_cog('FinanceCog').loans  # type: ignore
 
-    async def get_transactions(self, entity_id: str | int | None = None, kind: pnwutils.TransactionType | None = None
-                               ) -> list[pnwutils.Transaction]:
+    async def get_transactions(self, entity_id: 'str | int | None' = None,
+                               kind: 'pnwutils.TransactionType | None' = None) -> list[pnwutils.Transaction]:
         if entity_id is None and kind is not None:
             raise ValueError('Please provide entity id!')
 
