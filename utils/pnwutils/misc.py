@@ -28,7 +28,6 @@ def war_description(w: dict[str, Any]) -> str:
     for k in WarType.ATT, WarType.DEF:
         n = w[k.string]
         a = n['alliance']
-        aa_text = 'None' if a is None else f'[{a["name"]}]({link.alliance(a["id"])})'
         resist = w[f"{k.string_short}_resistance"]
         t, o = divmod(resist, 10)
         if not t:
@@ -40,9 +39,9 @@ def war_description(w: dict[str, Any]) -> str:
         else:
             central = '🟧'
         bar = t * '🟩' + central + (9 - t) * '⬛'
-        s += (f'{k.string.capitalize()}: [{n["nation_name"]}]'
-              f'({link.nation(n["id"])})\n'
-              f'{aa_text}\n\n'
+        s += (f'{k.string.capitalize()}: [{n["nation_name"]}]({link.nation(n["id"])}) ({n["num_cities"]} 🏙)\n' +
+              ('None\n' if a is None else f'[{a["name"]}]({link.alliance(a["id"])})\n') +
+              f'War Policy: {n["warpolicy"]}\n\n'
               f'{bar} {resist} Resistance\n\n'
               f'{mil_text(n, w[f"{k.string_short}points"])}\n\n')
     return s

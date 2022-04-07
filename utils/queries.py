@@ -259,6 +259,7 @@ nation_war_data_fragment = '''
 fragment nation_data on Nation {
     id
     nation_name
+    warpolicy
     score
     num_cities
     warpolicy

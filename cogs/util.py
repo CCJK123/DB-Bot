@@ -264,9 +264,7 @@ class UtilCog(discordutils.CogBase):
                 s += f'{defensive} Defensive Wars\n'
             if block:
                 s += 'Currently under a naval blockade!'
-        else:
-            s = 'None'
-        embed.add_field(name='Current Wars', value=s)
+            embed.add_field(name='Current Wars', value=s)
         await ctx.respond(embed=embed, view=discordutils.LinkView('Nation Link', pnwutils.link.nation(nation_id)))
 
     @commands.message_command(guild_ids=config.guild_ids)
