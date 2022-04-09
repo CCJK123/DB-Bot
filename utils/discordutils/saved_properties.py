@@ -29,6 +29,7 @@ class CogBase(discord.Cog):
 class LoopedCogBase(CogBase):
     def __init__(self, bot: "dbbot.DBBot", name: str):
         super().__init__(bot, name)
+        self.task = None
         self.running = CogProperty[bool](self, 'running')
 
     async def on_ready(self):
