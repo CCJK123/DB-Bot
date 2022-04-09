@@ -6,13 +6,14 @@ import pickle
 from typing import Callable, Generic, ParamSpec, TypeVar, TYPE_CHECKING
 
 import discord
+from discord.ext import tasks
 
 from .views import PersistentView
 
 if TYPE_CHECKING:
     from .. import dbbot
 
-__all__ = ('CogBase', 'BotProperty', 'ViewStorage', 'CogProperty', 'WrappedProperty',
+__all__ = ('CogBase', 'LoopedCogBase', 'BotProperty', 'ViewStorage', 'CogProperty', 'WrappedProperty',
            'ChannelProperty', 'MappingProperty', 'SetProperty')
 
 
@@ -23,6 +24,19 @@ class CogBase(discord.Cog):
     
     async def on_ready(self):
         pass
+
+
+class LoopedCogBase(CogBase):
+    def __init__(self, bot: "dbbot.DBBot", name: str):
+        super().__init__(bot, name)
+        self.running = CogProperty[bool](self, 'running')
+
+    async def on_ready(self):
+        if await self.running.get(None) is None:
+            await self.running.set(False)
+
+        if await self.running.get() and not self.task.is_running():
+            self.task.start()
 
 
 T = TypeVar('T')

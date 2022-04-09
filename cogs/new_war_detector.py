@@ -10,14 +10,12 @@ from utils import discordutils, pnwutils, config, dbbot
 from utils.queries import alliance_wars_query
 
 
-class DetectorCog(discordutils.CogBase):
+class NewWarDetectorCog(discordutils.LoopedCogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
         self.last_monitoring: list[tuple[dict[str, Any], pnwutils.WarType]] | None = None
-        self.running = discordutils.CogProperty[bool](self, 'running')
 
         self.updates_channel = discordutils.ChannelProperty(self, 'update_channel')
-
         self.att_channel = discordutils.ChannelProperty(self, 'att_channel')
         self.def_channel = discordutils.ChannelProperty(self, 'def_channel')
         self.channels = {pnwutils.WarType.ATT: self.att_channel, pnwutils.WarType.DEF: self.def_channel}
@@ -25,13 +23,6 @@ class DetectorCog(discordutils.CogBase):
         self.monitor_att = discordutils.SetProperty(self, 'monitor_att')
         self.monitor_def = discordutils.SetProperty(self, 'monitor_def')
         self.monitor = {pnwutils.WarType.ATT: self.monitor_att, pnwutils.WarType.DEF: self.monitor_def}
-
-    async def on_ready(self):
-        if await self.running.get(None) is None:
-            await self.running.set(False)
-
-        if await self.running.get() and not self.detect_wars.is_running():
-            self.detect_wars.start()
 
     @staticmethod
     async def new_war_embed(data: dict[str, Any], kind: pnwutils.WarType) -> discord.Embed:
@@ -60,7 +51,7 @@ class DetectorCog(discordutils.CogBase):
         return embed
 
     @tasks.loop(minutes=2)
-    async def detect_wars(self) -> None:
+    async def task(self) -> None:
         data = await alliance_wars_query.query(self.bot.session, alliance_id=config.alliance_id)
         data = data['data']
         await self.monitor_att.initialise()
@@ -130,15 +121,15 @@ class DetectorCog(discordutils.CogBase):
                 return
 
         running_state = await self.running.get()
-        if self.detect_wars.is_running():
-            self.detect_wars.stop()
+        if self.task.is_running():
+            self.task.stop()
             if running_state:
                 await ctx.respond('War Detector stopping!')
                 await self.running.set(False)
             else:
                 await ctx.respond('War Detector is in the process of stopping!')
             return
-        self.detect_wars.start()
+        self.task.start()
         if running_state:
             # not sure if valueerror is appropriate here
             raise ValueError('state is running but detector is not running!')
@@ -169,4 +160,4 @@ class DetectorCog(discordutils.CogBase):
 
 # Setup War Detector Cog as an extension
 def setup(bot: dbbot.DBBot) -> None:
-    bot.add_cog(DetectorCog(bot))
+    bot.add_cog(NewWarDetectorCog(bot))

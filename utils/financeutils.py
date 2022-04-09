@@ -41,7 +41,8 @@ class RequestData:
         return embed
 
     def create_link(self) -> str:
-        return pnwutils.link.bank("w", self.resources, self.nation_name, self.note if self.note else self.reason)
+        return pnwutils.link.bank("w", self.resources, self.nation_name,
+                                  self.note if self.note else self.reason if self.kind != 'War Aid' else 'War Aid')
 
     def create_withdrawal_embed(self, **kwargs) -> discord.Embed:
         return withdrawal_embed(self.nation_name, self.nation_id, self.reason, self.resources, **kwargs)

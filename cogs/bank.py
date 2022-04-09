@@ -261,7 +261,7 @@ class BankCog(discordutils.CogBase):
 
     @commands.user_command(name='bank transfer', guild_ids=config.guild_ids)
     async def transfer(self, ctx: discord.ApplicationContext, member: discord.Member):
-        """Transfer some of your balance to this person"""
+        """Transfer some of your balance to someone else"""
         if member == ctx.author:
             await ctx.respond('You cannot transfer resources to yourself!')
             return
