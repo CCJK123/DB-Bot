@@ -71,5 +71,5 @@ def mil_text(nation: MilDict, action_points: int | None = None) -> str:
 def time_after_turns(turns):
     now = datetime.datetime.now()
     return discord.utils.format_dt(
-        now + datetime.timedelta(hours=turns * 2 - now.hour % 2, minutes=-now.minute, seconds=-now.second)
+        now.replace(minute=0, second=0, microsecond=0) + datetime.timedelta(hours=turns * 2 - now.hour % 2)
     )
