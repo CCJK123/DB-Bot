@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import os
 import random
@@ -81,10 +83,10 @@ class DBBot(discord.Bot):
 
         print('Ready!')
 
-    async def on_application_command_error(self, ctx: discord.ApplicationContext, exception):
+    async def on_application_command_error(self, ctx: discord.ApplicationContext, exception: discord.DiscordException):
         command = ctx.command
         if command and command.has_error_handler():
-            print(f'Ignoring {exception}, already has handler')
+            print(f'Ignoring {exception!r}, already has handler')
             return
 
         ignored = (
@@ -95,6 +97,10 @@ class DBBot(discord.Bot):
         if not isinstance(exception, ignored):
             await super().on_application_command_error(ctx, exception)
 
+            await self.default_on_error(ctx, exception)
+
+    @staticmethod
+    async def default_on_error(ctx: discord.ApplicationContext, exception: Exception):
         exs = traceback.format_exception(exception)  # type: ignore
         await ctx.respond(f'Sorry, an exception occurred.')
         s = ''

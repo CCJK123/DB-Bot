@@ -329,16 +329,33 @@ class FinanceCog(discordutils.CogBase):
                 return
 
             elif war_aid_type == 'Rebuild Infrastructure':
-                irc = await self.infra_rebuild_cap.get()
-                await author.send(
-                    f'The current infrastructure rebuild cap is set at {irc}. '
-                    f'This means that money will only be provided to rebuild infrastructure below {irc} up to that '
-                    'amount. The amount calculated assumes that domestic policy is set to Urbanisation.'
-                )
+                await author.send('To what infra level would you request aid to rebuild to? Do note that '
+                                  'the money given would assume your domestic policy is Urbanisation.')
+                while True:
+                    try:
+                        # Wait for user to input loan request
+                        infra_level = (await self.bot.wait_for(
+                            'message',
+                            check=msg_chk,
+                            timeout=config.timeout)).content
+                    except asyncio.TimeoutError:
+                        await author.send('You took too long to reply. Aborting request!'
+                                        )
+                        return
+                    try:
+                        infra_level = int(infra_level)
+                    except ValueError:
+                        await author.send('That is not a number! Please try again.')
+                        continue
+                    if infra_level % 100:
+                        await author.send('That is not a multiple of 100! Please try again.')
+                        continue
+                    break
+
                 # Calculate infra cost for each city
                 for city in data['cities']:
-                    if city['infrastructure'] < irc:
-                        req_data.resources.money += pnwutils.formulas.infra_price(city['infrastructure'], irc)
+                    if city['infrastructure'] < infra_level:
+                        req_data.resources.money += pnwutils.formulas.infra_price(city['infrastructure'], infra_level)
                 # Account for Urbanisation and cost reducing projects (CCE and AEC)
                 req_data.resources.money *= 0.95 - 0.05 * (data['cfce'] +
                                                            data['adv_engineering_corps'])
@@ -346,13 +363,12 @@ class FinanceCog(discordutils.CogBase):
                 # Check if infrastructure in any city under cap
                 if req_data.resources.money == 0:
                     await author.send(
-                        'Since all your cities have an infrastructure level above '
-                        f'the current infrastructure rebuild cap ({irc}), you are '
-                        'not eligible for war aid to rebuild infrastructure.'
+                        'Since all your cities have an infrastructure level above the selected '
+                        f'infra rebuild level ({infra_level}), the request is cancelled.'
                     )
                     return
 
-                req_data.reason = f'Rebuild Infrastructure up to {irc}'
+                req_data.reason = f'Rebuild Infrastructure up to {infra_level}'
                 req_data.note = f'War Aid to {req_data.reason}'
                 await self.on_request_fixed(req_data)
                 return
@@ -458,7 +474,7 @@ class FinanceCog(discordutils.CogBase):
     async def request_error(self, ctx: discord.ApplicationContext,
                             error: discord.ApplicationCommandError) -> None:
         if isinstance(error, cmds.MaxConcurrencyReached):
-            await ctx.respond('You are already making a request!')
+            await ctx.respond('You are already making a request!', ephemeral=True)
             return
         await discordutils.default_error_handler(ctx, error)
 
