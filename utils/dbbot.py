@@ -4,6 +4,7 @@ import asyncio
 import os
 import random
 import traceback
+from typing import Callable
 
 import aiohttp
 import discord
@@ -16,7 +17,7 @@ from utils import discordutils, databases
 # cause in the library they have not written it, it just raises NotImplemented
 # noinspection PyAbstractClass
 class DBBot(discord.Bot):
-    def __init__(self, db_url: str):
+    def __init__(self, db_url: str, on_ready_func: Callable[[], None] | None = None):
         intents = discord.Intents(guilds=True, messages=True, members=True)
         super().__init__(intents=intents)
 
@@ -24,6 +25,7 @@ class DBBot(discord.Bot):
         self.database = databases.RudimentaryDatabase(db_url)
         self.views = discordutils.ViewStorage[discordutils.PersistentView](self, 'views')
         self.prepped = False
+        self.on_ready_func = on_ready_func
 
     def load_cogs(self, directory: str) -> None:
         """
@@ -81,6 +83,8 @@ class DBBot(discord.Bot):
             await self.add_view(view)
             print(f'Adding a {type(view)} from storage!')
 
+        if self.on_ready_func is not None:
+            self.on_ready_func()
         print('Ready!')
 
     async def on_application_command_error(self, ctx: discord.ApplicationContext, exception: discord.DiscordException):
