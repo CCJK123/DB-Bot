@@ -14,7 +14,7 @@ from . import discordutils, pnwutils, config
 __all__ = ('RequestData', 'LoanData', 'RequestStatus', 'RequestChoices', 'ResourceSelectView', 'WithdrawalView')
 
 
-@dataclass(slots=True)
+@dataclass()
 class RequestData:
     requester: discord.abc.User | None = None
     nation_id: str = ''

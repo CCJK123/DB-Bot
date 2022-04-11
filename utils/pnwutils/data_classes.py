@@ -149,7 +149,7 @@ class TransactionType(enum.Enum):
     a_rec = 3
 
 
-@dataclass(slots=True)
+@dataclass()
 class Transaction:
     resources: Resources
     time: datetime.datetime
