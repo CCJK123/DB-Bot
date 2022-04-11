@@ -2,7 +2,7 @@ import os
 
 from discord.commands import CommandPermission
 
-token: str = os.environ['bot_token']
+token: str = os.environ['MYSQLCONNSTR_BOT_TOKEN']
 timeout: float = 300
 
 resource_emojis = {
@@ -31,7 +31,7 @@ gov_role_permission = CommandPermission(gov_role_id, type=1, permission=True, gu
 bank_gov_role_permission = CommandPermission(bank_gov_role_id, type=1, permission=True, guild_id=guild_id)
 on_accepted_added_roles: tuple[int, ...] = (member_role_id, 540341927191642131, 362266182663012393)
 
-api_key: str = os.environ['api_key']
+api_key: str = os.environ['MYSQLCONNSTR_API_KEY']
 alliance_id: str = '4221'
 alliance_name: str = 'Dark Brotherhood'
 
