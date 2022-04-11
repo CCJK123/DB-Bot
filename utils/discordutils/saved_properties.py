@@ -3,7 +3,7 @@ from __future__ import annotations
 import abc
 import operator
 import pickle
-from typing import Callable, Generic, ParamSpec, TypeVar, TYPE_CHECKING
+from typing import Callable, Generic, TypeVar, TYPE_CHECKING
 
 import discord
 from discord.ext import tasks
@@ -44,7 +44,6 @@ T = TypeVar('T')
 T0 = TypeVar('T0')
 T1 = TypeVar('T1')
 DT = TypeVar('DT')
-P = ParamSpec('P')
 
 _sentinel = object()
 
