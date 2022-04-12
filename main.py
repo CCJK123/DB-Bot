@@ -27,7 +27,7 @@ if __name__ == '__main__':
         server = Thread(target=run)
         server.start()
 
-    bot = dbbot.DBBot('data.db')
+    bot = dbbot.DBBot('data.db', keep_alive)
 
     # Load cogs
     bot.load_cogs('cogs')
