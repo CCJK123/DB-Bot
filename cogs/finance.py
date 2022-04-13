@@ -108,7 +108,7 @@ class FinanceCog(discordutils.CogBase):
                                   'Advanced Urban Planning' * has_aup) or 'None'
                 req_data.reason = f'City {data["num_cities"] + 1}'
                 req_data.note = f'{req_data.reason} Grant'
-                req_data.additional_info = {'Projects': project_string}
+                req_data.additional_info = {'Projects': project_string, 'Domestic Policy': data['domestic_policy']}
                 await self.on_request_fixed(req_data)
                 return None
 
