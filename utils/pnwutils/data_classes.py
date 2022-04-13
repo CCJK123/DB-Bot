@@ -43,6 +43,10 @@ class Resources:
     steel: int = 0
     aluminum: int = 0
 
+    @classmethod
+    def from_dict(cls, d):
+        return cls(**{k: d[k] for k in d.keys() if k in constants.all_res})
+
     # Output all resources with values associated
     def to_dict(self) -> ResourceDict:
         """
@@ -158,16 +162,16 @@ class Transaction:
 
     @classmethod
     def from_api_dict(cls, data: dict) -> 'Transaction':
-        res = Resources(**{k: data[k] for k in data.keys() if k in constants.all_res})
+        res = Resources.from_dict(data)
         t = datetime.datetime.fromisoformat(data['date'])
 
-        if data['stype'] == 2 and data['sid'] == config.alliance_id:
+        if data['sender_type'] == 2 and data['sender_id'] == config.alliance_id:
             # sender is our alliance
-            kind = TransactionType.rec if data['rtype'] == 1 else TransactionType.a_rec
-            entity_id = int(data['rid'])
+            kind = TransactionType.rec if data['recipient_type'] == 1 else TransactionType.a_rec
+            entity_id = int(data['recipient_id'])
         else:
             # receiver is our alliance
-            kind = TransactionType.dep if data['stype'] == 1 else TransactionType.a_dep
-            entity_id = int(data['sid'])
+            kind = TransactionType.dep if data['sender_type'] == 1 else TransactionType.a_dep
+            entity_id = int(data['sender_id'])
 
         return cls(res, t, kind, entity_id)

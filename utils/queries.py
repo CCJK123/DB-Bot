@@ -56,34 +56,39 @@ query finance_nation_info($nation_id: [Int]) {
 finance_nation_info_query = APIQuery(finance_nation_info_query_text, nation_id=int)
 
 # bank.py
+resources_fragment = '''
+fragment resources on Bankrec {
+    money
+    coal
+    oil
+    uranium
+    iron
+    bauxite
+    lead
+    gasoline
+    munitions
+    steel
+    aluminum
+    food
+}
+'''
 
 bank_transactions_query_text = '''
 query bank_transactions($alliance_id: [Int]) {
     alliances(id: $alliance_id, first: 1) {
         data {
             bankrecs {
-                sid
-                stype
-                rid
-                rtype
+                sender_id
+                sender_type
+                recipient_id
+                recipient_type
                 date
-                money
-                coal
-                oil
-                uranium
-                iron
-                bauxite
-                lead
-                gasoline
-                munitions
-                steel
-                aluminum
-                food
+                ...resources
             }
         }
     }
 }
-'''
+''' + resources_fragment
 bank_transactions_query = APIQuery(bank_transactions_query_text, alliance_id=int)
 
 # some notes on the format of this data
@@ -99,6 +104,22 @@ bank_transactions_query = APIQuery(bank_transactions_query_text, alliance_id=int
 # note that if stype is 1 then rtype is 2 and if rtype is 1 then stype is 2
 # but converse is not true due to the existence of inter-alliance transactions
 # if stype/rtype is 2 then sid/rid is definitely the alliance id unless both stype/rtype is 2
+
+bank_revenue_query_text = '''
+query bank_revenue_query($alliance_id: [Int]) {
+    alliances(id: $alliance_id) {
+        data {
+            taxrecs(orderBy: {column: DATE, order: DESC}) {
+                sender_id
+                recipient_id
+                date
+                ...resources
+            }
+        }
+    }
+}
+'''
+bank_revenue_query = APIQuery(bank_revenue_query_text, alliance_id=int)
 
 nation_name_query_text = '''
 query nation_name($nation_id: [Int]) {
