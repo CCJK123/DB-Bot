@@ -25,6 +25,7 @@ query finance_nation_info($nation_id: [Int]) {
 
             # Project Grants & War Aid
             cfce
+            adv_engineering_corps
 
             # War Aid
             soldiers
@@ -46,7 +47,8 @@ query finance_nation_info($nation_id: [Int]) {
                 name
                 infrastructure
             }
-            adv_engineering_corps
+            
+            domestic_policy
         }
     }
 }

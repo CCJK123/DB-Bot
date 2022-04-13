@@ -87,8 +87,8 @@ class LoanData:
             self.resources = pnwutils.Resources(**resources)
 
     @property
-    def display_date(self):
-        return self.due_date.strftime('%d %b, %Y')
+    def display_date(self) -> str:
+        return discord.utils.format_dt(self.due_date, 'f')
 
     def to_dict(self) -> dict[str, str]:
         return {'due_date': self.due_date.isoformat(), 'resources': self.resources.to_dict()}
