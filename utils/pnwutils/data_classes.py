@@ -45,6 +45,7 @@ class Resources:
 
     @classmethod
     def from_dict(cls, d):
+        """Makes an instance of this class from a dictionary, ignoring other keys"""
         return cls(**{k: d[k] for k in d.keys() if k in constants.all_res})
 
     # Output all resources with values associated
@@ -62,7 +63,7 @@ class Resources:
     def create_embed(self, **kwargs: str) -> discord.Embed:
         embed = discord.Embed(**kwargs)
         for name, amt in self:
-            embed.add_field(name=name.title(), value=f'{config.resource_emojis[name]} {amt:,}')
+            embed.add_field(name=name.title(), value=f'{config.resource_emojis[name]} {amt:,.2f}')
         if self or kwargs:
             return embed
         raise ValueError('The embed is empty and cannot be sent!')

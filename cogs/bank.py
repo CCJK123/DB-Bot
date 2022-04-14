@@ -439,10 +439,10 @@ class BankCog(discordutils.CogBase):
         await ctx.defer()
         data = await bank_revenue_query.query(self.bot.session, alliance_id=config.alliance_id)
         tax_records = data['data'][0]['taxrecs']
-        first_date = tax_records[0]['date']
+        first_date = datetime.fromisoformat(tax_records[0]['date']).replace(minute=0, second=0, microsecond=0)
         total = pnwutils.Resources()
         for tax_rec in tax_records:
-            if tax_rec['date'] != first_date:
+            if datetime.fromisoformat(tax_rec['date']) < first_date:
                 break
             total += pnwutils.Resources.from_dict(tax_rec)
         await ctx.respond(embed=total.create_embed(title='Tax Revenue from Last Turn'))

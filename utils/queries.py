@@ -110,15 +110,13 @@ query bank_revenue_query($alliance_id: [Int]) {
     alliances(id: $alliance_id) {
         data {
             taxrecs(orderBy: {column: DATE, order: DESC}) {
-                sender_id
-                recipient_id
                 date
                 ...resources
             }
         }
     }
 }
-'''
+''' + resources_fragment
 bank_revenue_query = APIQuery(bank_revenue_query_text, alliance_id=int)
 
 nation_name_query_text = '''

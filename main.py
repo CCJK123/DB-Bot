@@ -38,3 +38,4 @@ if __name__ == '__main__':
         # When bot stops
         print('cleaning up')
         asyncio.run(bot.cleanup())
+        print('cleanup complete!')
