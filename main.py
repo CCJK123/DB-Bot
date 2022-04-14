@@ -20,6 +20,7 @@ if __name__ == '__main__':
 
     def keep_alive():
         server = Thread(target=app.run)
+        print('Starting app thread...')
         server.start()
 
     bot = dbbot.DBBot('data.db', keep_alive)
@@ -30,6 +31,7 @@ if __name__ == '__main__':
     # bot.help_command.cog = bot.get_cog('UtilCog')
     # the new bot does not seem to have a help command, the help command has not been ported over to slash yet I believe
 
+    print('running bot...')
     try:
         bot.run(config.token)
     finally:
