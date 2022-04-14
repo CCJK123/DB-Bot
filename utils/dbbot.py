@@ -4,7 +4,7 @@ import asyncio
 import os
 import random
 import traceback
-from typing import Callable
+from typing import Callable, Sequence
 
 import aiohttp
 import discord
@@ -17,7 +17,8 @@ from utils import discordutils, databases
 # cause in the library they have not written it, it just raises NotImplemented
 # noinspection PyAbstractClass
 class DBBot(discord.Bot):
-    def __init__(self, db_url: str, on_ready_func: Callable[[], None] | None = None):
+    def __init__(self, db_url: str, on_ready_func: Callable[[], None] | None = None,
+                 status: Sequence[discord.Activity] | None = None):
         intents = discord.Intents(guilds=True, messages=True, members=True)
         super().__init__(intents=intents)
 
@@ -26,6 +27,11 @@ class DBBot(discord.Bot):
         self.views = discordutils.ViewStorage[discordutils.PersistentView](self, 'views')
         self.prepped = False
         self.on_ready_func = on_ready_func
+        self.status = status if status is not None else (
+            *map(discord.Game, ("with Python", "with the P&W API")),
+            discord.Activity(type=discord.ActivityType.listening, name="Spotify"),
+            discord.Activity(type=discord.ActivityType.watching, name="YouTube")
+        )
 
     def load_cogs(self, directory: str) -> None:
         """
@@ -52,13 +58,6 @@ class DBBot(discord.Bot):
         await self.session.__aexit__(None, None, None)
         await self.database.__aexit__(None, None, None)
         await asyncio.sleep(.25)
-
-    # Change bot status (background task for 24/7 functionality)
-    status = (
-        *map(discord.Game, ("with Python", "with repl.it", "with the P&W API")),
-        discord.Activity(type=discord.ActivityType.listening, name="Spotify"),
-        discord.Activity(type=discord.ActivityType.watching, name="YouTube")
-    )
 
     @tasks.loop(seconds=20)
     async def change_status(self):
