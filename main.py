@@ -23,7 +23,8 @@ if __name__ == '__main__':
         print('Starting app thread...')
         server.start()
 
-    bot = dbbot.DBBot('data.db', keep_alive)
+    # bot = dbbot.DBBot('data.db', keep_alive)
+    bot = dbbot.DBBot('data.db')
 
     # Load cogs
     bot.load_cogs('cogs')
@@ -31,11 +32,16 @@ if __name__ == '__main__':
     # bot.help_command.cog = bot.get_cog('UtilCog')
     # the new bot does not seem to have a help command, the help command has not been ported over to slash yet I believe
 
-    print('running bot...')
-    try:
-        bot.run(config.token)
-    finally:
-        # When bot stops
-        print('cleaning up')
-        asyncio.run(bot.cleanup())
-        print('cleanup complete!')
+    def run_bot():
+        print('running bot...')
+        try:
+            bot.run(config.token)
+        finally:
+            # When bot stops
+            print('cleaning up')
+            asyncio.run(bot.cleanup())
+            print('cleanup complete!')
+
+    thread = Thread(target=run_bot)
+    thread.start()
+    app.run()
