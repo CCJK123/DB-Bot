@@ -190,7 +190,7 @@ class BankCog(discordutils.CogBase):
                 break
             req_resources[res] = amt
 
-        await author.send('Is there a reason for this withdrawal?')
+        await author.send('What is the reason for this withdrawal?')
         try:
             reason = (await self.bot.wait_for('message', check=msg_chk, timeout=config.timeout)
                       ).content
@@ -247,8 +247,11 @@ class BankCog(discordutils.CogBase):
             await bal.set(res.to_dict())
             await self.loans[ctx.author.id].delete()
             await ctx.respond('Your loan has been successfully repaid!', ephemeral=True)
+            await ctx.respond('Your balance is now:', embed=res.create_balance_embed(ctx.author.mention))
+
             return
-        await ctx.respond('You do not have enough resources to repay your loan.', ephemeral=True)
+        await ctx.respond('You do not have enough resources to repay your loan.', ephemeral=True,
+                          embed=loan.resources.create_embed(title=f"{ctx.author.mention}'s Loan"))
 
     @loan.command(guild_ids=config.guild_ids)
     async def status(self, ctx: discord.ApplicationContext):
@@ -445,10 +448,9 @@ class BankCog(discordutils.CogBase):
             if datetime.fromisoformat(tax_rec['date']) < first_date:
                 break
             total += pnwutils.Resources.from_dict(tax_rec)
-        await ctx.respond(embed=total.create_embed(title='Tax Revenue from Last Turn'))
+        await ctx.respond(embed=total.create_embed(title='Tax Revenue from Last Turn'), ephemeral=True)
 
     @_bank.command(guild_ids=config.guild_ids, default_permission=False)
-    @commands.permissions.has_role(config.bank_gov_role_id, guild_id=config.guild_id)
     async def edit(self, ctx: discord.ApplicationContext, member: discord.Member):
         """Manually edit the resource values of someone's balance"""
         await ctx.respond('Please check your DMs!', ephemeral=True)

@@ -8,8 +8,7 @@ from discord import commands
 from discord.ext import commands as cmds
 
 from cogs.bank import BankCog
-from utils import discordutils, pnwutils, config, dbbot
-from utils.financeutils import RequestData, LoanData, RequestStatus, RequestChoices, ResourceSelectView, WithdrawalView
+from utils import discordutils, financeutils, pnwutils, config, dbbot
 from utils.queries import finance_nation_info_query
 
 logger = logging.getLogger(__name__)
@@ -61,7 +60,7 @@ class FinanceCog(discordutils.CogBase):
         if data:
             # Data contains a nation, hence nation with given id exists
             data = data.pop()
-            req_data = RequestData(author, nation_id, data['nation_name'])
+            req_data = financeutils.RequestData(author, nation_id, data['nation_name'])
         else:
             # Data has no nation, hence no nation with given id exists
             await author.send(
@@ -213,7 +212,7 @@ class FinanceCog(discordutils.CogBase):
                                   )
                 return None
 
-            res_select_view = ResourceSelectView()
+            res_select_view = financeutils.ResourceSelectView()
             await author.send('What resources are you requesting?', view=res_select_view)
             try:
                 selected_res = await res_select_view.result()
@@ -290,7 +289,7 @@ class FinanceCog(discordutils.CogBase):
                 # Calculate resources needed to buy needed military units
                 req_data.resources = pnwutils.Resources(
                     money=5 * needed_units['soldiers'] + 60 * needed_units['tanks'] + 4000 * needed_units['aircraft']
-                    + 50000 * needed_units['ships'],
+                          + 50000 * needed_units['ships'],
                     steel=int(0.5 * (needed_units['tanks']) + 1) + 30 * needed_units['ships'],
                     aluminum=5 * needed_units['aircraft']
                 )
@@ -319,7 +318,7 @@ class FinanceCog(discordutils.CogBase):
                 # Calculate resources needed to buy needed military improvements
                 req_data.resources = pnwutils.Resources(
                     money=3000 * needed_improvements['barracks'] + 15000 * needed_improvements['factory'] +
-                    100000 * needed_improvements['airforcebase'] + 250000 * needed_improvements['drydock'],
+                          100000 * needed_improvements['airforcebase'] + 250000 * needed_improvements['drydock'],
                     steel=10 * needed_improvements['airforcebase'],
                     aluminum=5 * needed_improvements['factory'] + 20 * needed_improvements['drydock'])
 
@@ -339,8 +338,7 @@ class FinanceCog(discordutils.CogBase):
                             check=msg_chk,
                             timeout=config.timeout)).content
                     except asyncio.TimeoutError:
-                        await author.send('You took too long to reply. Aborting request!'
-                                        )
+                        await author.send('You took too long to reply. Aborting request!')
                         return
                     try:
                         infra_level = int(infra_level)
@@ -385,7 +383,7 @@ class FinanceCog(discordutils.CogBase):
                     await author.send('You took too long to reply. Aborting request!')
                     return
 
-                res_select_view = ResourceSelectView()
+                res_select_view = financeutils.ResourceSelectView()
                 await author.send('What resources are you requesting?', view=res_select_view)
                 try:
                     selected_res = await res_select_view.result()
@@ -424,7 +422,7 @@ class FinanceCog(discordutils.CogBase):
                     )
                     return
 
-    async def on_request_fixed(self, req_data: RequestData) -> None:
+    async def on_request_fixed(self, req_data: financeutils.RequestData) -> None:
         auth = req_data.requester
         assert auth is not None
         agree_terms = discordutils.Choices('Yes', 'No')
@@ -455,18 +453,16 @@ class FinanceCog(discordutils.CogBase):
                 'Your request has been sent. Thank you for using the DB Finance Request Interface.'
             )
             embed.title = None
-            process_view = RequestChoices('on_processed', req_data)
+            process_view = RequestButtonsView(req_data)
 
             msg = await (await self.process_channel.get()).send(
-                f'New Request from {auth.mention}',
+                f'New {req_data.kind} Request from {auth.mention}',
                 embed=embed,
                 allowed_mentions=discord.AllowedMentions.none(),
                 view=process_view
             )
             await self.bot.add_view(process_view, message_id=msg.id)
-
             return
-
         await auth.send(
             'Exiting the DB Finance Request Interface. Please run the command again and redo your request.'
         )
@@ -480,87 +476,119 @@ class FinanceCog(discordutils.CogBase):
         await discordutils.default_error_handler(ctx, error)
 
 
+class RequestButtonsView(discordutils.PersistentView):
+    def __init__(self, data: financeutils.RequestData, *, custom_id: int = None):
+        self.data = data
+
+        super().__init__(custom_id=self.get_id() if custom_id is None else custom_id, timeout=None)
+
+    def get_state(self) -> tuple:
+        return {}, self.data
+
+    def disable_all(self):
+        for c in self.children:
+            c.disabled = True
+
+    @discordutils.persistent_button(label='Accept')
+    async def accept(self, button: discord.ui.Button, interaction: discord.Interaction):
+        button.style = discord.ButtonStyle.success
+        self.disable_all()
+        self.stop()
+        await self.remove()
+        cog = self.bot.get_cog('FinanceCog')
+        assert isinstance(cog, FinanceCog)
+        logger.info(f'accepting {self.data.kind} request: {self.data}')
+        self.data.set_requester(self.bot)
+        if self.data.kind == 'Loan':
+            # process loan
+            data = financeutils.LoanData(datetime.datetime.now() + datetime.timedelta(days=30), self.data.resources)
+            await self.data.requester.send(
+                'Your loan has been added to your bank balance.',
+                embed=self.data.resources.create_embed(title='Loaned Resources'))
+            await self.data.requester.send(
+                'You will have to use `bank withdraw` to withdraw the loan from your bank balance to your nation. '
+                'Kindly remember to return the requested resources by depositing it back into your bank balance '
+                f'and using `bank loan return` by {discord.utils.format_dt(data.due_date, "R")} '
+                'You can check your loan status with `bank loan status`.')
+
+            # change balance
+            bank_cog = self.bot.get_cog('BankCog')
+            assert isinstance(bank_cog, BankCog)
+            bal = bank_cog.balances[self.data.requester_id]
+            if (res_dict := await bal.get(None)) is None:
+                res = pnwutils.Resources()
+            else:
+                res = pnwutils.Resources(**res_dict)
+            await bal.set((res + self.data.resources).to_dict())
+
+            # change embed and add to loans
+            embed = interaction.message.embeds[0]
+            embed.add_field(name='Return By', value=data.display_date, inline=True)
+            embed.colour = discord.Colour.green()
+            await interaction.response.edit_message(embed=embed)
+            await cog.loans[self.data.requester_id].set(data.to_dict())
+        else:
+            # process other
+            await self.data.requester.send(
+                f'Your {self.data.kind} request for `{self.data.reason}` '
+                'has been accepted! The resources will be sent to you soon. '
+            )
+            embed = interaction.message.embeds[0]
+            embed.colour = discord.Colour.green()
+            await interaction.response.edit_message(embed=embed)
+            channel = await cog.withdrawal_channel.get()
+            withdrawal_view = financeutils.WithdrawalView('request_on_sent', self.data.create_link(), self.data,
+                                                          can_reject=False)
+            msg = await channel.send(f'Withdrawal Request from {self.data.requester.mention}',
+                                     embed=self.data.create_withdrawal_embed(colour=discord.Colour.blue()),
+                                     view=withdrawal_view,
+                                     allowed_mentions=discord.AllowedMentions.none())
+            await self.bot.add_view(withdrawal_view, message_id=msg.id)
+        await interaction.edit_original_message(
+            view=self,
+            content=f'{self.data.kind} Request from {self.data.requester.mention}',
+            allowed_mentions=discord.AllowedMentions.none())
+
+    @discordutils.persistent_button(label='Reject')
+    async def reject(self, button: discord.ui.Button, interaction: discord.Interaction):
+        button.style = discord.ButtonStyle.success
+        self.disable_all()
+        self.stop()
+        await self.remove()
+        cog = self.bot.get_cog('FinanceCog')
+        assert isinstance(cog, FinanceCog)
+        logger.info(f'accepting {self.data.kind} request: {self.data}')
+        self.data.set_requester(self.bot)
+        reason_modal = discordutils.SingleModal(
+            f'Why reject the {self.data.reason} request?', 'Rejection Reason', discord.InputTextStyle.paragraph)
+        await interaction.response.send_modal(reason_modal)
+        reject_reason = await reason_modal.result()
+        await self.data.requester.send(
+            f'Your {self.data.kind} request for `{self.data.reason}` '
+            f'has been rejected!\nReason: `{reject_reason}`')
+        embed = interaction.message.embeds[0]
+        embed.add_field(name='Rejection Reason', value=reject_reason, inline=True)
+        embed.colour = discord.Colour.red()
+        # sent modal, must respond to close it
+        # however, we do not want anything to happen
+        # intentionally send empty message, closing the embed but doing nothing
+        try:
+            await reason_modal.interaction.response.send_message('')
+        except discord.HTTPException:
+            pass
+
+        # edit the embed and stuff of the original message
+        await interaction.edit_original_message(
+            view=self, embed=embed, allowed_mentions=discord.AllowedMentions.none(),
+            content=f'{self.data.kind} Request from {self.data.requester.mention}')
+
+
 # Setup Finance Cog as an extension
 def setup(bot: dbbot.DBBot) -> None:
     bot.add_cog(FinanceCog(bot))
 
-    @RequestChoices.register_callback('on_processed', FinanceCog.__cog_name__)
-    async def on_processed(cog_name: str, status: RequestStatus,
-                           interaction: discord.Interaction, req_data: RequestData) -> None:
-        cog: FinanceCog = bot.get_cog(cog_name)  # type: ignore
-        logger.info(f'processing {status} request: {req_data}')
-        req_data.set_requester(bot)
-        if status == RequestStatus.ACCEPTED:
-            if req_data.kind == 'Loan':
-                data = LoanData(datetime.datetime.now() + datetime.timedelta(days=30), req_data.resources)
-                await req_data.requester.send('Your loan has been added to your bank balance.',
-                                              embed=req_data.resources.create_embed(title='Loaned Resources'))
-                await req_data.requester.send(
-                    'You will have to use `bank withdraw` to withdraw the loan from your bank balance to your nation. '
-                    'Kindly remember to return the requested resources by depositing it back into your bank balance '
-                    f'and using `bank loan return` by {discord.utils.format_dt(data.due_date, "R")} '
-                    'You can check your loan status with `bank loan status`.'
-                )
-                bank_cog = bot.get_cog('BankCog')
-                assert isinstance(bank_cog, BankCog)
-                bal = bank_cog.balances[req_data.requester_id]
-                if (res_dict := await bal.get(None)) is None:
-                    res = pnwutils.Resources()
-                else:
-                    res = pnwutils.Resources(**res_dict)
-                await bal.set((res + req_data.resources).to_dict())
-
-                embed = interaction.message.embeds[0]
-                embed.add_field(name='Return By', value=data.display_date, inline=True)
-                embed.colour = discord.Colour.green()
-                await interaction.message.edit(embed=embed)
-                await cog.loans[req_data.requester_id].set(data.to_dict())
-            else:
-                await req_data.requester.send(
-                    f'Your {req_data.kind} request for `{req_data.reason}` '
-                    'has been accepted! The resources will be sent to you soon. '
-                )
-                embed = interaction.message.embeds[0]
-                embed.colour = discord.Colour.green()
-                await interaction.message.edit(embed=embed)
-                channel = await cog.withdrawal_channel.get()
-                withdrawal_view = WithdrawalView('request_on_sent', req_data.create_link(), req_data, can_reject=False)
-                msg = await channel.send(f'Withdrawal Request from {req_data.requester.mention}',
-                                         embed=req_data.create_withdrawal_embed(colour=discord.Colour.blue()),
-                                         view=withdrawal_view,
-                                         allowed_mentions=discord.AllowedMentions.none())
-                await bot.add_view(withdrawal_view, message_id=msg.id)
-
-        else:
-            await interaction.user.send(
-                f'What was the reason for rejecting the {req_data.kind} request '
-                f'for `{req_data.reason}`?'
-            )
-
-            def msg_chk(m: discord.Message) -> bool:
-                return m.author == interaction.user and m.guild is None
-
-            try:
-                reject_reason: str = (await bot.wait_for(
-                    'message', check=msg_chk,
-                    timeout=config.timeout)).content
-            except asyncio.TimeoutError():
-                await interaction.user.send('You took too long to respond! Default rejection reason set.')
-                reject_reason = 'not given'
-            await req_data.requester.send(
-                f'Your {req_data.kind} request for `{req_data.reason}`'
-                f'has been rejected!\nReason: `{reject_reason}`')
-            embed = interaction.message.embeds[0]
-            embed.add_field(name='Rejection Reason', value=reject_reason, inline=True)
-            embed.colour = discord.Colour.red()
-            await interaction.message.edit(embed=embed)
-
-        await interaction.message.edit(
-            content=f'{status.value} Request from {req_data.requester.mention}',
-            allowed_mentions=discord.AllowedMentions.none())
-
-    @WithdrawalView.register_callback('request_on_sent')
-    async def on_sent(label: str, _: discord.Interaction, req_data: RequestData):
+    @financeutils.WithdrawalView.register_callback('request_on_sent')
+    async def on_sent(label: str, _: discord.Interaction, req_data: financeutils.RequestData):
         assert label == 'Sent'
         await req_data.set_requester(bot).send(
             f'Your {req_data.kind} request for `{req_data.reason}` has been sent to your nation!'

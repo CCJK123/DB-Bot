@@ -18,7 +18,7 @@ from utils import discordutils, databases
 # noinspection PyAbstractClass
 class DBBot(discord.Bot):
     def __init__(self, db_url: str, on_ready_func: Callable[[], None] | None = None,
-                 status: Sequence[discord.Activity] | None = None):
+                 possible_statuses: Sequence[discord.Activity] | None = None):
         intents = discord.Intents(guilds=True, messages=True, members=True)
         super().__init__(intents=intents)
 
@@ -27,11 +27,13 @@ class DBBot(discord.Bot):
         self.views = discordutils.ViewStorage[discordutils.PersistentView](self, 'views')
         self.prepped = False
         self.on_ready_func = on_ready_func
-        self.status = status if status is not None else (
+        self.possible_statuses = possible_statuses if possible_statuses is not None else (
             *map(discord.Game, ("with Python", "with the P&W API")),
             discord.Activity(type=discord.ActivityType.listening, name="Spotify"),
             discord.Activity(type=discord.ActivityType.watching, name="YouTube")
         )
+
+        discordutils.PersistentView.bot = self
 
     def load_cogs(self, directory: str) -> None:
         """
@@ -61,11 +63,10 @@ class DBBot(discord.Bot):
 
     @tasks.loop(seconds=20)
     async def change_status(self):
-        await self.change_presence(activity=random.choice(self.status))
+        await self.change_presence(activity=random.choice(self.possible_statuses))
 
     async def add_view(self, view: discordutils.PersistentView, *, message_id: int | None = None) -> None:
         super().add_view(view, message_id=message_id)
-        view.bot = self
         await self.views.add(view)
 
     async def on_ready(self):

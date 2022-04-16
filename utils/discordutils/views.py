@@ -4,11 +4,12 @@ import abc
 import asyncio
 import functools
 import pickle
-from typing import Awaitable, Callable, Mapping
+from typing import Awaitable, Callable, Mapping, TypeVar
 
 import discord
 
-__all__ = ('Choices', 'LinkButton', 'LinkView', 'MultiLinkView', 'PersistentView', 'CallbackPersistentView')
+__all__ = ('Choices', 'LinkButton', 'LinkView', 'MultiLinkView', 'PersistentView', 'CallbackPersistentView',
+           'PersistentButton', 'persistent_button', 'SingleModal')
 
 
 # Setup buttons for user to make choices
@@ -70,13 +71,19 @@ class MultiLinkView(discord.ui.View):
             self.add_item(LinkButton(label, url))
 
 
-class PersistentView(discord.ui.View, metaclass=abc.ABCMeta):
+class PersistentView(discord.ui.View, abc.ABC):
     last_id = -1
+    __persistent_children__ = None
     bot: 'dbbot.DBBot | None' = None
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, custom_id, **kwargs):
         super().__init__(*args, **kwargs)
-        self.custom_id = None
+        self.custom_id = custom_id
+
+        for func in self.__persistent_children__:
+            item = func.__persistent_class__(f'{func.__name__} {custom_id}', **func.__persistent_kwargs__)
+            item.callback = functools.partial(func, self, item)
+            self.add_item(item)
 
     @abc.abstractmethod
     def get_state(self) -> tuple:
@@ -103,11 +110,35 @@ class PersistentView(discord.ui.View, metaclass=abc.ABCMeta):
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__()
         cls.last_id = -1
+        cls.__persistent_children__ = []
+        for base in reversed(cls.__mro__):
+            for member in base.__dict__.values():
+                if hasattr(member, '__persistent_class__'):
+                    cls.__persistent_children__.append(member)
 
     @classmethod
     def get_id(cls):
         cls.last_id += 1
         return cls.last_id
+
+
+V = TypeVar('V', bound=PersistentView)
+
+
+class PersistentButton(discord.ui.Button[V], abc.ABC):
+    def __init__(self, custom_id: str, **kwargs):
+        super().__init__(custom_id=custom_id, **kwargs)
+
+
+WrappedCallback = Callable[[PersistentButton, discord.Interaction], Awaitable[None]]
+
+
+def persistent_button(**kwargs) -> Callable[[WrappedCallback], WrappedCallback]:
+    def deco(func: WrappedCallback) -> WrappedCallback:
+        func.__persistent_class__ = PersistentButton
+        func.__persistent_kwargs__ = kwargs
+        return func
+    return deco
 
 
 Callback = Callable[..., Awaitable[None]]
@@ -121,7 +152,7 @@ class CallbackPersistentView(PersistentView, metaclass=abc.ABCMeta):
         if key in self.callbacks:
             self.key = key
         else:
-            raise ValueError(f'Key {key} has not been registered!')
+            raise ValueError(f'Key "{key}" has not been registered!')
 
     @classmethod
     def register_callback(cls, key: str | None = None, cog_name: str | None = None) -> Callable[[Callback], Callback]:
@@ -144,3 +175,18 @@ class CallbackPersistentView(PersistentView, metaclass=abc.ABCMeta):
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         cls.callbacks = {}
+
+
+class SingleModal(discord.ui.Modal):
+    def __init__(self, title: str, label: str, style=discord.InputTextStyle.short):
+        super().__init__(title)
+        self._fut = asyncio.get_event_loop().create_future()
+        self.add_item(discord.ui.InputText(label=label, style=style))
+        self.interaction: discord.Interaction | None = None
+
+    def result(self) -> Awaitable[str]:
+        return self._fut
+
+    async def callback(self, interaction: discord.Interaction):
+        self._fut.set_result(self.children[0].value)
+        self.interaction = interaction
