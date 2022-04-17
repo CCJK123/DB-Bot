@@ -27,8 +27,8 @@ class UnnaturalSlotOpenDetectorCog(discordutils.LoopedCogBase):
         self.last_data = data
         self.last_time = now
 
-    def compare(self, f, l):
-
+    def compare(self, prev, next):
+        return
 
 
 def setup(bot: dbbot.DBBot) -> None:
