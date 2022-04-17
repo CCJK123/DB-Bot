@@ -3,7 +3,7 @@ from utils import discordutils, dbbot
 
 class LoggingCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
-        super().__init__(bot, __name__)
+        super().__init__(bot)
 
         self.logging_channel = discordutils.ChannelProperty(self, 'logging_channel')
 

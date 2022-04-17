@@ -7,7 +7,7 @@ from utils import discordutils, config, dbbot
 
 class DebugCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
-        super().__init__(bot, __name__)
+        super().__init__(bot)
     
     @commands.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)

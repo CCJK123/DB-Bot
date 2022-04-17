@@ -22,7 +22,7 @@ class UtilCog(discordutils.CogBase):
     nation_link_pattern = re.compile(rf'{pnwutils.constants.base_url}nation/id=(\d+)')
 
     def __init__(self, bot: dbbot.DBBot):
-        super().__init__(bot, __name__)
+        super().__init__(bot)
         self.nations: discordutils.MappingProperty[int, int] = discordutils.MappingProperty[int, int](self, 'nations')
         # discord id : nation id
 

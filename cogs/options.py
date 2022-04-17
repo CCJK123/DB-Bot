@@ -8,7 +8,7 @@ from utils import discordutils, pnwutils, config, dbbot
 
 class OptionsCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
-        super().__init__(bot, __name__)
+        super().__init__(bot)
 
     options = commands.SlashCommandGroup('options', "Edit the bot's options", guild_ids=config.guild_ids,
                                          default_permission=False, permissions=[config.gov_role_permission])

@@ -10,7 +10,7 @@ from utils.queries import find_slots_query
 
 class UnnaturalSlotOpenDetectorCog(discordutils.LoopedCogBase):
     def __init__(self, bot: dbbot.DBBot):
-        super().__init__(bot, __name__)
+        super().__init__(bot)
 
         self.last_data: list[dict] | None = None
         self.last_time: datetime.datetime | None = None

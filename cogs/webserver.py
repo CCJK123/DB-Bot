@@ -7,7 +7,7 @@ from utils import dbbot, discordutils
 
 class Webserver(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
-        super().__init__(bot, __name__)
+        super().__init__(bot)
         self.bot = bot
 
         app = web.Application()

@@ -11,7 +11,7 @@ from utils.queries import individual_war_query, nation_active_wars_query, find_s
 
 class WarCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
-        super().__init__(bot, __name__)
+        super().__init__(bot)
 
     @property
     def nations(self) -> discordutils.MappingProperty[int, int]:

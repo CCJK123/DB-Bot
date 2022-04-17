@@ -18,9 +18,8 @@ __all__ = ('CogBase', 'LoopedCogBase', 'BotProperty', 'ViewStorage', 'CogPropert
 
 
 class CogBase(discord.Cog):
-    def __init__(self, bot: "dbbot.DBBot", name: str):
+    def __init__(self, bot: "dbbot.DBBot"):
         self.bot = bot
-        self.cog_name = name
     
     async def on_ready(self):
         pass
@@ -30,8 +29,8 @@ class CogBase(discord.Cog):
 
 
 class LoopedCogBase(CogBase):
-    def __init__(self, bot: "dbbot.DBBot", name: str):
-        super().__init__(bot, name)
+    def __init__(self, bot: "dbbot.DBBot"):
+        super().__init__(bot)
         self.task = None
         self.running = CogProperty[bool](self, 'running')
 
@@ -135,7 +134,7 @@ class CogProperty(SavedProperty[T]):
 
     @property
     def full_key(self) -> str:
-        return f'{self.owner.cog_name}.{self.key}'
+        return f'{self.owner.__cog_name__}.{self.key}'
 
     async def get_(self) -> T:
         return await self.owner.bot.database.get(self.full_key)
@@ -192,7 +191,7 @@ class MappingProperty(Generic[T0, T1], CogProperty[dict[T0, T1]]):
         Should only actually do anything the first time, when nothing is set at self.key
         """
         if await self.get(None) is None:
-            print(f'Initialising key {self.key} from {self.owner.cog_name} to {{}}')
+            print(f'Initialising key {self.key} from {self.owner.__cog_name__} to {{}}')
             await self.set({})
 
 
@@ -223,7 +222,7 @@ class SetProperty(Generic[T], CogProperty[set[T]]):
         Should only actually do anything the first time, when nothing is set at self.key
         """
         if await self.get(None) is None:
-            print(f'Initialising key {self.key} from {self.owner.cog_name} to set()')
+            print(f'Initialising key {self.key} from {self.owner.__cog_name__} to set()')
             await self.set(set())
 
 
@@ -253,6 +252,6 @@ class ChannelProperty(WrappedProperty[discord.TextChannel, int]):
     def __init__(self, owner: CogBase, key: str):
         super().__init__(owner, key, owner.bot.get_channel, operator.attrgetter('id'))
 
-    async def send(self, *args: P.args, **kwargs: P.kwargs):
+    async def send(self, *args, **kwargs):
         channel = await self.get()
         await channel.send(*args, **kwargs)

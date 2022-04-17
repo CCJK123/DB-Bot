@@ -6,7 +6,7 @@ from utils import discordutils, pnwutils, config, dbbot
 
 class MarketCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
-        super().__init__(bot, __name__)
+        super().__init__(bot)
         self.market_values = discordutils.CogProperty[list[list[int]]](self, 'values')
 
     @property
