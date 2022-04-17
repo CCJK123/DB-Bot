@@ -59,11 +59,12 @@ class DBBot(discord.Bot):
     async def cleanup(self):
         await self.session.__aexit__(None, None, None)
         await self.database.__aexit__(None, None, None)
-        await asyncio.sleep(.25)
 
         for cog in self.cogs.values():
             if isinstance(cog, discordutils.CogBase):
                 await cog.on_cleanup()
+
+        await asyncio.sleep(.5)
 
     @tasks.loop(seconds=20)
     async def change_status(self):
