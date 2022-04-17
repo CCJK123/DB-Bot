@@ -15,6 +15,9 @@ class RudimentaryDatabase:
     async def set(self, key: str, value: Any) -> None:
         self.data[key] = value
 
+    async def delete(self, key) -> None:
+        del self.data[key]
+
     async def keys(self):
         return self.data.keys()
 
