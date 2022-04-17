@@ -520,29 +520,31 @@ class RequestButtonsView(discordutils.PersistentView):
             embed = interaction.message.embeds[0]
             embed.add_field(name='Return By', value=data.display_date, inline=True)
             embed.colour = discord.Colour.green()
-            await interaction.response.edit_message(embed=embed)
+            await interaction.response.edit_message(
+                view=self, embed=embed,
+                content=f'{self.data.kind} Request from {self.data.requester.mention}',
+                allowed_mentions=discord.AllowedMentions.none())
             await cog.loans[self.data.requester_id].set(data.to_dict())
-        else:
-            # process other
-            await self.data.requester.send(
-                f'Your {self.data.kind} request for `{self.data.reason}` '
-                'has been accepted! The resources will be sent to you soon. '
-            )
-            embed = interaction.message.embeds[0]
-            embed.colour = discord.Colour.green()
-            await interaction.response.edit_message(embed=embed)
-            channel = await cog.withdrawal_channel.get()
-            withdrawal_view = financeutils.WithdrawalView('request_on_sent', self.data.create_link(), self.data,
-                                                          can_reject=False)
-            msg = await channel.send(f'Withdrawal Request from {self.data.requester.mention}',
-                                     embed=self.data.create_withdrawal_embed(colour=discord.Colour.blue()),
-                                     view=withdrawal_view,
-                                     allowed_mentions=discord.AllowedMentions.none())
-            await self.bot.add_view(withdrawal_view, message_id=msg.id)
-        await interaction.edit_original_message(
-            view=self,
+            return
+        # process other
+        await self.data.requester.send(
+            f'Your {self.data.kind} request for `{self.data.reason}` '
+            'has been accepted! The resources will be sent to you soon. '
+        )
+        embed = interaction.message.embeds[0]
+        embed.colour = discord.Colour.green()
+        await interaction.response.edit_message(
+            view=self, embed=embed,
             content=f'{self.data.kind} Request from {self.data.requester.mention}',
             allowed_mentions=discord.AllowedMentions.none())
+        channel = await cog.withdrawal_channel.get()
+        withdrawal_view = financeutils.WithdrawalView('request_on_sent', self.data.create_link(), self.data,
+                                                      can_reject=False)
+        msg = await channel.send(f'Withdrawal Request from {self.data.requester.mention}',
+                                 embed=self.data.create_withdrawal_embed(colour=discord.Colour.blue()),
+                                 view=withdrawal_view,
+                                 allowed_mentions=discord.AllowedMentions.none())
+        await self.bot.add_view(withdrawal_view, message_id=msg.id)
 
     @discordutils.persistent_button(label='Reject')
     async def reject(self, button: discord.ui.Button, interaction: discord.Interaction):
