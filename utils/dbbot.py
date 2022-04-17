@@ -110,15 +110,15 @@ class DBBot(discord.Bot):
     @staticmethod
     async def default_on_error(ctx: discord.ApplicationContext, exception: Exception):
         exs = traceback.format_exception(exception)  # type: ignore
-        await ctx.respond(f'Sorry, an exception occurred.')
+        await ctx.send(f'Sorry, an exception occurred.')
         s = ''
         for ex in exs:
             if ex == 'The above exception was the direct cause of the following exception:':
-                await ctx.respond(f'```{s}```')
+                await ctx.send(f'```{s}```')
                 s = ex
             else:
                 s += ex
-        await ctx.respond(f'```{s}```')
+        await ctx.send(f'```{s}```')
 
 
 # the new bot doesnt seem to have a help command, the help command has not been ported over to slash yet i believe
