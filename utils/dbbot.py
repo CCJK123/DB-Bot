@@ -4,7 +4,7 @@ import asyncio
 import os
 import random
 import traceback
-from typing import Callable, Sequence
+from typing import Callable, Sequence, TypeVar, Type
 
 import aiohttp
 import discord
@@ -119,6 +119,11 @@ class DBBot(discord.Bot):
             else:
                 s += ex
         await ctx.send(f'```{s}```')
+
+    CT = TypeVar('CT', bound=discordutils.CogBase)
+
+    def get_cog_from_class(self, cls: Type[CT]) -> CT:
+        return self.get_cog(cls.__cog_name__)  # type: ignore
 
 
 # the new bot doesnt seem to have a help command, the help command has not been ported over to slash yet i believe

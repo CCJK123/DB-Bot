@@ -6,6 +6,8 @@ import discord
 from discord import commands
 from discord.ext import commands as cmds
 
+from cogs.finance import FinanceCog
+from cogs.util import UtilCog
 from utils import financeutils, discordutils, pnwutils, config, dbbot
 from utils.queries import bank_transactions_query, bank_info_query, nation_name_query, alliance_name_query, \
     nation_resources_query, bank_revenue_query
@@ -20,11 +22,7 @@ class BankCog(discordutils.CogBase):
 
     @property
     def nations(self) -> discordutils.MappingProperty[int, int]:
-        return self.bot.get_cog('UtilCog').nations  # type: ignore
-
-    @property
-    def loans(self) -> discordutils.MappingProperty[int, dict[str, Any]]:
-        return self.bot.get_cog('FinanceCog').loans  # type: ignore
+        return self.bot.get_cog_from_class(UtilCog).nations
 
     async def get_transactions(self, entity_id: 'str | int | None' = None,
                                kind: 'pnwutils.TransactionType | None' = None) -> list[pnwutils.Transaction]:
@@ -133,7 +131,7 @@ class BankCog(discordutils.CogBase):
             await ctx.respond('Your nation id has not been set!', ephemeral=True)
             return
 
-        channel = self.bot.get_cog('FinanceCog').withdrawal_channel  # type: ignore
+        channel = self.bot.get_cog_from_class(FinanceCog).withdrawal_channel  # type: ignore
         if (channel := await channel.get(None)) is None:
             await ctx.respond('Output channel has not been set! Aborting...')
             return None
@@ -235,7 +233,8 @@ class BankCog(discordutils.CogBase):
         nation_id = await self.nations[ctx.author.id].get(None)
         if nation_id is None:
             await ctx.respond('Your nation id has not been set!', ephemeral=True)
-        loan = await self.loans[ctx.author.id].get(None)
+        loans = self.bot.get_cog_from_class(FinanceCog).loans
+        loan = await loans[ctx.author.id].get(None)
         if loan is None:
             await ctx.respond("You don't have an active loan!", ephemeral=True)
             return
@@ -245,7 +244,7 @@ class BankCog(discordutils.CogBase):
         res -= loan.resources
         if res.all_positive():
             await bal.set(res.to_dict())
-            await self.loans[ctx.author.id].delete()
+            await loans[ctx.author.id].delete()
             await ctx.respond('Your loan has been successfully repaid!', ephemeral=True)
             await ctx.respond('Your balance is now:', embed=res.create_balance_embed(ctx.author.mention))
 
@@ -256,7 +255,8 @@ class BankCog(discordutils.CogBase):
     @loan.command(guild_ids=config.guild_ids)
     async def status(self, ctx: discord.ApplicationContext):
         """Check the current status of your loan, if any"""
-        loan = await self.loans[ctx.author.id].get(None)
+
+        loan = await self.bot.get_cog_from_class(FinanceCog).loans[ctx.author.id].get(None)
         if loan is None:
             await ctx.respond("You don't have an active loan!", ephemeral=True)
             return
@@ -382,7 +382,7 @@ class BankCog(discordutils.CogBase):
     @_bank.command(guild_ids=config.guild_ids, default_permission=False)
     async def loan_list(self, ctx: discord.ApplicationContext):
         """List all the loans that are currently active"""
-        loans = await self.loans.get()
+        loans = await self.bot.get_cog_from_class(FinanceCog).loans.get()
         if loans:
             for s in discordutils.split_blocks(
                     '\n', (f'<@{d}> owes [{pnwutils.Resources(**loan["resources"]).to_string(" ")}], due by ' +
@@ -511,7 +511,7 @@ def setup(bot: dbbot.DBBot):
             embed.colour = discord.Colour.green()
             await interaction.message.edit(embed=embed)
         else:
-            bank_cog = bot.get_cog('BankCog')
+            bank_cog = bot.get_cog_from_class(BankCog)
             assert isinstance(bank_cog, BankCog)
             bal = bank_cog.balances[requester_id]
             await bal.set((pnwutils.Resources(**await bal.get()) + req_res).to_dict())

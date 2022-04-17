@@ -1,6 +1,8 @@
 import discord
 from discord import commands
 
+from cogs.bank import BankCog
+from cogs.util import UtilCog
 from utils import discordutils, pnwutils, config, dbbot
 
 
@@ -11,11 +13,7 @@ class MarketCog(discordutils.CogBase):
 
     @property
     def nations(self) -> discordutils.MappingProperty[int, str]:
-        return self.bot.get_cog('UtilCog').nations  # type: ignore
-
-    @property
-    def balances(self) -> discordutils.MappingProperty[int, str]:
-        return self.bot.get_cog('BankCog').balances  # type: ignore
+        return self.bot.get_cog_from_class(UtilCog).nations
 
     market = commands.SlashCommandGroup('market', 'A market to buy and sell resources from the bank',
                                         guild_ids=config.guild_ids)
@@ -52,7 +50,7 @@ class MarketCog(discordutils.CogBase):
                               ephemeral=True)
             return
 
-        bal = self.balances[ctx.author.id]
+        bal = self.bot.get_cog_from_class(BankCog).balances[ctx.author.id]
         res = pnwutils.Resources(**await bal.get())
         total_price = amt * values[0][res_index]
         if res.money < total_price:
@@ -77,7 +75,7 @@ class MarketCog(discordutils.CogBase):
         """Sell some amount of a resource for money"""
         values = await self.market_values.get()
         res_index = pnwutils.constants.market_res.index(res_name)
-        bal = self.balances[ctx.author.id]
+        bal = self.bot.get_cog_from_class(BankCog).balances[ctx.author.id]
         res = pnwutils.Resources(**await bal.get())
         if res[res_name.lower()] < amt:
             await ctx.respond(f'You do not have enough {res_name} deposited to do that! '

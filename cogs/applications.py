@@ -6,6 +6,7 @@ import discord
 from discord import commands
 from discord.ext import commands as cmds
 
+from cogs.util import UtilCog
 from utils import discordutils, config, dbbot
 from utils.queries import acceptance_query
 
@@ -25,7 +26,7 @@ class ApplicationCog(discordutils.CogBase):
         """Apply to our alliance!"""
         await self.applications.initialise()
         await self.completed_applications.initialise()
-        util_cog = self.bot.get_cog('UtilCog')
+        util_cog = self.bot.get_cog_from_class(UtilCog)
         nation_id = await util_cog.nations[ctx.author.id].get(None)
         if nation_id is None:
             if '/' in ctx.author.display_name:
@@ -153,7 +154,7 @@ class ApplicationCog(discordutils.CogBase):
             return
         applicant_id, accepted = application_info
         applicant = ctx.guild.get_member(applicant_id)
-        util_cog = self.bot.get_cog('UtilCog')
+        util_cog = self.bot.get_cog_from_class(UtilCog)
         nation_id = await util_cog.nations[applicant_id].get()
         data = await acceptance_query.query(self.bot.session, nation_id=nation_id)
         data = data['data'].pop()

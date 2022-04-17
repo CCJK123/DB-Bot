@@ -8,6 +8,7 @@ from discord import commands
 from discord.ext import commands as cmds
 
 from cogs.bank import BankCog
+from cogs.util import UtilCog
 from utils import discordutils, financeutils, pnwutils, config, dbbot
 from utils.queries import finance_nation_info_query
 
@@ -26,10 +27,6 @@ class FinanceCog(discordutils.CogBase):
         self.loans = discordutils.MappingProperty[int, dict[str, Any]](self, 'loans')
         # discord_id : LoanData dict
 
-    @property
-    def nations(self) -> discordutils.MappingProperty[int, str]:
-        return self.bot.get_cog('UtilCog').nations  # type: ignore
-
     # Main request command
     @commands.command(guild_ids=config.guild_ids)
     @cmds.max_concurrency(1, cmds.BucketType.user)
@@ -42,7 +39,7 @@ class FinanceCog(discordutils.CogBase):
             await ctx.respond('Output channel has not been set! Aborting...')
             return
 
-        nation_id = await self.nations[ctx.author.id].get(None)
+        nation_id = await self.bot.get_cog_from_class(UtilCog).nations[ctx.author.id].get(None)
         if nation_id is None:
             await ctx.respond('Your nation id has not been set! Aborting...', ephemeral=True)
             return
@@ -495,8 +492,7 @@ class RequestButtonsView(discordutils.PersistentView):
         self.disable_all()
         self.stop()
         await self.remove()
-        cog = self.bot.get_cog('FinanceCog')
-        assert isinstance(cog, FinanceCog)
+        cog = self.bot.get_cog_from_class(UtilCog)
         logger.info(f'accepting {self.data.kind} request: {self.data}')
         self.data.set_requester(self.bot)
         if self.data.kind == 'Loan':
@@ -512,8 +508,7 @@ class RequestButtonsView(discordutils.PersistentView):
                 'You can check your loan status with `bank loan status`.')
 
             # change balance
-            bank_cog = self.bot.get_cog('BankCog')
-            assert isinstance(bank_cog, BankCog)
+            bank_cog = self.bot.get_cog_from_class(BankCog)
             bal = bank_cog.balances[self.data.requester_id]
             if (res_dict := await bal.get(None)) is None:
                 res = pnwutils.Resources()
@@ -555,8 +550,7 @@ class RequestButtonsView(discordutils.PersistentView):
         self.disable_all()
         self.stop()
         await self.remove()
-        cog = self.bot.get_cog('FinanceCog')
-        assert isinstance(cog, FinanceCog)
+        cog = self.bot.get_cog_from_class(FinanceCog)
         logger.info(f'accepting {self.data.kind} request: {self.data}')
         self.data.set_requester(self.bot)
         reason_modal = discordutils.SingleModal(

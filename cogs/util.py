@@ -72,8 +72,7 @@ class UtilCog(discordutils.CogBase):
             return
         data = data[0]
         # nation exists, is in one elem list
-        bank_cog = self.bot.get_cog('BankCog')
-        assert isinstance(bank_cog, BankCog)
+        bank_cog = self.bot.get_cog_from_class(BankCog)
         off_id = await bank_cog.offshore_id.get(None)
         if data['alliance_id'] not in (config.alliance_id, off_id):
             await ctx.respond(f'This nation is not in {config.alliance_name}!')
@@ -139,8 +138,7 @@ class UtilCog(discordutils.CogBase):
             return
         data = data[0]
         # nation exists, is in one elem list
-        bank_cog = self.bot.get_cog('BankCog')
-        assert isinstance(bank_cog, BankCog)
+        bank_cog = self.bot.get_cog_from_class(BankCog)
         off_id = await bank_cog.offshore_id.get(None)
         if data['alliance_id'] not in (config.alliance_id, off_id):
             await ctx.respond(f'This nation is not in {config.alliance_name}!')

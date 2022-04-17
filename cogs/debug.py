@@ -2,6 +2,8 @@ import discord
 from discord import commands
 
 from cogs.bank import BankCog
+from cogs.finance import FinanceCog
+from cogs.util import UtilCog
 from utils import discordutils, config, dbbot
 
 
@@ -48,33 +50,32 @@ class DebugCog(discordutils.CogBase):
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def del_nation(self, ctx: discord.ApplicationContext):
         """Delete your nation from the registry"""
-        cog = self.bot.get_cog('UtilCog')
+        cog = self.bot.get_cog_from_class(UtilCog)
         await cog.nations[ctx.author.id].delete()
         await ctx.respond('done')
 
     @commands.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def fix_types(self, ctx: discord.ApplicationContext):
-        bank_cog = self.bot.get_cog('BankCog')
-        assert isinstance(bank_cog, BankCog)
-
-        n = await bank_cog.nations.get()
+        util_cog = self.bot.get_cog_from_class(UtilCog)
+        n = await util_cog.nations.get()
         new = {}
         for k, v in n.items():
             new[int(k)] = int(v)
-        await bank_cog.nations.set(new)
+        await util_cog.nations.set(new)
 
+        bank_cog = self.bot.get_cog_from_class(BankCog)
         b = await bank_cog.balances.get()
         new = {}
         for k, v in b.items():
             new[int(k)] = v
         await bank_cog.balances.set(new)
 
-        loans = await self.bot.get_cog('FinanceCog').loans.get()
+        loans = await self.bot.get_cog_from_class(FinanceCog).loans.get()
         new = {}
         for k, v in loans.items():
             new[int(k)] = v
-        await self.bot.get_cog('FinanceCog').loans.set(new)
+        await self.bot.get_cog_from_class(FinanceCog).loans.set(new)
 
         await ctx.respond('Complete!')
 

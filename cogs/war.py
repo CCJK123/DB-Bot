@@ -4,6 +4,7 @@ import operator
 from discord import commands
 import discord
 
+from cogs.util import UtilCog
 from utils import discordutils, pnwutils, config, dbbot
 from utils.queries import individual_war_query, nation_active_wars_query, find_slots_query, nation_score_query, \
     spy_sat_query
@@ -12,10 +13,6 @@ from utils.queries import individual_war_query, nation_active_wars_query, find_s
 class WarCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot)
-
-    @property
-    def nations(self) -> discordutils.MappingProperty[int, int]:
-        return self.bot.get_cog('UtilCog').nations  # type: ignore
 
     @commands.command(guild_ids=config.guild_ids)
     async def war(self, ctx: discord.ApplicationContext, war: commands.Option(str, 'War ID or link')):
@@ -44,7 +41,7 @@ class WarCog(discordutils.CogBase):
         if member is None and nation_id is None:
             member = ctx.author
         if member is not None:
-            nation_id = await self.nations[member.id].get(None)
+            nation_id = await self.bot.get_cog_from_class(UtilCog).nations[member.id].get(None)
             if nation_id is None:
                 await ctx.respond(f'{member.mention} does not have a nation registered!',
                                   allowed_mentions=discord.AllowedMentions.none(), ephemeral=True)
@@ -72,7 +69,7 @@ class WarCog(discordutils.CogBase):
                          ):
         """Looks for nations in the given alliances that have empty defensive slots"""
         user = user if user else ctx.author
-        nation_id = await self.nations[user.id].get(None)
+        nation_id = await self.bot.get_cog_from_class(UtilCog).nations[user.id].get(None)
         if nation_id is None:
             await ctx.respond('This user does not have a nation registered!')
             return

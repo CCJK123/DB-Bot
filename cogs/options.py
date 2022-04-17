@@ -3,6 +3,12 @@ import operator
 import discord
 from discord import commands
 
+from cogs.applications import ApplicationCog
+from cogs.bank import BankCog
+from cogs.finance import FinanceCog
+from cogs.logger import LoggingCog
+from cogs.market import MarketCog
+from cogs.new_war_detector import NewWarDetectorCog
 from utils import discordutils, pnwutils, config, dbbot
 
 
@@ -21,7 +27,7 @@ class OptionsCog(discordutils.CogBase):
                       kind: commands.Option(str, 'Channel type', name='type', choices=('process', 'withdraw'))
                       ) -> None:
         """Set this channel to either the finance process or the withdrawal channel"""
-        finance_cog = self.bot.get_cog('FinanceCog')
+        finance_cog = self.bot.get_cog_from_class(FinanceCog)
         if kind == 'process':
             await finance_cog.process_channel.set(ctx.channel)
         else:
@@ -32,7 +38,7 @@ class OptionsCog(discordutils.CogBase):
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def war_aid(self, ctx: discord.ApplicationContext) -> None:
         """Toggle the war aid option"""
-        finance_cog = self.bot.get_cog('FinanceCog')
+        finance_cog = self.bot.get_cog_from_class(FinanceCog)
         await finance_cog.has_war_aid.transform(operator.not_)
         await ctx.respond(f'War Aid is now {(not await finance_cog.has_war_aid.get()) * "not "}available!')
 
@@ -40,7 +46,7 @@ class OptionsCog(discordutils.CogBase):
     async def infra_rebuild_cap(self, ctx: discord.ApplicationContext,
                                 cap: commands.Option(int, 'What level to provide aid up to', min_value=0)) -> None:
         """Set the infra rebuild cap for war aid"""
-        finance_cog = self.bot.get_cog('FinanceCog')
+        finance_cog = self.bot.get_cog_from_class(FinanceCog)
         await finance_cog.infra_rebuild_cap.set(50 * round(cap / 50))
         await ctx.respond('The infrastructure rebuild cap has been set to '
                           f'{await finance_cog.infra_rebuild_cap.get()}.')
@@ -54,7 +60,7 @@ class OptionsCog(discordutils.CogBase):
                                              choices=('attack', 'defend', 'updates'))
                        ) -> None:
         """Sets the attack, defend and lose channels"""
-        war_detector_cog = self.bot.get_cog('DetectorCog')
+        war_detector_cog = self.bot.get_cog_from_class(NewWarDetectorCog)
         if kind == 'attack':
             channel = war_detector_cog.att_channel
             kind_text = 'Offensive wars'
@@ -76,7 +82,7 @@ class OptionsCog(discordutils.CogBase):
                         res_name: commands.Option(str, 'Resource to set price', choices=pnwutils.constants.market_res),
                         price: commands.Option(int, 'Resource price', min_value=0)):
         """Set the buying/selling price of a resource"""
-        market_cog = self.bot.get_cog('MarketCog')
+        market_cog = self.bot.get_cog_from_class(MarketCog)
         values = await market_cog.market_values.get()
         values[b_s == 'selling'][pnwutils.constants.market_res.index(res_name)] = price
         await market_cog.market_values.set(values)
@@ -87,7 +93,7 @@ class OptionsCog(discordutils.CogBase):
                         res_name: commands.Option(str, 'resource to set stock', choices=pnwutils.constants.market_res),
                         stock: commands.Option(int, 'Resource stock', min_value=0)):
         """Set the stocks of a resource"""
-        market_cog = self.bot.get_cog('MarketCog')
+        market_cog = self.bot.get_cog_from_class(MarketCog)
         values = await market_cog.market_values.get()
         values[2][pnwutils.constants.market_res.index(res_name)] = stock
         await market_cog.market_values.set(values)
@@ -100,7 +106,7 @@ class OptionsCog(discordutils.CogBase):
     async def set_offshore(self, ctx: discord.ApplicationContext,
                            off_id: commands.Option(int, 'ID of the offshore alliance')):
         """Set the ID of the alliance's offshore."""
-        bank_cog = self.bot.get_cog('BankCog')
+        bank_cog = self.bot.get_cog_from_class(BankCog)
         confirm_view = discordutils.Choices('Yes', 'No', user_id=ctx.author.id)
         await ctx.respond(f'Is this the offshore? [Link]({pnwutils.link.alliance(off_id)})',
                           view=confirm_view)
@@ -117,7 +123,7 @@ class OptionsCog(discordutils.CogBase):
     async def set(self, ctx: discord.ApplicationContext,
                   kind: commands.Option(str, choices=('category', 'log'))):
         """Set the application category and logging channel"""
-        application_cog = self.bot.get_cog('ApplicationCog')
+        application_cog = self.bot.get_cog_from_class(ApplicationCog)
         if kind == 'log':
             await application_cog.application_log.set(ctx.channel)
             await ctx.respond('Application log channel set!')
@@ -131,7 +137,7 @@ class OptionsCog(discordutils.CogBase):
     @logging_options.command()
     async def channel(self, ctx: discord.ApplicationContext):
         """Set the logging channel!"""
-        logging_cog = self.bot.get_cog('LoggingCog')
+        logging_cog = self.bot.get_cog_from_class(LoggingCog)
         await logging_cog.logging_channel.set(ctx.channel)
         await ctx.respond('Logging channel set!')
 
