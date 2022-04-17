@@ -66,7 +66,7 @@ class WarCog(discordutils.CogBase):
     async def find_slots(self, ctx: discord.ApplicationContext,
                          ids: commands.Option(
                              str, 'Comma separated list of alliance IDs. Pass 0 (the default) for no alliance.',
-                             default=0),
+                             default='0'),
                          turns: commands.Option(int, 'The maximum number of turns for the slot to open up.', default=0),
                          user: commands.Option(discord.Member, 'Run this command as if this user ran it.', default=None)
                          ):
