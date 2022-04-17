@@ -23,7 +23,7 @@ class Webserver(discordutils.CogBase):
 
     async def on_ready(self):
         await self.runner.setup()
-        site = web.TCPSite(self.runner, '0.0.0.0', 5000)
+        site = web.TCPSite(self.runner, '0.0.0.0', int(os.environ['PORT']))
         print('starting site')
         await site.start()
 
