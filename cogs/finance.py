@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 # Create Finance Cog to group finance related commands
 class FinanceCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
-        super().__init__(bot)
+        super().__init__(bot, __name__)
         self.has_war_aid = discordutils.CogProperty[bool](self, 'has_war_aid')
         self.infra_rebuild_cap = discordutils.CogProperty[int](self, 'infra_rebuild_cap')
         self.process_channel = discordutils.ChannelProperty(self, 'process_channel')

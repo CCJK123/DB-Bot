@@ -13,7 +13,7 @@ from utils.queries import acceptance_query
 
 class ApplicationCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
-        super().__init__(bot)
+        super().__init__(bot, __name__)
         self.application_category = discordutils.ChannelProperty(self, 'application_category')
         self.application_log = discordutils.ChannelProperty(self, 'application_log')
         self.applications = discordutils.MappingProperty[str, str](self, 'applications')

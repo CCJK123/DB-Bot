@@ -18,8 +18,9 @@ __all__ = ('CogBase', 'LoopedCogBase', 'BotProperty', 'ViewStorage', 'CogPropert
 
 
 class CogBase(discord.Cog):
-    def __init__(self, bot: "dbbot.DBBot"):
+    def __init__(self, bot: "dbbot.DBBot", prefix: str):
         self.bot = bot
+        self.prefix = prefix
     
     async def on_ready(self):
         pass
@@ -29,8 +30,8 @@ class CogBase(discord.Cog):
 
 
 class LoopedCogBase(CogBase):
-    def __init__(self, bot: "dbbot.DBBot"):
-        super().__init__(bot)
+    def __init__(self, bot: "dbbot.DBBot", prefix: str):
+        super().__init__(bot, prefix)
         self.task = None
         self.running = CogProperty[bool](self, 'running')
 
@@ -134,7 +135,7 @@ class CogProperty(SavedProperty[T]):
 
     @property
     def full_key(self) -> str:
-        return f'{self.owner.__cog_name__}.{self.key}'
+        return f'{self.owner.prefix}.{self.key}'
 
     async def get_(self) -> T:
         return await self.owner.bot.database.get(self.full_key)
@@ -191,7 +192,7 @@ class MappingProperty(Generic[T0, T1], CogProperty[dict[T0, T1]]):
         Should only actually do anything the first time, when nothing is set at self.key
         """
         if await self.get(None) is None:
-            print(f'Initialising key {self.key} from {self.owner.__cog_name__} to {{}}')
+            print(f'Initialising key {self.key} from {self.owner.prefix} to {{}}')
             await self.set({})
 
 
@@ -222,7 +223,7 @@ class SetProperty(Generic[T], CogProperty[set[T]]):
         Should only actually do anything the first time, when nothing is set at self.key
         """
         if await self.get(None) is None:
-            print(f'Initialising key {self.key} from {self.owner.__cog_name__} to set()')
+            print(f'Initialising key {self.key} from {self.owner.prefix} to set()')
             await self.set(set())
 
 

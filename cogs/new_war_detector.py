@@ -12,7 +12,7 @@ from utils.queries import alliance_wars_query
 
 class NewWarDetectorCog(discordutils.LoopedCogBase):
     def __init__(self, bot: dbbot.DBBot):
-        super().__init__(bot)
+        super().__init__(bot, __name__)
         self.last_monitoring: list[tuple[dict[str, Any], pnwutils.WarType]] | None = None
 
         self.updates_channel = discordutils.ChannelProperty(self, 'update_channel')
