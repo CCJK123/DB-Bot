@@ -125,6 +125,16 @@ class OptionsCog(discordutils.CogBase):
         await application_cog.application_category.set(ctx.channel.category)
         await ctx.respond(f'Application category set to {ctx.channel.category.name}!')
 
+    logging_options = options.create_subgroup('logging', 'Options for the logging system!')
+    logging_options.guild_ids = config.guild_ids
+
+    @logging_options.command()
+    async def channel(self, ctx: discord.ApplicationContext):
+        """Set the logging channel!"""
+        logging_cog = self.bot.get_cog('LoggingCog')
+        await logging_cog.logging_channel.set(ctx.channel)
+        await ctx.respond('Logging channel set!')
+
 
 def setup(bot: dbbot.DBBot) -> None:
     bot.add_cog(OptionsCog(bot))
