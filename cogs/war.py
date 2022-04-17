@@ -74,9 +74,8 @@ class WarCog(discordutils.CogBase):
             await ctx.respond('This user does not have a nation registered!')
             return
         score_data = await nation_score_query.query(self.bot.session, nation_id=nation_id)
-        score = score_data['data'][0]['score']
+        mi, ma = pnwutils.formulas.war_range(score_data['data'][0]['score'])
         try:
-            mi, ma = pnwutils.formulas.war_range(score)
             data = await find_slots_query.query(self.bot.session, alliance_id=ids.split(','),
                                                 min_score=mi, max_score=ma)
             # data = await find_slots_query.query(self.bot.session, alliance_id=ids.split(','))

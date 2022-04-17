@@ -17,6 +17,7 @@ class UnnaturalSlotOpenDetectorCog(discordutils.LoopedCogBase):
 
     @tasks.loop(minutes=2)
     async def task(self):
+        # TODO: figure out enemies
         data = await find_slots_query.query(self.bot.session, self.enemies)
         now = datetime.datetime.now()
         if self.last_data is not None:
@@ -25,6 +26,9 @@ class UnnaturalSlotOpenDetectorCog(discordutils.LoopedCogBase):
 
         self.last_data = data
         self.last_time = now
+
+    def compare(self, f, l):
+
 
 
 def setup(bot: dbbot.DBBot) -> None:

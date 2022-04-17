@@ -4,7 +4,7 @@ from typing import Any
 
 import discord
 from discord import commands
-from discord.ext import commands as cmds
+from discord.ext import commands as cmds, pages
 
 from cogs.finance import FinanceCog
 from cogs.util import UtilCog
@@ -61,7 +61,7 @@ class BankCog(discordutils.CogBase):
         else:
             resources = pnwutils.Resources(**resources)
 
-        loan = await self.loans[ctx.author.id].get(None)
+        loan = await self.bot.get_cog_from_class(FinanceCog).loans[ctx.author.id].get(None)
 
         # actual displaying
         await ctx.respond(f"{ctx.author.mention}'s Balance",
@@ -384,12 +384,18 @@ class BankCog(discordutils.CogBase):
         """List all the loans that are currently active"""
         loans = await self.bot.get_cog_from_class(FinanceCog).loans.get()
         if loans:
-            for s in discordutils.split_blocks(
-                    '\n', (f'<@{d}> owes [{pnwutils.Resources(**loan["resources"]).to_string(" ")}], due by ' +
-                           discord.utils.format_dt(datetime.fromisoformat(loan["due_date"]))
-                           for d, loan in loans.items())):
-                await ctx.respond(s, ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
-            return
+
+            paginator_pages = []
+            for chunk in discord.utils.as_chunks(loans, 10):
+                embeds = []
+                for d in chunk:
+                    loan = loans[d]
+                    due_date = discord.utils.format_dt(datetime.fromisoformat(loans['due_date']))
+                    embeds.append(pnwutils.Resources(**loan['resources']).create_embed(
+                        title=f"<@{d}>'s Loan due on {due_date}"))
+                paginator_pages.append(embeds)
+            paginator = pages.Paginator(paginator_pages, timeout=config.timeout)
+            await paginator.respond(ctx.interaction)
         await ctx.respond('There are no active loans!', ephemeral=True)
 
     @_bank.command(guild_ids=config.guild_ids, default_permission=False)

@@ -131,7 +131,7 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
             return
         self.task.start()
         if running_state:
-            # not sure if valueerror is appropriate here
+            # not sure if ValueError is appropriate here
             raise ValueError('state is running but detector is not running!')
         await self.running.set(True)
         await ctx.respond('War detector started!')
