@@ -61,6 +61,10 @@ class DBBot(discord.Bot):
         await self.database.__aexit__(None, None, None)
         await asyncio.sleep(.25)
 
+        for cog in self.cogs.values():
+            if isinstance(cog, discordutils.CogBase):
+                await cog.on_cleanup()
+
     @tasks.loop(seconds=20)
     async def change_status(self):
         await self.change_presence(activity=random.choice(self.possible_statuses))

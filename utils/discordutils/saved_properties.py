@@ -25,6 +25,9 @@ class CogBase(discord.Cog):
     async def on_ready(self):
         pass
 
+    async def on_cleanup(self):
+        pass
+
 
 class LoopedCogBase(CogBase):
     def __init__(self, bot: "dbbot.DBBot", name: str):
