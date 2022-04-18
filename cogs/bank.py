@@ -384,6 +384,7 @@ class BankCog(discordutils.CogBase):
     async def loan_list(self, ctx: discord.ApplicationContext):
         """List all the loans that are currently active"""
         loans = await self.bot.get_cog_from_class(self.finance_cog).loans.get()
+        await ctx.respond(loans)
         if loans:
             paginator_pages = []
             for chunk in discord.utils.as_chunks(loans, 10):
