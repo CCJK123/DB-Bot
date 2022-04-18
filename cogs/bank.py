@@ -1,13 +1,16 @@
 import asyncio
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 import discord
 from discord import commands
 from discord.ext import commands as cmds, pages
 
 from utils import financeutils, discordutils, pnwutils, config, dbbot
-from utils.queries import bank_transactions_query, bank_info_query, nation_name_query, alliance_name_query, \
-    nation_resources_query, bank_revenue_query
+from utils.queries import (bank_transactions_query, bank_info_query, nation_name_query, alliance_name_query,
+                           nation_resources_query, bank_revenue_query)
+if TYPE_CHECKING:
+    from cogs.finance import FinanceCog
 
 
 class BankCog(discordutils.CogBase):
@@ -62,7 +65,7 @@ class BankCog(discordutils.CogBase):
         else:
             resources = pnwutils.Resources(**resources)
 
-        loan = await self.bot.get_cog_from_class(self.finance_cog).loans[ctx.author.id].get(None)
+        loan = await self.finance_cog.loans[ctx.author.id].get(None)
 
         # actual displaying
         await ctx.respond(f"{ctx.author.mention}'s Balance",
@@ -234,7 +237,7 @@ class BankCog(discordutils.CogBase):
         nation_id = await self.nations[ctx.author.id].get(None)
         if nation_id is None:
             await ctx.respond('Your nation id has not been set!', ephemeral=True)
-        loans = self.bot.get_cog_from_class(self.finance_cog).loans
+        loans = self.finance_cog.loans
         loan = await loans[ctx.author.id].get(None)
         if loan is None:
             await ctx.respond("You don't have an active loan!", ephemeral=True)
@@ -383,7 +386,7 @@ class BankCog(discordutils.CogBase):
     @_bank.command(guild_ids=config.guild_ids, default_permission=False)
     async def loan_list(self, ctx: discord.ApplicationContext):
         """List all the loans that are currently active"""
-        loans = await self.bot.get_cog_from_class(self.finance_cog).loans.get()
+        loans = await self.finance_cog.loans.get()
         await ctx.respond(loans)
         if loans:
             paginator_pages = []
