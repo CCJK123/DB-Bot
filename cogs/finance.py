@@ -492,20 +492,11 @@ class RequestButtonsView(discordutils.PersistentView):
         self.disable_all()
         self.stop()
         await self.remove()
-        cog = self.bot.get_cog_from_class(UtilCog)
         logger.info(f'accepting {self.data.kind} request: {self.data}')
         self.data.set_requester(self.bot)
         if self.data.kind == 'Loan':
             # process loan
             data = financeutils.LoanData(datetime.datetime.now() + datetime.timedelta(days=30), self.data.resources)
-            await self.data.requester.send(
-                'Your loan has been added to your bank balance.',
-                embed=self.data.resources.create_embed(title='Loaned Resources'))
-            await self.data.requester.send(
-                'You will have to use `bank withdraw` to withdraw the loan from your bank balance to your nation. '
-                'Kindly remember to return the requested resources by depositing it back into your bank balance '
-                f'and using `bank loan return` by {discord.utils.format_dt(data.due_date, "R")} '
-                'You can check your loan status with `bank loan status`.')
 
             # change balance
             bank_cog = self.bot.get_cog_from_class(BankCog)
@@ -520,24 +511,29 @@ class RequestButtonsView(discordutils.PersistentView):
             embed = interaction.message.embeds[0]
             embed.add_field(name='Return By', value=data.display_date, inline=True)
             embed.colour = discord.Colour.green()
-            await interaction.response.edit_message(
-                view=self, embed=embed,
+            await interaction.response.edit_message(view=self, embed=embed)
+            await interaction.edit_original_message(
                 content=f'{self.data.kind} Request from {self.data.requester.mention}',
                 allowed_mentions=discord.AllowedMentions.none())
-            await cog.loans[self.data.requester_id].set(data.to_dict())
+            await self.bot.get_cog_from_class(FinanceCog).loans[self.data.requester_id].set(data.to_dict())
+            await self.data.requester.send(
+                'Your loan has been added to your bank balance.',
+                embed=self.data.resources.create_embed(title='Loaned Resources'))
+            await self.data.requester.send(
+                'You will have to use `bank withdraw` to withdraw the loan from your bank balance to your nation. '
+                'Kindly remember to return the requested resources by depositing it back into your bank balance '
+                f'and using `bank loan return` by {discord.utils.format_dt(data.due_date, "D")} '
+                f'({discord.utils.format_dt(data.due_date, "R")}). '
+                f'You can check your loan status with `bank loan status`.')
             return
         # process other
-        await self.data.requester.send(
-            f'Your {self.data.kind} request for `{self.data.reason}` '
-            'has been accepted! The resources will be sent to you soon. '
-        )
         embed = interaction.message.embeds[0]
         embed.colour = discord.Colour.green()
-        await interaction.response.edit_message(
-            view=self, embed=embed,
+        await interaction.response.edit_message(view=self, embed=embed)
+        await interaction.edit_original_message(
             content=f'{self.data.kind} Request from {self.data.requester.mention}',
             allowed_mentions=discord.AllowedMentions.none())
-        channel = await cog.withdrawal_channel.get()
+        channel = await self.bot.get_cog_from_class(FinanceCog).withdrawal_channel.get()
         withdrawal_view = financeutils.WithdrawalView('request_on_sent', self.data.create_link(), self.data,
                                                       can_reject=False)
         msg = await channel.send(f'Withdrawal Request from {self.data.requester.mention}',
@@ -545,6 +541,10 @@ class RequestButtonsView(discordutils.PersistentView):
                                  view=withdrawal_view,
                                  allowed_mentions=discord.AllowedMentions.none())
         await self.bot.add_view(withdrawal_view, message_id=msg.id)
+        await self.data.requester.send(
+            f'Your {self.data.kind} request for `{self.data.reason}` '
+            'has been accepted! The resources will be sent to you soon. '
+        )
 
     @discordutils.persistent_button(label='Reject')
     async def reject(self, button: discord.ui.Button, interaction: discord.Interaction):
@@ -552,7 +552,6 @@ class RequestButtonsView(discordutils.PersistentView):
         self.disable_all()
         self.stop()
         await self.remove()
-        cog = self.bot.get_cog_from_class(FinanceCog)
         logger.info(f'accepting {self.data.kind} request: {self.data}')
         self.data.set_requester(self.bot)
         reason_modal = discordutils.SingleModal(

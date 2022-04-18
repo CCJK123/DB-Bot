@@ -114,6 +114,7 @@ class DBBot(discord.Bot):
         await ctx.send(f'Sorry, an exception occurred.')
         s = ''
         for ex in exs:
+            print(f'"{ex}"')
             if ex == 'The above exception was the direct cause of the following exception:':
                 await ctx.send(f'```{s}```')
                 s = ex
@@ -121,13 +122,13 @@ class DBBot(discord.Bot):
                 s += ex
         await ctx.send(f'```{s}```')
 
-    CT = TypeVar('CT', bound=discordutils.CogBase)
+    CT = TypeVar('CT', bound=discord.Cog)
 
     def get_cog_from_class(self, cls: Type[CT]) -> CT:
-        return self.get_cog(cls.__cog_name__)  # type: ignore
+        return self.get_cog(cls.__cog_name__)
 
 
-# the new bot doesnt seem to have a help command, the help command has not been ported over to slash yet i believe
+# the new bot does not seem to have a help command, the help command has not been ported over to slash yet, I believe
 # we will see if this class gets use in the future
 """
 class DBHelpCommand(cmds.HelpCommand):
