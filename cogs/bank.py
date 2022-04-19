@@ -120,7 +120,7 @@ class BankCog(discordutils.CogBase):
                                        await self.get_transactions(nation_id, pnwutils.TransactionType.dep)))
         if dep_transactions:
             for transaction in dep_transactions:
-                resources += transaction.resources
+                resources += transaction.resources.floor_values()
             await self.balances[ctx.author.id].set(resources.to_dict())
             await author.send('Your balance is now:', embed=resources.create_balance_embed(author.display_name))
             return

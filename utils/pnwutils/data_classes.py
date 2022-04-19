@@ -1,5 +1,6 @@
 import enum
 import datetime
+import math
 from dataclasses import dataclass
 from typing import Iterable, TypedDict
 
@@ -145,6 +146,12 @@ class Resources:
                 self[name] -= other[name]
             return self
         return NotImplemented
+
+    def floor_values(self):
+        """Replace every amount with a floored version, and returns self."""
+        for k in constants.all_res:
+            self[k] = math.floor(self[k])
+        return self
 
 
 class TransactionType(enum.Enum):
