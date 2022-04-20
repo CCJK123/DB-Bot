@@ -1,5 +1,3 @@
-import sys
-import traceback
 import itertools
 from typing import Callable, Iterable
 
@@ -7,7 +5,7 @@ import discord
 
 # Setup what is exported by default
 __all__ = ('construct_embed', 'get_msg_chk', 'get_dm_msg_chk',
-           'split_blocks', 'default_error_handler')
+           'split_blocks')
 
 
 def construct_embed(names: Iterable[str], values: Iterable[str], /, **kwargs: str) -> discord.Embed:
@@ -53,8 +51,3 @@ def split_blocks(joiner: str, *iterables: Iterable[str], limit: int = 2000) -> I
         yield s
     return
 
-
-async def default_error_handler(context: discord.ApplicationContext,
-                                exception: discord.ApplicationCommandError) -> None:
-    print(f'Ignoring exception in command {context.command}:', file=sys.stderr)
-    traceback.print_exception(type(exception), exception, exception.__traceback__, file=sys.stderr)

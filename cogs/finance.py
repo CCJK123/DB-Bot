@@ -470,7 +470,8 @@ class FinanceCog(discordutils.CogBase):
         if isinstance(error, cmds.MaxConcurrencyReached):
             await ctx.respond('You are already making a request!', ephemeral=True)
             return
-        await discordutils.default_error_handler(ctx, error)
+
+        await self.bot.default_on_error(ctx, error)
 
 
 class RequestButtonsView(discordutils.PersistentView):

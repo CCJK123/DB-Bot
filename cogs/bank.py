@@ -125,7 +125,8 @@ class BankCog(discordutils.CogBase):
             for transaction in dep_transactions:
                 resources += transaction.resources.floor_values()
             await self.balances[ctx.author.id].set(resources.to_dict())
-            await author.send('Your balance is now:', embed=resources.create_balance_embed(author.display_name))
+            await author.send('Deposits Recorded! Your balance is now:',
+                              embed=resources.create_balance_embed(author.display_name))
             return
         await author.send('You did not deposit any resources! Aborting!')
 
@@ -229,7 +230,7 @@ class BankCog(discordutils.CogBase):
             await ctx.respond('You are already trying to withdraw/deposit!', ephemeral=True)
             return
 
-        await discordutils.default_error_handler(ctx, error)
+        await self.bot.default_on_error(ctx, error)
 
     loan = bank.create_subgroup('loan', 'Commands related to loans')
     loan.guild_ids = config.guild_ids
