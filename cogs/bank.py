@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+import datetime
 from typing import TYPE_CHECKING
 
 import discord
@@ -9,6 +9,7 @@ from discord.ext import commands as cmds, pages
 from utils import financeutils, discordutils, pnwutils, config, dbbot
 from utils.queries import (bank_transactions_query, bank_info_query, nation_name_query, alliance_name_query,
                            nation_resources_query, bank_revenue_query)
+
 if TYPE_CHECKING:
     from cogs.finance import FinanceCog
 
@@ -73,7 +74,7 @@ class BankCog(discordutils.CogBase):
                           allowed_mentions=discord.AllowedMentions.none(),
                           ephemeral=True)
         if loan is not None:
-            date = datetime.fromisoformat(loan["due_date"])
+            date = datetime.datetime.fromisoformat(loan["due_date"])
             await ctx.respond(
                 f'You have a loan due {discord.utils.format_dt(date)} ({discord.utils.format_dt(date, "R")})',
                 embed=pnwutils.Resources(**loan['resources']).create_embed(title='Loaned Resources'), ephemeral=True)
@@ -93,13 +94,13 @@ class BankCog(discordutils.CogBase):
         msg_chk = discordutils.get_dm_msg_chk(author.id)
 
         # deposit check
-        start_time = datetime.now()
-        await author.send('You now have 5 minutes to deposit your resources into the bank. '
-                          'Once you are done, send a message here.',
-                          view=discordutils.LinkView('Deposit Link', pnwutils.link.bank('d', note='Deposit to balance'))
-                          )
-                          
-        await author.send('test')
+        start_time = datetime.datetime.now(tz=datetime.timezone.utc)
+        await author.send(
+            'You now have 5 minutes to deposit your resources into the bank. '
+            'Once you are done, send a message here.',
+            view=discordutils.LinkView('Deposit Link', pnwutils.link.bank('d', note='Deposit to balance'))
+        )
+
         try:
             await self.bot.wait_for(
                 'message',
@@ -395,7 +396,7 @@ class BankCog(discordutils.CogBase):
                 embeds = []
                 for d in chunk:
                     loan = loans[d]
-                    due_date = discord.utils.format_dt(datetime.fromisoformat(loans['due_date']))
+                    due_date = discord.utils.format_dt(datetime.datetime.fromisoformat(loans['due_date']))
                     embeds.append(pnwutils.Resources(**loan['resources']).create_embed(
                         title=f"<@{d}>'s Loan due on {due_date}"))
                 paginator_pages.append(embeds)
@@ -453,10 +454,10 @@ class BankCog(discordutils.CogBase):
         await ctx.defer()
         data = await bank_revenue_query.query(self.bot.session, alliance_id=config.alliance_id)
         tax_records = data['data'][0]['taxrecs']
-        first_date = datetime.fromisoformat(tax_records[0]['date']).replace(minute=0, second=0, microsecond=0)
+        first_date = datetime.datetime.fromisoformat(tax_records[0]['date']).replace(minute=0, second=0, microsecond=0)
         total = pnwutils.Resources()
         for tax_rec in tax_records:
-            if datetime.fromisoformat(tax_rec['date']) < first_date:
+            if datetime.datetime.fromisoformat(tax_rec['date']) < first_date:
                 break
             total += pnwutils.Resources.from_dict(tax_rec)
         await ctx.respond(embed=total.create_embed(title='Tax Revenue from Last Turn'), ephemeral=True)

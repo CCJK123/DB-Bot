@@ -164,13 +164,13 @@ class FinanceCog(discordutils.CogBase):
                             'You have not built the Urban Planning project, which is needed to build the Advanced '
                             'Urban Planning project. Please try again next time.'
                         )
-                        return None
+                        return
                     elif data['num_cities'] < 16:
                         await author.send(
                             'The Advanced Urban Planning project requires 16 cities to build, however you only have '
                             f'{data["num_cities"]} cities. Please try again next time.'
                         )
-                        return None
+                        return
                     else:
                         req_data.resources = pnwutils.Resources(uranium=10000,
                                                                 aluminum=40000,
@@ -181,17 +181,17 @@ class FinanceCog(discordutils.CogBase):
                     await author.send(
                         'Other projects are not eligible for grants. Kindly request for a loan.'
                     )
-                    return None
+                    return
                 req_data.reason = project
                 req_data.note = f'{project} Project Grant'
                 await self.on_request_fixed(req_data)
-                return None
+                return
 
             else:
                 await author.send(
                     'Other Grants have not been implemented! Please try again next time.'
                 )
-                return None
+                return
 
         elif req_data.kind == 'Loan':
             if await self.loans[req_data.requester_id].get(False):
