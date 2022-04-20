@@ -98,6 +98,8 @@ class BankCog(discordutils.CogBase):
                           'Once you are done, send a message here.',
                           view=discordutils.LinkView('Deposit Link', pnwutils.link.bank('d', note='Deposit to balance'))
                           )
+                          
+        await author.send('test')
         try:
             await self.bot.wait_for(
                 'message',
