@@ -99,7 +99,7 @@ class BankCog(discordutils.CogBase):
             'You now have 5 minutes to deposit your resources into the bank. '
             'Once you are done, send a message here.',
             view=discordutils.LinkView('Deposit Link', pnwutils.link.bank('d', note='Deposit to balance'))
-        )
+        ).react('\:thumbsup:')
 
         try:
             await self.bot.wait_for(
