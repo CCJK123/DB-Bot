@@ -25,7 +25,6 @@ class DBBot(discord.Bot):
         self.session = None
         self.database = databases.RudimentaryDatabase(db_url)
         self.views = discordutils.ViewStorage[discordutils.PersistentView](self, 'views')
-        self.prepped = False
         self.on_ready_func = on_ready_func
         self.possible_statuses = possible_statuses if possible_statuses is not None else (
             *map(discord.Game, ("with Python", "with the P&W API")),
@@ -47,7 +46,7 @@ class DBBot(discord.Bot):
         for ext in cogs:
             self.load_extension(f'{directory}.{ext}')
 
-    async def prep(self):
+    async def prepare(self):
         self.session = await aiohttp.ClientSession().__aenter__()
         self.database = await self.database.__aenter__()
 
@@ -75,10 +74,6 @@ class DBBot(discord.Bot):
         await self.views.add(view)
 
     async def on_ready(self):
-        if not self.prepped:
-            self.prepped = True
-            await self.prep()
-
         for cog in self.cogs.values():
             if isinstance(cog, discordutils.CogBase):
                 await cog.on_ready()
@@ -109,13 +104,16 @@ class DBBot(discord.Bot):
             await self.default_on_error(ctx, exception)
 
     @staticmethod
-    async def default_on_error(ctx: discord.ApplicationContext, exception: Exception):
-        exs = traceback.format_exception(exception)  # type: ignore
-        await ctx.send(f'Sorry, an exception occurred.')
+    async def default_on_error(ctx: discord.ApplicationContext, exception: BaseException):
+        try:
+            await ctx.respond(f'Sorry, an exception occurred in the command command `{ctx.command}`.')
+        except discord.HTTPException as e:
+            print('Responding failed! Exc Type: ', type(e))
+            await ctx.send('Sorry, an exception occurred.')
+
         s = ''
-        for ex in exs:
-            print(f'"{ex}"')
-            if ex == 'The above exception was the direct cause of the following exception:':
+        for ex in traceback.format_exception(exception):  # type: ignore
+            if ex == '\nThe above exception was the direct cause of the following exception:\n\n':
                 await ctx.send(f'```{s}```')
                 s = ex
             else:

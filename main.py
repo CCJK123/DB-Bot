@@ -15,7 +15,10 @@ if __name__ == '__main__':
     # bot.help_command.cog = bot.get_cog('UtilCog')
     # the new bot does not seem to have a help command, the help command has not been ported over to slash yet, I think
 
+    print('preparing...')
+    asyncio.run(bot.prepare())
     print('running bot...')
+
     try:
         bot.run(config.token)
     finally:
