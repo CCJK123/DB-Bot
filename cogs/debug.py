@@ -56,7 +56,14 @@ class DebugCog(discordutils.CogBase):
 
     @commands.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
+    async def boom(self, ctx: discord.ApplicationContext):
+        """Raise an exception"""
+        raise KeyError('nuh uh')
+
+    @commands.command(guild_ids=config.guild_ids, default_permission=False)
+    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
     async def fix_types(self, ctx: discord.ApplicationContext):
+        """Fix types in the nations, balances, and loans dictionaries to have the discord ID be ints"""
         util_cog = self.bot.get_cog_from_class(UtilCog)
         n = await util_cog.nations.get()
         new = {}

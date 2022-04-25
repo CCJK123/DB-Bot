@@ -467,7 +467,7 @@ class FinanceCog(discordutils.CogBase):
     @request.error
     async def request_error(self, ctx: discord.ApplicationContext,
                             error: discord.ApplicationCommandError) -> None:
-        if isinstance(error, cmds.MaxConcurrencyReached):
+        if isinstance(error.__cause__, cmds.MaxConcurrencyReached):
             await ctx.respond('You are already making a request!', ephemeral=True)
             return
 

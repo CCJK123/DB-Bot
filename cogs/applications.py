@@ -18,7 +18,7 @@ class ApplicationCog(discordutils.CogBase):
         self.application_log = discordutils.ChannelProperty(self, 'application_log')
         self.applications = discordutils.MappingProperty[str, str](self, 'applications')
         self.completed_applications = discordutils.MappingProperty[str, str](self, 'accepted_applications')
-    
+
     @commands.command(guild_ids=config.guild_ids)
     @commands.permission(role_id=config.member_role_id, permission=False, guild_id=config.guild_id)
     @cmds.max_concurrency(1, cmds.BucketType.user)
@@ -68,6 +68,15 @@ class ApplicationCog(discordutils.CogBase):
         await channel.send(f'Welcome to the {config.alliance_name} interview. '
                            'When you are ready, please run the `/start_interview` command.')
 
+    @apply.error
+    async def apply_error(self, ctx: discord.ApplicationContext,
+                          error: discord.ApplicationCommandError) -> None:
+        if isinstance(error.__cause__, cmds.MaxConcurrencyReached):
+            await ctx.respond('You are already applying!', ephemeral=True)
+            return
+
+        await self.bot.default_on_error(ctx, error)
+
     @commands.command(guild_ids=config.guild_ids)
     @commands.permission(role_id=config.member_role_id, permission=False, guild_id=config.guild_id)
     @cmds.max_concurrency(1, cmds.BucketType.channel)
@@ -98,6 +107,15 @@ class ApplicationCog(discordutils.CogBase):
         await ctx.respond('Thank you for answering our questions. An interviewer will be reviewing your answers'
                           'and will get back to you as soon as possible (1 - 4 hours). '
                           'They will respond to your queries and may ask follow up questions.')
+
+    @start_interview.error
+    async def start_interview_error(self, ctx: discord.ApplicationContext,
+                                    error: discord.ApplicationCommandError) -> None:
+        if isinstance(error.__cause__, cmds.MaxConcurrencyReached):
+            await ctx.respond('You are already doing an interview!', ephemeral=True)
+            return
+
+        await self.bot.default_on_error(ctx, error)
 
     application = commands.SlashCommandGroup('application', 'Interviewer commands related to applications',
                                              guild_ids=config.guild_ids, default_permission=False,

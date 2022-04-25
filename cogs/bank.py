@@ -226,7 +226,7 @@ class BankCog(discordutils.CogBase):
     @withdraw.error
     async def on_error(self, ctx: discord.ApplicationContext,
                        error: discord.ApplicationCommandError) -> None:
-        if isinstance(error, cmds.MaxConcurrencyReached):
+        if isinstance(error.__cause__, cmds.MaxConcurrencyReached):
             await ctx.respond('You are already trying to withdraw/deposit!', ephemeral=True)
             return
 
