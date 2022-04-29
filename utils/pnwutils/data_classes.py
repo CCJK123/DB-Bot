@@ -147,6 +147,21 @@ class Resources:
             return self
         return NotImplemented
 
+    def __mul__(self, other):
+        if isinstance(other, (int, float)):
+            r = Resources()
+            for name in constants.all_res:
+                r[name] = int(self[name] * other)
+            return r
+        return NotImplemented
+
+    def __imul__(self, other):
+        if isinstance(other, (int, float)):
+            for name in constants.all_res:
+                self[name] = int(self[name] * other)
+            return self
+        return NotImplemented
+
     def floor_values(self):
         """Replace every amount with a floored version, and returns self."""
         for k in constants.all_res:
