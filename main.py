@@ -7,7 +7,7 @@ cog_logger = logging.getLogger('cogs')
 cog_logger.addHandler(logging.FileHandler('logs.txt'))
 
 if __name__ == '__main__':
-    bot = dbbot.DBBot('data.db')
+    bot = dbbot.DBBot(config.database_url)
 
     # Load cogs
     bot.load_cogs('cogs')
@@ -15,8 +15,6 @@ if __name__ == '__main__':
     # bot.help_command.cog = bot.get_cog('UtilCog')
     # the new bot does not seem to have a help command, the help command has not been ported over to slash yet, I think
 
-    print('preparing...')
-    asyncio.run(bot.prepare())
     print('running bot...')
 
     try:

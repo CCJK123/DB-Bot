@@ -9,6 +9,7 @@ class Webserver(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
         self.bot = bot
+        self.start = True
 
         app = web.Application()
         routes = web.RouteTableDef()
@@ -22,10 +23,12 @@ class Webserver(discordutils.CogBase):
         self.runner = web.AppRunner(app)
 
     async def on_ready(self):
-        await self.runner.setup()
-        site = web.TCPSite(self.runner, '0.0.0.0', 8000)
-        print('starting site')
-        await site.start()
+        if self.start:
+            await self.runner.setup()
+            site = web.TCPSite(self.runner, '0.0.0.0', 8000)
+            print('starting site')
+            await site.start()
+            self.start = False
 
     async def on_cleanup(self):
         await self.runner.cleanup()

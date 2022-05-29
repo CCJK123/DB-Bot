@@ -3,13 +3,13 @@ import asyncio
 
 import aiofiles
 
-from utils.database import RudimentaryDatabase
+from utils import databases
 
 
 async def main():
     async with aiofiles.open('dict.txt') as f:
         data = await f.read()
-    new_db = RudimentaryDatabase('data.db')
+    databases.Database()
     new_db.data = dict(data)
     await new_db.save()
     print('done')

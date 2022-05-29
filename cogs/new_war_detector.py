@@ -14,11 +14,7 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
         self.last_monitoring: list[tuple[dict[str, Any], pnwutils.WarType]] | None = None
-
-        self.updates_channel = discordutils.ChannelProperty(self, 'update_channel')
-        self.att_channel = discordutils.ChannelProperty(self, 'att_channel')
-        self.def_channel = discordutils.ChannelProperty(self, 'def_channel')
-        self.channels = {pnwutils.WarType.ATT: self.att_channel, pnwutils.WarType.DEF: self.def_channel}
+        self.channels = {pnwutils.WarType.ATT: 'offensive_channel', pnwutils.WarType.DEF: 'defensive_channel'}
 
         self.monitor_att = discordutils.SetProperty(self, 'monitor_att')
         self.monitor_def = discordutils.SetProperty(self, 'monitor_def')
@@ -69,14 +65,14 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
                 else:
                     kind = pnwutils.WarType.DEF
 
-                if war[kind.string]['alliance_position'] != 'APPLICANT' and war['turnsleft'] == 60:
+                if war[kind.string]['alliance_position'] != 'APPLICANT' and war['turns_left'] == 60:
                     # new war
                     await self.channels[kind].send(embed=await self.new_war_embed(war, kind))
 
                     await self.monitor[kind].add(war['id'])
                 continue
 
-            if war['att_resistance'] and war['def_resistance'] and war['turnsleft'] > 0:
+            if war['att_resistance'] and war['def_resistance'] and war['turns_left'] > 0:
                 monitoring.append((war, kind))
 
         monitoring.sort(key=lambda t: t[0][f'{t[1].string_short}_resistance'])
@@ -148,7 +144,7 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
             kind = pnwutils.WarType.ATT if war['att_alliance_id'] == config.alliance_id else pnwutils.WarType.DEF
             if war[kind.string]['alliance_position'] == 'APPLICANT':  # type: ignore
                 continue
-            if war['att_resistance'] and war['def_resistance'] and war['turnsleft'] > 0:
+            if war['att_resistance'] and war['def_resistance'] and war['turns_left'] > 0:
                 if kind == pnwutils.WarType.ATT:
                     await self.monitor_att.add(war['id'])
                 else:

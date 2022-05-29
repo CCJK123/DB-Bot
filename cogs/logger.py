@@ -5,11 +5,11 @@ class LoggingCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
 
-        self.logging_channel = discordutils.ChannelProperty(self, 'logging_channel')
+        bot.log_func = self.log
 
-    async def log(self, **kwargs):
-        channel = await self.logging_channel.get()
-        await channel.send(**kwargs)
+    async def log(self, content: 'str | None', **kwargs):
+        channel = await self.bot.database.get_kv('channel_ids').get('logging_channel')
+        await channel.send(content, **kwargs)
 
 
 def setup(bot: dbbot.DBBot) -> None:

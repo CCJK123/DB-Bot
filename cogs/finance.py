@@ -1,45 +1,35 @@
+from __future__ import annotations
+
 import asyncio
-import logging
 import datetime
-from typing import Any
 
 import discord
 from discord import commands
 from discord.ext import commands as cmds
 
-from cogs.bank import BankCog
-from cogs.util import UtilCog
 from utils import discordutils, financeutils, pnwutils, config, dbbot
 from utils.queries import finance_nation_info_query
-
-logger = logging.getLogger(__name__)
 
 
 # Create Finance Cog to group finance related commands
 class FinanceCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
-        self.has_war_aid = discordutils.CogProperty[bool](self, 'has_war_aid')
-        self.infra_rebuild_cap = discordutils.CogProperty[int](self, 'infra_rebuild_cap')
-        self.process_channel = discordutils.ChannelProperty(self, 'process_channel')
-        self.withdrawal_channel = discordutils.ChannelProperty(self, 'withdraw_channel')
-
-        self.loans = discordutils.MappingProperty[int, dict[str, Any]](self, 'loans')
-        # discord_id : LoanData dict
 
     # Main request command
     @commands.command(guild_ids=config.guild_ids)
     @cmds.max_concurrency(1, cmds.BucketType.user)
     async def request(self, ctx: discord.ApplicationContext) -> None:
         """Request for a grant, loan, or war aid (if enabled) from the bank."""
-        await self.loans.initialise()
-        # Command Run Validity Check
+        # Command Run Validity Check -
         # Check if output channel has been set
-        if await self.process_channel.get(None) is None or await self.withdrawal_channel.get(None) is None:
-            await ctx.respond('Output channel has not been set! Aborting...')
+        channel_ids_table = self.bot.database.get_kv('channel_ids')
+        if not await channel_ids_table.all_set('process_channel', 'withdrawal_channel'):
+            await ctx.respond('Not all output channels have been set! Aborting...')
             return
 
-        nation_id = await self.bot.get_cog_from_class(UtilCog).nations[ctx.author.id].get(None)
+        users_table = self.bot.database.get_table('users')
+        nation_id: int = await users_table.select_val('nation_id').where(discord_id=ctx.author.id)
         if nation_id is None:
             await ctx.respond('Your nation id has not been set! Aborting...', ephemeral=True)
             return
@@ -68,7 +58,7 @@ class FinanceCog(discordutils.CogBase):
 
         # Get Request Type
         req_types = ['Grant', 'Loan']
-        if await self.has_war_aid.get():
+        if await self.bot.database.get_kv('kv_bools').get('has_war_aid'):
             req_types.append('War Aid')
 
         req_type_choice = discordutils.Choices(*req_types)
@@ -92,8 +82,8 @@ class FinanceCog(discordutils.CogBase):
 
             if grant_type == 'City':
                 # Get data of projects which affect city cost
-                has_up = data['city_planning']
-                has_aup = data['adv_city_planning']
+                has_up = data['urban_planning']
+                has_aup = data['advanced_urban_planning']
                 # Calculate city cost
                 req_data.resources = pnwutils.Resources(
                     money=(50000 * (data['num_cities'] - 1) ** 3 +
@@ -110,11 +100,11 @@ class FinanceCog(discordutils.CogBase):
 
             elif grant_type == 'Project':
                 project_field_names = {
-                    'Center for Civil Engineering': 'cfce',
-                    'Intelligence Agency': 'cia',
-                    'Propaganda Bureau': 'propb',
-                    'Urban Planning': 'city_planning',
-                    'Advanced Urban Planning': 'adv_city_planning',
+                    'Center for Civil Engineering': 'center_for_civil_engineering',
+                    'Intelligence Agency': 'central_intelligence_agency',
+                    'Propaganda Bureau': 'propaganda_bureau',
+                    'Urban Planning': 'urban_planning',
+                    'Advanced Urban Planning': 'advanced_urban_planning',
                     'Other': 'other'
                 }
                 data['other'] = None
@@ -133,31 +123,15 @@ class FinanceCog(discordutils.CogBase):
                     return
 
                 # Redirect accordingly
-                if project == 'Center for Civil Engineering':
-                    req_data.resources = pnwutils.Resources(oil=1000,
-                                                            iron=1000,
-                                                            bauxite=1000,
-                                                            money=3000000)
-                elif project == 'Intelligence Agency':
-                    req_data.resources = pnwutils.Resources(steel=500,
-                                                            gasoline=500,
-                                                            money=5000000)
-                elif project == 'Propaganda Bureau':
-                    req_data.resources = pnwutils.Resources(aluminum=1500, money=15000000)
-                elif project == 'Urban Planning':
-                    if data['num_cities'] < 11:
-                        await author.send(
-                            'The Urban Planning project requires 11 cities to build, however you only have '
-                            f'{data["num_cities"]} cities. Please try again next time.'
-                        )
-                        return None
-                    else:
-                        req_data.resources = pnwutils.Resources(coal=10000,
-                                                                oil=10000,
-                                                                aluminum=20000,
-                                                                munitions=10000,
-                                                                gasoline=10000,
-                                                                food=1000000)
+                if project == 'Other':
+                    await author.send('Other projects are not eligible for grants. Kindly request for a loan.')
+                    return
+                elif project == 'Urban Planning' and data['num_cities'] < 11:
+                    await author.send(
+                        'The Urban Planning project requires 11 cities to build, however you only have '
+                        f'{data["num_cities"]} cities. Please try again next time.'
+                    )
+                    return
                 elif project == 'Advanced Urban Planning':
                     if not data['city_planning']:
                         await author.send(
@@ -171,30 +145,17 @@ class FinanceCog(discordutils.CogBase):
                             f'{data["num_cities"]} cities. Please try again next time.'
                         )
                         return
-                    else:
-                        req_data.resources = pnwutils.Resources(uranium=10000,
-                                                                aluminum=40000,
-                                                                steel=20000,
-                                                                munitions=20000,
-                                                                food=2500000)
-                else:
-                    await author.send(
-                        'Other projects are not eligible for grants. Kindly request for a loan.'
-                    )
-                    return
+                req_data.resources = pnwutils.constants.project_costs[project_field_names[project]]
                 req_data.reason = project
                 req_data.note = f'{project} Project Grant'
                 await self.on_request_fixed(req_data)
                 return
-
             else:
-                await author.send(
-                    'Other Grants have not been implemented! Please try again next time.'
-                )
+                await author.send('Other Grants have not been implemented! Please try again next time.')
                 return
 
         elif req_data.kind == 'Loan':
-            if await self.loans[req_data.requester_id].get(False):
+            if await self.bot.database.get_table('loans').exists(discord_id=author.id):
                 await author.send('You already have an active loan! Repay that before requesting another.')
                 return
             await author.send('What are you requesting a loan for?')
@@ -205,9 +166,8 @@ class FinanceCog(discordutils.CogBase):
                     check=msg_chk,
                     timeout=config.timeout)).content
             except asyncio.TimeoutError:
-                await author.send('You took too long to reply. Aborting request!'
-                                  )
-                return None
+                await author.send('You took too long to reply. Aborting request!')
+                return
 
             res_select_view = financeutils.ResourceSelectView()
             await author.send('What resources are you requesting?', view=res_select_view)
@@ -259,13 +219,15 @@ class FinanceCog(discordutils.CogBase):
             except asyncio.TimeoutError:
                 await author.send('You took too long to respond! Exiting...')
                 return
+            wars = data['wars']
+            num_off = sum(war['att_id'] == nation_id for war in wars if war['turns_left'] > 0)
             req_data.additional_info = {
-                'Beige Turns': data['beigeturns'],
+                'Beige Turns': data['beige_turns'],
                 'Active Wars': f'''
-                    Offensive: {sum(w["turnsleft"] > 0 for w in data["offensive_wars"])}
-                    Defensive: {sum(w["turnsleft"] > 0 for w in data["defensive_wars"])}
+                    Offensive: {num_off}
+                    Defensive: {len(wars) - num_off}
                 '''
-                # fsr the value of turnsleft when war is over seems to be always -12? idk
+                # fsr the value of turns_left when war is over seems to be always -12? i am not sure
                 # maybe its diff for wars that ended recently? did not check
             }
 
@@ -300,7 +262,7 @@ class FinanceCog(discordutils.CogBase):
                 needed_improvements = {
                     'barracks': 5 * data['num_cities'],
                     'factory': 5 * data['num_cities'],
-                    'airforcebase': 5 * data['num_cities'],
+                    'hangar': 5 * data['num_cities'],
                     'drydock': 3 * data['num_cities']
                 }
                 for city in data['cities']:
@@ -309,14 +271,14 @@ class FinanceCog(discordutils.CogBase):
 
                 await author.send(
                     f'To get to max military improvements, you require an additional {needed_improvements["barracks"]} '
-                    f'barracks, {needed_improvements["factory"]} factories, {needed_improvements["airforcebase"]} '
+                    f'barracks, {needed_improvements["factory"]} factories, {needed_improvements["hangar"]} '
                     f'hangars and {needed_improvements["drydock"]} drydocks.'
                 )
                 # Calculate resources needed to buy needed military improvements
                 req_data.resources = pnwutils.Resources(
                     money=3000 * needed_improvements['barracks'] + 15000 * needed_improvements['factory'] +
-                          100000 * needed_improvements['airforcebase'] + 250000 * needed_improvements['drydock'],
-                    steel=10 * needed_improvements['airforcebase'],
+                          100000 * needed_improvements['hangar'] + 250000 * needed_improvements['drydock'],
+                    steel=10 * needed_improvements['hangar'],
                     aluminum=5 * needed_improvements['factory'] + 20 * needed_improvements['drydock'])
 
                 req_data.reason = 'Rebuild to Max Military Improvements'
@@ -352,8 +314,8 @@ class FinanceCog(discordutils.CogBase):
                     if city['infrastructure'] < infra_level:
                         req_data.resources.money += pnwutils.formulas.infra_price(city['infrastructure'], infra_level)
                 # Account for Urbanisation and cost reducing projects (CCE and AEC)
-                req_data.resources.money *= 0.95 - 0.05 * (data['cfce'] +
-                                                           data['adv_engineering_corps'])
+                req_data.resources.money *= 0.95 - 0.05 * (data['center_for_civil_engineering'] +
+                                                           data['advanced_engineering_corps'])
                 req_data.resources.money = int(req_data.resources.money + 0.5)
                 # Check if infrastructure in any city under cap
                 if req_data.resources.money == 0:
@@ -431,7 +393,7 @@ class FinanceCog(discordutils.CogBase):
                 await auth.send('Exiting the DB Finance Request Interface.')
                 return None
         except asyncio.TimeoutError:
-            auth.send('You took too long to respond! Exiting...')
+            await auth.send('You took too long to respond! Exiting...')
             return
 
         embed = req_data.create_embed(title='Please confirm your request.', colour=discord.Colour.blue())
@@ -445,14 +407,15 @@ class FinanceCog(discordutils.CogBase):
             await auth.send('You took too long to respond! Exiting...')
             return
         if confirmed:
-            logger.info(f'request sent: {req_data}')
             await auth.send(
                 'Your request has been sent. Thank you for using the DB Finance Request Interface.'
             )
             embed.title = None
-            process_view = RequestButtonsView(req_data)
+            custom_id = await self.bot.get_custom_id()
+            process_view = RequestButtonsView(req_data, custom_id=custom_id)
 
-            msg = await (await self.process_channel.get()).send(
+            process_channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get('process_channel'))
+            msg = await process_channel.send(
                 f'New {req_data.kind} Request from {auth.mention}',
                 embed=embed,
                 allowed_mentions=discord.AllowedMentions.none(),
@@ -475,117 +438,177 @@ class FinanceCog(discordutils.CogBase):
 
 
 class RequestButtonsView(discordutils.PersistentView):
-    def __init__(self, data: financeutils.RequestData, *, custom_id: int = None):
+    def __init__(self, data: financeutils.RequestData, *, custom_id: int):
         self.data = data
 
-        super().__init__(custom_id=self.get_id() if custom_id is None else custom_id, timeout=None)
+        super().__init__(custom_id=custom_id)
 
     def get_state(self) -> tuple:
         return {}, self.data
 
-    def disable_all(self):
-        for c in self.children:
-            c.disabled = True
-
     @discordutils.persistent_button(label='Accept')
     async def accept(self, button: discord.ui.Button, interaction: discord.Interaction):
         button.style = discord.ButtonStyle.success
-        self.disable_all()
+        self.disable_all_items()
         self.stop()
-        await self.remove()
-        logger.info(f'accepting {self.data.kind} request: {self.data}')
+        await self.bot.remove_view(self)
+
         self.data.set_requester(self.bot)
         if self.data.kind == 'Loan':
             # process loan
-            data = financeutils.LoanData(datetime.datetime.now() + datetime.timedelta(days=30), self.data.resources)
-
-            # change balance
-            bank_cog = self.bot.get_cog_from_class(BankCog)
-            bal = bank_cog.balances[self.data.requester_id]
-            if (res_dict := await bal.get(None)) is None:
-                res = pnwutils.Resources()
-            else:
-                res = pnwutils.Resources(**res_dict)
-            await bal.set((res + self.data.resources).to_dict())
-
-            # change embed and add to loans
+            data = financeutils.LoanData(
+                datetime.datetime.now().replace(minute=0, second=0) + datetime.timedelta(days=30),
+                self.data.resources)
             embed = interaction.message.embeds[0]
             embed.add_field(name='Return By', value=data.display_date, inline=True)
             embed.colour = discord.Colour.green()
             await interaction.response.edit_message(view=self, embed=embed)
-            await interaction.edit_original_message(
-                content=f'{self.data.kind} Request from {self.data.requester.mention}',
-                allowed_mentions=discord.AllowedMentions.none())
-            await self.bot.get_cog_from_class(FinanceCog).loans[self.data.requester_id].set(data.to_dict())
+            # change balance
+            users_table = self.bot.database.get_table('users')
+            new_bal = pnwutils.Resources(**await users_table.update(
+                f'balance = balance + {data.loaned.to_row()}'
+            ).where(discord_id=self.data.requester_id).returning_val('balance'))
+            await asyncio.gather(
+                self.bot.database.execute(
+                    f'INSERT INTO loans(discord_id, due_date, loaned) VALUES ($1, $2, {self.data.resources.to_row()})',
+                    self.data.requester_id, data.due_date),
+                interaction.edit_original_message(
+                    content=f'{self.data.kind} Request from {self.data.requester.mention}',
+                    allowed_mentions=discord.AllowedMentions.none()))
             await self.data.requester.send(
-                'Your loan has been added to your bank balance.',
+                'Your loaned resources have been added to your bank balance.',
                 embed=self.data.resources.create_embed(title='Loaned Resources'))
+            await self.data.requester.send(
+                'Your current balance is:',
+                embed=new_bal.create_balance_embed(self.data.requester.display_name)
+            )
             await self.data.requester.send(
                 'You will have to use `bank withdraw` to withdraw the loan from your bank balance to your nation. '
                 'Kindly remember to return the requested resources by depositing it back into your bank balance '
                 f'and using `bank loan return` by {discord.utils.format_dt(data.due_date, "D")} '
                 f'({discord.utils.format_dt(data.due_date, "R")}). '
-                f'You can check your loan status with `bank loan status`.')
+                'You can check your loan status with `bank loan status`.')
             return
         # process other
         embed = interaction.message.embeds[0]
         embed.colour = discord.Colour.green()
         await interaction.response.edit_message(view=self, embed=embed)
         await interaction.edit_original_message(
-            content=f'{self.data.kind} Request from {self.data.requester.mention}',
+            content=f'Accepted {self.data.kind} Request from {self.data.requester.mention}',
             allowed_mentions=discord.AllowedMentions.none())
-        channel = await self.bot.get_cog_from_class(FinanceCog).withdrawal_channel.get()
-        withdrawal_view = financeutils.WithdrawalView('request_on_sent', self.data.create_link(), self.data,
-                                                      can_reject=False)
-        msg = await channel.send(f'Withdrawal Request from {self.data.requester.mention}',
-                                 embed=self.data.create_withdrawal_embed(colour=discord.Colour.blue()),
-                                 view=withdrawal_view,
-                                 allowed_mentions=discord.AllowedMentions.none())
-        await self.bot.add_view(withdrawal_view, message_id=msg.id)
+        sent = await self.data.create_withdrawal().withdraw(self.bot.session)
         await self.data.requester.send(
             f'Your {self.data.kind} request for `{self.data.reason}` '
-            'has been accepted! The resources will be sent to you soon. '
+            'has been accepted! ' +
+            ('You should have received the resources.' if sent else 'The resources will be sent once available.')
         )
+        if not sent:
+            custom_id = await self.bot.get_custom_id()
+            view = WithdrawalView(
+                self.data.requester_id,
+                pnwutils.Withdrawal(self.data.resources, self.data.nation_id, note=self.data.reason),
+                custom_id=custom_id)
+
+            channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get('withdrawal_channel'))
+            msg = await channel.send(f'Withdrawal Request from {self.data.requester.mention}',
+                                     embed=self.data.create_withdrawal_embed(),
+                                     allowed_mentions=discord.AllowedMentions.none(),
+                                     view=view)
+            await self.bot.add_view(view, message_id=msg.id)
 
     @discordutils.persistent_button(label='Reject')
     async def reject(self, button: discord.ui.Button, interaction: discord.Interaction):
-        button.style = discord.ButtonStyle.success
-        self.disable_all()
-        self.stop()
-        await self.remove()
-        logger.info(f'accepting {self.data.kind} request: {self.data}')
         self.data.set_requester(self.bot)
         reason_modal = discordutils.SingleModal(
             f'Why reject the {self.data.reason} request?', 'Rejection Reason', discord.InputTextStyle.paragraph)
         await interaction.response.send_modal(reason_modal)
         reject_reason = await reason_modal.result()
-        await self.data.requester.send(
-            f'Your {self.data.kind} request for `{self.data.reason}` '
-            f'has been rejected!\nReason: `{reject_reason}`')
-        embed = interaction.message.embeds[0]
-        embed.add_field(name='Rejection Reason', value=reject_reason, inline=True)
-        embed.colour = discord.Colour.red()
-        # sent modal, must respond to close it
-        # however, we do not want anything to happen
+        # sent modal, must respond to its interaction to close it
+        # however, we do not want anything to happen with that interaction
         # intentionally send empty message, closing the embed but doing nothing
         try:
             await reason_modal.interaction.response.send_message('')
         except discord.HTTPException:
             pass
+        else:
+            raise AssertionError('HTTPException Not Raised!')
 
-        # edit the embed and stuff of the original message
-        await interaction.edit_original_message(
-            view=self, embed=embed, allowed_mentions=discord.AllowedMentions.none(),
-            content=f'{self.data.kind} Request from {self.data.requester.mention}')
+        button.style = discord.ButtonStyle.success
+        self.disable_all_items()
+        self.stop()
+        embed = interaction.message.embeds[0]
+        embed.add_field(name='Rejection Reason', value=reject_reason, inline=True)
+        embed.colour = discord.Colour.red()
+        await asyncio.gather(
+            self.data.requester.send(
+                f'Your {self.data.kind} request for `{self.data.reason}` '
+                f'has been rejected!\nReason: `{reject_reason}`'),
+            interaction.edit_original_message(
+                content=f'Rejected {self.data.kind} Request from {self.data.requester.mention}',
+                view=self, embed=embed, allowed_mentions=discord.AllowedMentions.none()),
+            self.bot.remove_view(self)
+        )
+
+    '''
+    @discordutils.persistent_button(label='Modify')
+    async def modify(self, button: discord.ui.Button, interaction: discord.Interaction):
+        button.style = discord.ButtonStyle.success
+        self.disable_all_items()
+        self.stop()
+        await self.bot.remove_view(self)
+        self.bot.log(f'rejecting {self.data.kind} request: {self.data}')
+        self.data.set_requester(self.bot)
+    '''
+
+
+class WithdrawalView(discordutils.PersistentView):
+    def __init__(self, receiver_id: int, withdrawal: pnwutils.Withdrawal, *, custom_id: int):
+        self.receiver_id = receiver_id
+        self.withdrawal = withdrawal
+        super().__init__(custom_id=custom_id)
+
+    def get_state(self) -> tuple:
+        return {}, self.withdrawal
+
+    @discordutils.persistent_button(label='Send')
+    async def send(self, button: discordutils.PersistentButton, interaction: discord.Interaction):
+        if await self.withdrawal.withdraw(self.bot.session):
+            button.style = discord.ButtonStyle.success
+            self.disable_all_items()
+            self.stop()
+            embed = interaction.message.embeds[0]
+            embed.colour = discord.Colour.green()
+            await asyncio.gather(self.bot.remove_view(self), interaction.response.edit_message(view=self, embed=embed))
+        else:
+            await interaction.response.send_message('The bank does not have enough on hand to fulfill this withdrawal!')
+
+    @discordutils.persistent_button(label='Cancel')
+    async def cancel(self, button: discordutils.PersistentButton, interaction: discord.Interaction):
+        reason_modal = discordutils.SingleModal(
+            f'Why cancel this withdrawal request?', 'Cancellation Reason', discord.InputTextStyle.paragraph)
+        await interaction.response.send_modal(reason_modal)
+        reject_reason = await reason_modal.result()
+        try:
+            await reason_modal.interaction.response.send_message('')
+        except discord.HTTPException:
+            pass
+        else:
+            raise AssertionError('HTTPException Not Raised!')
+
+        await self.bot.database.get_table('users').update(
+            f'balance = balance - {self.withdrawal.resources.to_row()}').where(discord_id=self.receiver_id)
+
+        button.style = discord.ButtonStyle.success
+        self.disable_all_items()
+        self.stop()
+        embed = interaction.message.embeds[0]
+        embed.colour = discord.Colour.red()
+        embed.add_field(name='Cancellation Reason', value=reject_reason)
+        await asyncio.gather(self.bot.remove_view(self), interaction.edit_original_message(view=self, embed=embed),
+                             interaction.guild.get_member(self.receiver_id).send(
+                                 f'Your withdrawal request has been cancelled!\nReason: `{reject_reason}`'))
 
 
 # Setup Finance Cog as an extension
 def setup(bot: dbbot.DBBot) -> None:
     bot.add_cog(FinanceCog(bot))
-
-    @financeutils.WithdrawalView.register_callback('request_on_sent')
-    async def on_sent(label: str, _: discord.Interaction, req_data: financeutils.RequestData):
-        assert label == 'Sent'
-        await req_data.set_requester(bot).send(
-            f'Your {req_data.kind} request for `{req_data.reason}` has been sent to your nation!'
-        )

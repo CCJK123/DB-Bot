@@ -1,5 +1,39 @@
 from .pnwutils.api import APIQuery
 
+# mutations
+withdrawal_query_text = '''
+mutation withdraw(
+  $receiver_id: ID!, $receiver_type: Int!, $money: Float,
+  $coal: Float, $oil: Float, $uranium: Float, $iron: Float,
+  $bauxite: Float, $lead: Float, $gasoline: Float, $munitions: Float,
+  $steel: Float, $aluminum: Float, $food: Float, $note: String
+) {
+    bankWithdraw(
+      receiver: $receiver_id, receiver_type: $receiver_type, money: $money,
+      coal: $coal, oil: $oil, uranium: $uranium, iron: $iron, bauxite: $bauxite,
+      lead: $lead, gasoline: $gasoline, munitions: $munitions, steel: $steel,
+      aluminum: $aluminum, food: $food, note: $note
+    ) {
+        id
+    }
+}
+'''
+withdrawal_query = APIQuery(withdrawal_query_text, bot_headers=True, receiver_id=int, receiver_type=int,
+                            money=int, food=int, coal=int, oil=int, uranium=int, lead=int, iron=int, bauxite=int,
+                            gasoline=int, munitions=int, steel=int, aluminum=int, note=str)
+# receiver_type: 1 for nation, 2 for alliance
+
+offshore_info_query_text = '''
+query offshore_info {
+    me {
+        nation {
+            alliance_id
+        }
+    }
+}
+'''
+offshore_info_query = APIQuery(offshore_info_query_text)
+
 # finance.py
 
 finance_nation_info_query_text = '''
@@ -16,33 +50,31 @@ query finance_nation_info($nation_id: [Int]) {
             num_cities
 
             # City Grants & Project Grants 
-            city_planning
-            adv_city_planning
+            urban_planning
+            advanced_urban_planning
 
             # Project Grants
-            cia
-            propb
+            central_intelligence_agency
+            propaganda_bureau
 
             # Project Grants & War Aid
-            cfce
-            adv_engineering_corps
+            center_for_civil_engineering
+            advanced_engineering_corps
 
             # War Aid
             soldiers
             tanks
             aircraft
             ships
-            beigeturns
-            offensive_wars {
-                turnsleft
-            }
-            defensive_wars {
-                turnsleft
+            beige_turns
+            wars {
+                att_id
+                turns_left
             }
             cities {
                 barracks
                 factory
-                airforcebase
+                hangar
                 drydock
                 name
                 infrastructure
@@ -52,6 +84,7 @@ query finance_nation_info($nation_id: [Int]) {
         }
     }
 }
+
 '''
 finance_nation_info_query = APIQuery(finance_nation_info_query_text, nation_id=int)
 
@@ -209,12 +242,12 @@ query alliance_members_res($alliance_id: [Int], $page: Int) {
         data {
             alliance_position
             nation_name
-            vmode
+            vacation_mode_turns
             id
             food
             uranium
             cities {
-                nuclearpower
+                nuclear_power
             }
         }
     }
@@ -244,13 +277,13 @@ query nation_info_query($nation_id: [Int]) {
     nations(id: $nation_id) {
         data {
             nation_name
-            warpolicy
-            dompolicy
+            war_policy
+            domestic_policy
             score
             wars {
-                attid
-                navalblockade
-                turnsleft
+                att_id
+                naval_blockade
+                turns_left
             }
         }
     }
@@ -280,10 +313,9 @@ nation_war_data_fragment = '''
 fragment nation_data on Nation {
     id
     nation_name
-    warpolicy
     score
     num_cities
-    warpolicy
+    war_policy
     soldiers
     tanks
     aircraft
@@ -303,19 +335,25 @@ query alliance_wars($alliance_id: [Int]) {
     wars(alliance_id: $alliance_id, first: 1000) {
         data {
             id
+            date
+            winner_id
+            turns_left
             war_type
-            turnsleft
-            attid
-            defid
+            att_id
+            def_id
             att_resistance
             def_resistance
-            attpoints
-            defpoints
+            att_points
+            def_points
             attacker {
                 ...nation_data
             }
             defender {
                 ...nation_data
+            }
+            attacks(min_id: 0) {
+                type
+                date
             }
         }
     }
@@ -328,18 +366,25 @@ query individual_war($war_id: [Int]) {
     wars(id: $war_id, active: false) {
         data {
             id
+            date
+            winner_id
+            turns_left
             war_type
-            attid
-            defid
+            att_id
+            def_id
             att_resistance
             def_resistance
-            attpoints
-            defpoints
+            att_points
+            def_points
             attacker {
                 ...nation_data
             }
             defender {
                 ...nation_data
+            }
+            attacks(min_id: 0) {
+                type
+                date
             }
         }
     }
@@ -352,16 +397,25 @@ query nation_active_wars($nation_id: [Int]) {
     wars(nation_id: $nation_id) {
         data {
             id
+            date
+            winner_id
+            turns_left
             war_type
-            attpoints
-            defpoints
+            att_id
+            def_id
             att_resistance
             def_resistance
+            att_points
+            def_points
             attacker {
                 ...nation_data
             }
             defender {
                 ...nation_data
+            }
+            attacks(min_id: 0) {
+                type
+                date
             }
         }
     }
@@ -389,13 +443,13 @@ query find_slots_query($alliance_id: [Int], $min_score: Float, $max_score: Float
         }
         data {
             id
-            vmode
+            vacation_mode_turns
             alliance_position
-            beigeturns
+            beige_turns
             wars {
-                attid
-                defid
-                turnsleft
+                att_id
+                def_id
+                turns_left
             }
         }
     }

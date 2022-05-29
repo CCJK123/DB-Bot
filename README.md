@@ -131,3 +131,5 @@ To migrate data from earlier versions, use the convert directory. Instructions c
 - repl.it
     - [Configure repl.it Run Button](https://docs.replit.com/programming-ide/configuring-run-button)
     - [Store Keys / Tokens Privately](https://docs.replit.com/programming-ide/storing-sensitive-information-environment-variables)
+
+- [Invite Link](https://discord.com/api/oauth2/authorize?client_id=720910939381170177&permissions=268814368&scope=bot%20applications.commands)

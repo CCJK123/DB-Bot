@@ -8,15 +8,15 @@ from dataclasses import dataclass, field
 
 import discord
 
-from . import discordutils, pnwutils, config
+from . import pnwutils, config
 
-__all__ = ('RequestData', 'LoanData', 'ResourceSelectView', 'WithdrawalView')
+__all__ = ('RequestData', 'LoanData', 'withdrawal_embed', 'ResourceSelectView')
 
 
 @dataclass()
 class RequestData:
     requester: discord.abc.User | None = None
-    nation_id: str = ''
+    nation_id: int = 0
     nation_name: str = ''
     kind: str = ''
     reason: str = ''
@@ -52,6 +52,9 @@ class RequestData:
     def create_withdrawal_embed(self, **kwargs) -> discord.Embed:
         return withdrawal_embed(self.nation_name, self.nation_id, self.reason, self.resources, **kwargs)
 
+    def create_withdrawal(self) -> pnwutils.Withdrawal:
+        return pnwutils.Withdrawal(self.resources, self.nation_id, pnwutils.EntityType.NATION, self.note)
+
     def __getstate__(self) -> tuple:
         return (0, self.requester_id, self.nation_id, self.nation_name, self.kind, self.reason,
                 self.resources.to_dict(), self.note, self.additional_info)
@@ -73,72 +76,43 @@ class RequestData:
 
 class LoanDataDict(TypedDict):
     due_date: str
-    resources: pnwutils.ResourceDict
+    loaned: pnwutils.ResourceDict
 
 
 class LoanData:
-    __slots__ = ('due_date', 'resources')
+    __slots__ = ('due_date', 'loaned')
 
-    def __init__(self, due_date: str | datetime.datetime, resources: pnwutils.Resources | pnwutils.ResourceDict):
+    def __init__(self, due_date: str | datetime.datetime, loaned: pnwutils.Resources | pnwutils.ResourceDict):
         if isinstance(due_date, str):
             self.due_date = datetime.datetime.fromisoformat(due_date)
         else:
             self.due_date = due_date
 
-        if isinstance(resources, pnwutils.Resources):
-            self.resources = resources
+        if isinstance(loaned, pnwutils.Resources):
+            self.loaned = loaned
         else:
-            self.resources = pnwutils.Resources(**resources)
+            self.loaned = pnwutils.Resources(**loaned)
 
     @property
     def display_date(self) -> str:
         return discord.utils.format_dt(self.due_date, 'f')
 
-    def to_dict(self) -> dict[str, str]:
-        return {'due_date': self.due_date.isoformat(), 'resources': self.resources.to_dict()}
+    def to_dict(self) -> LoanDataDict:
+        return {'due_date': self.due_date.isoformat(), 'loaned': self.loaned.to_dict()}
 
     def to_embed(self, **kwargs: str) -> discord.Embed:
-        embed = self.resources.create_embed(**kwargs)
+        embed = self.loaned.create_embed(**kwargs)
         embed.insert_field_at(0, name='Due Date', value=self.display_date)
         return embed
 
 
 def withdrawal_embed(name: str, nation_id: str | int, reason: str, resources: pnwutils.Resources,
                      **kwargs) -> discord.Embed:
-    embed = discord.Embed(**kwargs)
+    embed = discord.Embed(colour=discord.Colour.blue(), **kwargs)
     embed.add_field(name='Nation', value=f'[{name}]({pnwutils.link.nation(nation_id)})')
     embed.add_field(name='Reason', value=reason)
     embed.add_field(name='Requested Resources', value=str(resources))
     return embed
-
-
-# noinspection PyAttributeOutsideInit
-class WithdrawalViewButton(discord.ui.Button['WithdrawalView']):
-    def __init__(self, custom_id: int, label: str):
-        super().__init__(row=0, custom_id=f'Withdrawal {label} Button {custom_id}', label=label)
-
-    async def callback(self, interaction: discord.Interaction):
-        self.style = discord.ButtonStyle.success
-        for child in self.view.children:
-            child.disabled = True
-        self.view.stop()
-        await self.view.remove()
-        await interaction.response.edit_message(view=self.view)
-        await self.view.callback(self.label, interaction, *self.view.args)
-
-
-class WithdrawalView(discordutils.CallbackPersistentView):
-    def __init__(self, callback_key: str, link: str, *args, custom_id: int = None, can_reject: bool = True):
-        super().__init__(custom_id=self.get_id() if custom_id is None else custom_id, key=callback_key, timeout=None)
-        self.can_reject = can_reject
-        self.args = args
-        self.add_item(discordutils.LinkButton('Withdrawal Link', link))
-        self.add_item(WithdrawalViewButton(self.custom_id, 'Sent'))
-        if can_reject:
-            self.add_item(WithdrawalViewButton(self.custom_id, 'Reject'))
-
-    def get_state(self) -> tuple:
-        return {'can_reject': self.can_reject}, self.key, self.children[0].url, *self.args  # type: ignore
 
 
 # noinspection PyAttributeOutsideInit
@@ -168,9 +142,9 @@ class ResourceSelectView(discord.ui.View):
 
         if res:
             res = set(res)
-            assert res <= set(pnwutils.constants.all_res)
+            assert res <= set(pnwutils.Resources.all_res)
         else:
-            res = pnwutils.constants.all_res
+            res = pnwutils.Resources.all_res
         self._fut = asyncio.get_event_loop().create_future()
         self.user_id = user_id
         self.add_item(ResourceSelector(res))

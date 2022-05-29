@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Literal, Iterable
 
 from . import constants
-from .data_classes import Resources
+from .resources import Resources
 from .. import config
 
 

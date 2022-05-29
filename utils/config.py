@@ -1,7 +1,5 @@
 import os
 
-from discord.commands import CommandPermission
-
 token: str = os.environ['MYSQLCONNSTR_BOT_TOKEN']
 timeout: float = 300
 
@@ -24,14 +22,15 @@ resource_emojis = {
 guild_id: int = 321984630720954379
 guild_ids: list[int] = [guild_id, 941590062540414987]
 member_role_id: int = 322071813469241344
-staff_role_id: int = 383815082473291778
-gov_role_id: int = 595155137274839040
-bank_gov_role_id: int = 490527202643935234
-gov_role_permission = CommandPermission(gov_role_id, type=1, permission=True, guild_id=guild_id)
-bank_gov_role_permission = CommandPermission(bank_gov_role_id, type=1, permission=True, guild_id=guild_id)
+staff_role_id: int = 383815082473291778  # unused
+gov_role_id: int = 595155137274839040  # unused
+bank_gov_role_id: int = 490527202643935234  # unused
 on_accepted_added_roles: tuple[int, ...] = (member_role_id, 540341927191642131, 362266182663012393)
 
 api_key: str = os.environ['MYSQLCONNSTR_API_KEY']
+bot_key: str = os.environ['MYSQLCONNSTR_BOT_KEY']
+offshore_api_key = os.environ['MYSQLCONNSTR_OFFSHORE_API_KEY']
+database_url: str = os.environ['MYSQLCONNSTR_DB_URL']
 alliance_id: str = '4221'
 alliance_name: str = 'Dark Brotherhood'
 
@@ -72,3 +71,6 @@ interview_questions = (
     '- Manage resources, money, grant loans',
     '12. Do you have any questions or anything else you want to tell us?'
 )
+interview_sendoff = ('Thank you for answering our questions. An interviewer will be reviewing your answers '
+                     'and will get back to you as soon as possible (1 - 4 hours). '
+                     'They will respond to your queries and may ask follow up questions.')

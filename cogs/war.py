@@ -15,7 +15,7 @@ class WarCog(discordutils.CogBase):
         super().__init__(bot, __name__)
 
     @commands.command(guild_ids=config.guild_ids)
-    async def war(self, ctx: discord.ApplicationContext, war: commands.Option(str, 'War ID or link')):
+    async def war(self, ctx: discord.ApplicationContext, war: discord.Option(str, 'War ID or link')):
         """Gives information on a war given an ID or link!"""
         war = war.removeprefix(f'{pnwutils.constants.base_url}nation/war/timeline/war=')
 
@@ -27,7 +27,7 @@ class WarCog(discordutils.CogBase):
 
         data = await individual_war_query.query(self.bot.session, war_id=war)
         if data['data']:
-            data = data['data'].pop()  # type: ignore
+            data = data['data'][0]  # type: ignore
             await ctx.respond(embed=discord.Embed(description=pnwutils.war_description(data)))
         else:
             await ctx.respond('No such war exists!')
@@ -41,7 +41,7 @@ class WarCog(discordutils.CogBase):
         if member is None and nation_id is None:
             member = ctx.author
         if member is not None:
-            nation_id = await self.bot.get_cog_from_class(UtilCog).nations[member.id].get(None)
+            nation_id = await self.bot.database.get_table('users').select_val('nation_id').where(discord_id=member.id)
             if nation_id is None:
                 await ctx.respond(f'{member.mention} does not have a nation registered!',
                                   allowed_mentions=discord.AllowedMentions.none(), ephemeral=True)
@@ -61,15 +61,15 @@ class WarCog(discordutils.CogBase):
 
     @commands.command(guild_ids=config.guild_ids)
     async def find_slots(self, ctx: discord.ApplicationContext,
-                         ids: commands.Option(
+                         ids: discord.Option(
                              str, 'Comma separated list of alliance IDs. Pass 0 (the default) for no alliance.',
                              default='0'),
-                         turns: commands.Option(int, 'The maximum number of turns for the slot to open up.', default=0),
-                         user: commands.Option(discord.Member, 'Run this command as if this user ran it.', default=None)
+                         turns: discord.Option(int, 'The maximum number of turns for the slot to open up.', default=0),
+                         user: discord.Option(discord.Member, 'Run this command as if this user ran it.', default=None)
                          ):
         """Looks for nations in the given alliances that have empty defensive slots"""
         user = user if user else ctx.author
-        nation_id = await self.bot.get_cog_from_class(UtilCog).nations[user.id].get(None)
+        nation_id = await self.bot.database.get_table('users').select_val('nation_id').where(discord_id=user.id)
         if nation_id is None:
             await ctx.respond('This user does not have a nation registered!')
             return
@@ -86,15 +86,15 @@ class WarCog(discordutils.CogBase):
 
         found = collections.defaultdict(set)
         for n in data['data']:
-            if n['vmode'] > turns or n['alliance_position'] == 'APPLICANT' or n['beigeturns'] > turns:
+            if n['vacation_mode_turns'] > turns or n['alliance_position'] == 'APPLICANT' or n['beige_turns'] > turns:
                 continue
-            def_war_turns = [w['turnsleft'] for w in n['wars'] if w['defid'] == n['id'] and w['turnsleft'] > 0]
+            def_war_turns = [w['turns_left'] for w in n['wars'] if w['def_id'] == n['id'] and w['turns_left'] > 0]
             if len(def_war_turns) <= 2:
-                found[max(n['beigeturns'], n['vmode'])].add(n['id'])
+                found[max(n['beige_turns'], n['vacation_mode_turns'])].add(n['id'])
                 continue
             min_turns = min(def_war_turns)
             if min_turns <= turns:
-                found[max(n['beigeturns'], n['vmode'], min_turns)].add(n['id'])
+                found[max(n['beige_turns'], n['vacation_mode_turns'], min_turns)].add(n['id'])
 
         if not found:
             await ctx.respond('No defensive slots were found!')

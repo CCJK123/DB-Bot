@@ -1,76 +1,68 @@
-import operator
-
 import discord
 from discord import commands
 
-from cogs.applications import ApplicationCog
-from cogs.bank import BankCog
-from cogs.finance import FinanceCog
-from cogs.logger import LoggingCog
-from cogs.market import MarketCog
-from cogs.new_war_detector import NewWarDetectorCog
 from utils import discordutils, pnwutils, config, dbbot
 
 
 class OptionsCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
+        self.channel_ids = bot.database.get_kv('channel_ids')
 
-    options = commands.SlashCommandGroup('options', "Edit the bot's options", guild_ids=config.guild_ids,
-                                         default_permission=False, permissions=[config.gov_role_permission])
+    async def on_ready(self):
+        await self.bot.database.execute('INSERT INTO kv_bools(key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING',
+                                        'has_war_aid', False)
+
+    options = commands.SlashCommandGroup('options', "Edit the options of the bot!", guild_ids=config.guild_ids,
+                                         default_member_permissions=discord.Permissions())
 
     request_options = options.create_subgroup('request', 'Set options for request!')
     request_options.guild_ids = config.guild_ids
 
-    @request_options.command(guild_ids=config.guild_ids)
-    async def channel(self, ctx: discord.ApplicationContext,
-                      kind: commands.Option(str, 'Channel type', name='type', choices=('process', 'withdraw'))
-                      ) -> None:
+    @request_options.command(name='channel', guild_ids=config.guild_ids)
+    async def channel_request(self, ctx: discord.ApplicationContext,
+                              kind: discord.Option(str, 'Channel type', name='type', choices=('process', 'withdrawal'))
+                              ) -> None:
         """Set this channel to either the finance process or the withdrawal channel"""
-        finance_cog = self.bot.get_cog_from_class(FinanceCog)
-        if kind == 'process':
-            await finance_cog.process_channel.set(ctx.channel)
-        else:
-            await finance_cog.withdrawal_channel.set(ctx.channel)
+        await self.channel_ids.set(f'{kind}_channel', ctx.channel.id)
         await ctx.respond(f'{kind.capitalize()} channel set!')
 
     @request_options.command(guild_ids=config.guild_ids)
-    @commands.permissions.has_role(config.gov_role_id, guild_id=config.guild_id)
+    @commands.default_permissions()
     async def war_aid(self, ctx: discord.ApplicationContext) -> None:
         """Toggle the war aid option"""
-        finance_cog = self.bot.get_cog_from_class(FinanceCog)
-        await finance_cog.has_war_aid.transform(operator.not_)
-        await ctx.respond(f'War Aid is now {(not await finance_cog.has_war_aid.get()) * "not "}available!')
+        now = await self.bot.database.get_kv('kv_bools').update('value = NOT value').where(
+            key='has_war_aid').returning_val('value')
+        await ctx.respond(f'War Aid is now {(not now) * "not "}available!')
 
     @request_options.command(guild_ids=config.guild_ids)
     async def infra_rebuild_cap(self, ctx: discord.ApplicationContext,
-                                cap: commands.Option(int, 'What level to provide aid up to', min_value=0)) -> None:
+                                cap: discord.Option(int, 'What level to provide aid up to', min_value=0)) -> None:
         """Set the infra rebuild cap for war aid"""
-        finance_cog = self.bot.get_cog_from_class(FinanceCog)
-        await finance_cog.infra_rebuild_cap.set(50 * round(cap / 50))
-        await ctx.respond('The infrastructure rebuild cap has been set to '
-                          f'{await finance_cog.infra_rebuild_cap.get()}.')
+        ints_table = self.bot.database.get_kv('kv_ints')
+        cap = 100 * (cap // 100)
+        await ints_table.set('infra_rebuild_cap', cap)
+        await ctx.respond(f'The infrastructure rebuild cap has been set to {cap}.')
 
-    war_detector_options = options.create_subgroup('war_detector', "Options for the bot's war detector")
-    war_detector_options.guild_ids = config.guild_ids
+    new_war_detector_options = options.create_subgroup('war_detector', "Options for the new war detector")
+    new_war_detector_options.guild_ids = config.guild_ids
 
-    @war_detector_options.command(name='channel', guild_ids=config.guild_ids)
-    async def channel_(self, ctx: discord.ApplicationContext,
-                       kind: commands.Option(str, 'Channel type', name='type',
-                                             choices=('attack', 'defend', 'updates'))
-                       ) -> None:
+    @new_war_detector_options.command(name='channel', guild_ids=config.guild_ids)
+    async def channel_new_war(self, ctx: discord.ApplicationContext,
+                              kind: discord.Option(str, 'Channel type', name='type',
+                                                   choices=('offensive', 'defensive', 'updates'))
+                              ) -> None:
         """Sets the attack, defend and lose channels"""
-        war_detector_cog = self.bot.get_cog_from_class(NewWarDetectorCog)
-        if kind == 'attack':
-            channel = war_detector_cog.att_channel
+        if kind == 'offensive':
+            key = 'offensive_channel'
             kind_text = 'Offensive wars'
-        elif kind == 'defend':
-            channel = war_detector_cog.def_channel
+        elif kind == 'defensive':
+            key = 'defensive_channel'
             kind_text = 'Defensive wars'
         else:
-            channel = war_detector_cog.updates_channel
+            key = 'updates_channel'
             kind_text = 'Updates'
-        await channel.set(ctx.channel)
+        await self.channel_ids.set(key, kind_text)
         await ctx.respond(f'{kind_text} channel set!')
 
     market_options = options.create_subgroup('market', 'Options for the market system!')
@@ -78,67 +70,47 @@ class OptionsCog(discordutils.CogBase):
 
     @market_options.command(guild_ids=config.guild_ids)
     async def set_price(self, ctx: discord.ApplicationContext,
-                        b_s: commands.Option(str, 'Buying or Selling price?', choices=('buying', 'selling')),
-                        res_name: commands.Option(str, 'Resource to set price', choices=pnwutils.constants.market_res),
-                        price: commands.Option(int, 'Resource price', min_value=0)):
+                        b_s: discord.Option(str, 'Buying or Selling price?', choices=('buying', 'selling')),
+                        res_name: discord.Option(str, 'Resource to set price', choices=pnwutils.constants.market_res),
+                        price: discord.Option(int, 'Resource price', min_value=0)):
         """Set the buying/selling price of a resource"""
-        market_cog = self.bot.get_cog_from_class(MarketCog)
-        values = await market_cog.market_values.get()
-        values[b_s == 'selling'][pnwutils.constants.market_res.index(res_name)] = price
-        await market_cog.market_values.set(values)
+        market_table = self.bot.database.get_table('market')
+        await market_table.update(f'{b_s.removesuffix("ing")}_price = {price}').where(resource=res_name)
         await ctx.respond(f'The {b_s} price of {res_name} has been set to {price} ppu.')
 
     @market_options.command(guild_ids=config.guild_ids)
     async def set_stock(self, ctx: discord.ApplicationContext,
-                        res_name: commands.Option(str, 'resource to set stock', choices=pnwutils.constants.market_res),
-                        stock: commands.Option(int, 'Resource stock', min_value=0)):
+                        res_name: discord.Option(str, 'resource to set stock', choices=pnwutils.constants.market_res),
+                        stock: discord.Option(int, 'Resource stock', min_value=0)):
         """Set the stocks of a resource"""
-        market_cog = self.bot.get_cog_from_class(MarketCog)
-        values = await market_cog.market_values.get()
-        values[2][pnwutils.constants.market_res.index(res_name)] = stock
-        await market_cog.market_values.set(values)
+        market_table = self.bot.database.get_table('market')
+        await market_table.update(f'stock = {stock}').where(resource=res_name)
         await ctx.respond(f'The stock of {res_name} has been set to {stock} tons.')
 
-    bank_options = options.create_subgroup('bank', 'Options for the bank system!')
-    bank_options.guild_ids = config.guild_ids
-
-    @bank_options.command(guild_ids=config.guild_ids)
-    async def set_offshore(self, ctx: discord.ApplicationContext,
-                           off_id: commands.Option(int, 'ID of the offshore alliance')):
-        """Set the ID of the alliance's offshore."""
-        bank_cog = self.bot.get_cog_from_class(BankCog)
-        confirm_view = discordutils.Choices('Yes', 'No', user_id=ctx.author.id)
-        await ctx.respond(f'Is this the offshore? [Link]({pnwutils.link.alliance(off_id)})',
-                          view=confirm_view)
-        if await confirm_view.result() == 'Yes':
-            await bank_cog.offshore_id.set(str(off_id))
-            await ctx.respond('Offshore id has been set!')
-            return
-        await ctx.respond('Aborting!')
+    # bank_options = options.create_subgroup('bank', 'Options for the bank system!')
+    # bank_options.guild_ids = config.guild_ids
 
     application_options = options.create_subgroup('application', 'Options for the application system!')
     application_options.guild_ids = config.guild_ids
 
-    @application_options.command(guild_ids=config.guild_ids)
-    async def set(self, ctx: discord.ApplicationContext,
-                  kind: commands.Option(str, choices=('category', 'log'))):
+    @application_options.command(name='channel', guild_ids=config.guild_ids)
+    async def channel_application(self, ctx: discord.ApplicationContext,
+                                  kind: discord.Option(str, choices=('category', 'log'))):
         """Set the application category and logging channel"""
-        application_cog = self.bot.get_cog_from_class(ApplicationCog)
         if kind == 'log':
-            await application_cog.application_log.set(ctx.channel)
+            await self.channel_ids.set('application_log_channel', ctx.channel_id)
             await ctx.respond('Application log channel set!')
             return
-        await application_cog.application_category.set(ctx.channel.category)
+        await self.channel_ids.set('application_category', ctx.channel.category.id)
         await ctx.respond(f'Application category set to {ctx.channel.category.name}!')
 
     logging_options = options.create_subgroup('logging', 'Options for the logging system!')
     logging_options.guild_ids = config.guild_ids
 
-    @logging_options.command()
+    @logging_options.command(guild_ids=config.guild_ids)
     async def channel(self, ctx: discord.ApplicationContext):
         """Set the logging channel!"""
-        logging_cog = self.bot.get_cog_from_class(LoggingCog)
-        await logging_cog.logging_channel.set(ctx.channel)
+        await self.channel_ids.set('logging_channel', ctx.channel_id)
         await ctx.respond('Logging channel set!')
 
 

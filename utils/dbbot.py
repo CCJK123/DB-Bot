@@ -3,28 +3,78 @@ from __future__ import annotations
 import asyncio
 import os
 import random
+import sys
 import traceback
-from typing import Callable, Sequence, TypeVar, Type
+from collections.abc import Awaitable, Callable, Sequence
 
 import aiohttp
 import discord
+import pnwkit
 from discord.ext import tasks, commands as cmds
 
-from utils import discordutils, databases
+from utils import discordutils, databases, pnwutils, config
+from utils.queries import offshore_info_query
 
 
-# pycharm complains about sync_commands not being written,
-# cause in the library they have not written it, it just raises NotImplemented
-# noinspection PyAbstractClass
+async def database_initialisation(database):
+    await database.execute('''
+        DO $$ BEGIN PERFORM 'resources'::regtype; EXCEPTION WHEN undefined_object THEN CREATE TYPE resources AS (
+            money BIGINT, food BIGINT, coal BIGINT, oil BIGINT, uranium BIGINT, lead BIGINT, iron BIGINT,
+            bauxite BIGINT, gasoline BIGINT, munitions BIGINT, steel BIGINT, aluminum BIGINT);
+        END $$;
+
+        CREATE OR REPLACE FUNCTION add_resources(resources, resources) RETURNS resources AS $$
+            SELECT ROW(
+                $1.money + $2.money, $1.food + $2.food, $1.coal + $2.coal, $1.oil + $2.oil,
+                $1.uranium + $2.uranium, $1.lead + $2.lead, $1.iron + $2.iron, $1.bauxite + $2.bauxite,
+                $1.gasoline + $2.gasoline, $1.munitions + $2.munitions, $1.steel + $2.steel, $1.aluminum + $2.aluminum)
+        $$ LANGUAGE SQL;
+        CREATE OR REPLACE FUNCTION sub_resources(resources, resources) RETURNS resources AS $$
+            SELECT ROW(
+                $1.money - $2.money, $1.food - $2.food, $1.coal - $2.coal, $1.oil - $2.oil,
+                $1.uranium - $2.uranium, $1.lead - $2.lead, $1.iron - $2.iron, $1.bauxite - $2.bauxite,
+                $1.gasoline - $2.gasoline, $1.munitions - $2.munitions, $1.steel - $2.steel, $1.aluminum - $2.aluminum)
+        $$ LANGUAGE SQL;
+
+        DO $$ BEGIN
+            CREATE OPERATOR + (leftarg = resources, rightarg = resources, function = add_resources, commutator = +);
+            CREATE OPERATOR - (leftarg = resources, rightarg = resources, function = sub_resources);
+        EXCEPTION WHEN duplicate_function THEN null;
+        END $$;
+        ''')
+
+
 class DBBot(discord.Bot):
     def __init__(self, db_url: str, on_ready_func: Callable[[], None] | None = None,
                  possible_statuses: Sequence[discord.Activity] | None = None):
         intents = discord.Intents(guilds=True, messages=True, members=True)
         super().__init__(intents=intents)
-
+        self.excluded = {'debug', 'new_war_detector', 'open_slots_detector'}
         self.session = None
-        self.database = databases.RudimentaryDatabase(db_url)
-        self.views = discordutils.ViewStorage[discordutils.PersistentView](self, 'views')
+        self.kit = pnwkit.QueryKit(config.api_key)
+
+        self.database: databases.Database = databases.PGDatabase(db_url)
+        # define type `resources` and define addition and subtraction for it
+        self.database.add_on_init(database_initialisation)
+
+        self.database.new_table('users', discord_id='BIGINT PRIMARY KEY', nation_id='INT UNIQUE NOT NULL',
+                                balance='resources DEFAULT ROW(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) NOT NULL')
+        self.database.new_table('loans', ',FOREIGN KEY(discord_id) REFERENCES users(discord_id)',
+                                discord_id='BIGINT PRIMARY KEY', loaned='resources NOT NULL',
+                                due_date='timestamp(0) with time zone NOT NULL')
+        self.database.new_table(
+            'applications', ',FOREIGN KEY(discord_id) REFERENCES users(discord_id)',
+            application_id='SMALLINT GENERATED ALWAYS AS IDENTITY (MINVALUE 0 MAXVALUE 99 CYCLE)',
+            discord_id='BIGINT UNIQUE NOT NULL', channel_id='INT PRIMARY KEY', status='BOOL DEFAULT NULL')
+        self.database.new_table('market', resource='TEXT PRIMARY KEY', buy_price='INT DEFAULT NULL',
+                                sell_price='INT DEFAULT NULL', stock='BIGINT DEFAULT 0 NOT NULL')
+
+        self.database.new_kv('channel_ids', 'BIGINT')
+        self.database.new_kv('kv_ints', 'INT')
+        self.database.new_kv('kv_bools', 'BOOL')
+        self.view_table = databases.ViewTable(self.database, 'views')
+        self.database.add_table(self.view_table)
+
         self.on_ready_func = on_ready_func
         self.possible_statuses = possible_statuses if possible_statuses is not None else (
             *map(discord.Game, ("with Python", "with the P&W API")),
@@ -34,6 +84,10 @@ class DBBot(discord.Bot):
 
         discordutils.PersistentView.bot = self
 
+        self.prepared = False
+
+        self.log_func: Callable[..., Awaitable[None]] = self._log
+
     def load_cogs(self, directory: str) -> None:
         """
         directory: str
@@ -41,17 +95,15 @@ class DBBot(discord.Bot):
 
         Loads extensions found in [directory] into the bot.
         """
-        cogs = (file.split('.')[0] for file in os.listdir(directory)
-                if file.endswith('.py') and not file.startswith('_'))
-        for ext in cogs:
+        cogs = {file.split('.')[0] for file in os.listdir(directory)
+                if file.endswith('.py') and not file.startswith('_')}
+        for ext in cogs - self.excluded:
             self.load_extension(f'{directory}.{ext}')
 
     async def prepare(self):
         self.session = await aiohttp.ClientSession().__aenter__()
         self.database = await self.database.__aenter__()
-
-        if await self.views.get(None) is None:
-            await self.views.set({})
+        self.kit.aiohttp_session = self.session
 
         self.change_status.start()
 
@@ -59,28 +111,36 @@ class DBBot(discord.Bot):
         await self.session.__aexit__(None, None, None)
         await self.database.__aexit__(None, None, None)
 
+        self.change_status.stop()
+
         for cog in self.cogs.values():
             if isinstance(cog, discordutils.CogBase):
                 await cog.on_cleanup()
 
         await asyncio.sleep(.5)
 
-    @tasks.loop(seconds=20)
+    @tasks.loop(seconds=40)
     async def change_status(self):
         await self.change_presence(activity=random.choice(self.possible_statuses))
 
     async def add_view(self, view: discordutils.PersistentView, *, message_id: int | None = None) -> None:
         super().add_view(view, message_id=message_id)
-        await self.views.add(view)
+        await self.view_table.add(view)
+
+    async def remove_view(self, view: discordutils.PersistentView):
+        await self.view_table.remove(view.custom_id)
 
     async def on_ready(self):
+        if not self.prepared:
+            await self.prepare()
+            self.prepared = True
         for cog in self.cogs.values():
             if isinstance(cog, discordutils.CogBase):
                 await cog.on_ready()
 
         # add views
-        for view in await self.views.get_views():
-            await self.add_view(view)
+        async for view in self.view_table.get_all():
+            super().add_view(view)
             print(f'Adding a {type(view)} from storage!')
 
         if self.on_ready_func is not None:
@@ -90,7 +150,6 @@ class DBBot(discord.Bot):
     async def on_application_command_error(self, ctx: discord.ApplicationContext, exception: discord.DiscordException):
         command = ctx.command
         if command and command.has_error_handler():
-            print(f'Ignoring {exception!r}, already has handler')
             return
 
         ignored = (
@@ -99,14 +158,17 @@ class DBBot(discord.Bot):
             cmds.MissingRequiredArgument
         )
         if not isinstance(exception, ignored):
-            await super().on_application_command_error(ctx, exception)
-
             await self.default_on_error(ctx, exception)
 
     @staticmethod
-    async def default_on_error(ctx: discord.ApplicationContext, exception: BaseException):
+    async def default_on_error(ctx: discord.ApplicationContext, exception: discord.DiscordException):
+        print(exception, exception.__cause__, exception.__cause__.args)
+        if (exception is discord.ApplicationCommandInvokeError and exception.__cause__ is discord.NotFound and
+                exception.__cause__.args[0] == '404 Not Found (error code: 10062): Unknown interaction'):
+            await ctx.respond('Sorry, your request timed out. Please redo your command.')
+            return
         try:
-            await ctx.respond(f'Sorry, an exception occurred in the command command `{ctx.command}`.')
+            await ctx.respond(f'Sorry, an exception occurred in the command `{ctx.command}`.')
         except discord.HTTPException as e:
             print('Responding failed! Exc Type: ', type(e))
             await ctx.send('Sorry, an exception occurred.')
@@ -120,10 +182,22 @@ class DBBot(discord.Bot):
                 s += ex
         await ctx.send(f'```{s}```')
 
-    CT = TypeVar('CT', bound=discord.Cog)
+        # print the exception to stderr too
+        traceback.print_exception(type(exception), exception, exception.__traceback__, file=sys.stderr)
 
-    def get_cog_from_class(self, cls: Type[CT]) -> CT:
-        return self.get_cog(cls.__cog_name__)
+    async def get_offshore_id(self):
+        data = await offshore_info_query.query(self.session, api_key=config.offshore_api_key)
+        return data['nation']['alliance_id']
+
+    @staticmethod
+    async def _log(c, **kwargs):
+        pass
+
+    def log(self, content: str | None = None, **kwargs):
+        return self.log_func(content, **kwargs)
+
+    def get_custom_id(self) -> Awaitable[int]:
+        return self.view_table.get_id()
 
 
 # the new bot does not seem to have a help command, the help command has not been ported over to slash yet, I believe
