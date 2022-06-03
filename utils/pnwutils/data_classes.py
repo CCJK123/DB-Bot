@@ -1,12 +1,11 @@
-import enum
 import datetime
+import enum
 from dataclasses import dataclass
-from typing import ClassVar
 
 import aiohttp
 
 from . import api, resources
-from .. import config, databases
+from .. import config
 
 __all__ = ('Transaction', 'EntityType', 'TransactionType', 'Withdrawal')
 

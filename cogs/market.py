@@ -25,16 +25,16 @@ class MarketCog(discordutils.CogBase):
         """List out the prices of resources in the market"""
         values = await self.market_table.select('buy_price', 'sell_price')
         await ctx.respond(embeds=(
-            discordutils.construct_embed(pnwutils.constants.market_res, map(operator.itemgetter('buy_price'), values),
-                                         description='Buying Prices', title='Bank Trading Prices'),
-            discordutils.construct_embed(pnwutils.constants.market_res, map(operator.itemgetter('sell_price'), values))
+            discordutils.create_embed(pnwutils.constants.market_res, map(operator.itemgetter('buy_price'), values),
+                                      description='Buying Prices', title='Bank Trading Prices'),
+            discordutils.create_embed(pnwutils.constants.market_res, map(operator.itemgetter('sell_price'), values))
         ))
 
     @market.command(guild_ids=config.guild_ids)
     async def stocks(self, ctx: discord.ApplicationContext):
         """List out the stocks of resources in the market"""
         values = await self.market_table.select('stock')
-        await ctx.respond(embed=discordutils.construct_embed(
+        await ctx.respond(embed=discordutils.create_embed(
             pnwutils.constants.market_res, map(operator.itemgetter('stock'), values), title='Bank Stocks'))
 
     @market.command(guild_ids=config.guild_ids)
@@ -66,7 +66,7 @@ class MarketCog(discordutils.CogBase):
                                             f'balance.{res_name} = balance.{res_name} + {amt}'
                                             ).where(discord_id=ctx.author.id).returning_val('balance'))
         await self.market_table.update(f'stock = stock - {amt}').where(resource=res_name)
-        await ctx.respond('Transaction complete!', embed=final_bal.create_balance_embed(ctx.author.display_name),
+        await ctx.respond('Transaction complete!', embed=final_bal.create_balance_embed(ctx.author),
                           ephemeral=True)
         return
 
@@ -90,7 +90,7 @@ class MarketCog(discordutils.CogBase):
                                             f'balance.{res_name} = balance.{res_name} - {amt}'
                                             ).where(discord_id=ctx.author.id).returning_val('balance'))
         await self.market_table.update(f'stock = stock + {amt}').where(resource=res_name)
-        await ctx.respond('Transaction complete!', embed=final_bal.create_balance_embed(ctx.author.display_name),
+        await ctx.respond('Transaction complete!', embed=final_bal.create_balance_embed(ctx.author),
                           ephemeral=True)
         return
 

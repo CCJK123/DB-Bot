@@ -324,17 +324,14 @@ class UtilCog(discordutils.CogBase):
 
     @commands.command(guild_ids=config.guild_ids, default_permission=False)
     @commands.default_permissions(manage_guild=True)
-    async def reload(self, ctx: discord.ApplicationContext, extension: str) -> None:
+    async def reload(self, ctx: discord.ApplicationContext, cog: str) -> None:
         """Reload the given cog"""
-        await ctx.respond('At the moment, pycord has a bug wherein trying to unload a cog raises an error. '
-                          'As a result, this command currently does not work.')
-
         try:
-            self.bot.reload_extension(f'cogs.{extension}')
+            self.bot.reload_extension(f'cogs.{cog}')
         except discord.ExtensionNotLoaded:
-            await ctx.respond(f'The extension {extension} was not previously loaded!')
+            await ctx.respond(f'The cog `{cog}` was not previously loaded!')
             return
-        await ctx.respond(f'Extension {extension} reloaded!')
+        await ctx.respond(f'The cog `{cog}` has been reloaded!')
 
     @commands.command(name='help', guild_ids=config.guild_ids)
     async def help_(self, ctx: discord.ApplicationContext,

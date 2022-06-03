@@ -93,12 +93,16 @@ class PersistentView(discord.ui.View, abc.ABC):
         return cls.__new__(cls)
 
     def __setstate__(self, state: tuple) -> None:
-        if state[0] == 0:
-            self.__init__(*state[2:], custom_id=state[1])
-        elif state[0] == 1:
-            self.__init__(*state[3:], custom_id=state[1], **state[2])
-        else:
-            raise pickle.UnpicklingError(f'Unsupported state tuple version {state[0]} for CallbackPersistentView')
+        try:
+            if state[0] == 0:
+                self.__init__(*state[2:], custom_id=state[1])
+            elif state[0] == 1:
+                self.__init__(*state[3:], custom_id=state[1], **state[2])
+            else:
+                raise pickle.UnpicklingError(f'Unsupported state tuple version {state[0]} for PersistentView')
+        except Exception:
+            print(state)
+            raise
 
     def __reduce_ex__(self, protocol: int):
         return self._new_uninitialised, (), (1, self.custom_id, *self.get_state())

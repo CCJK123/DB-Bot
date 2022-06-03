@@ -12,7 +12,7 @@ import discord
 import pnwkit
 from discord.ext import tasks, commands as cmds
 
-from utils import discordutils, databases, pnwutils, config
+from utils import discordutils, databases, config
 from utils.queries import offshore_info_query
 
 
@@ -49,7 +49,7 @@ class DBBot(discord.Bot):
                  possible_statuses: Sequence[discord.Activity] | None = None):
         intents = discord.Intents(guilds=True, messages=True, members=True)
         super().__init__(intents=intents)
-        self.excluded = {'debug', 'new_war_detector', 'open_slots_detector'}
+        self.excluded = {'new_war_detector', 'open_slots_detector'}
         self.session = None
         self.kit = pnwkit.QueryKit(config.api_key)
 
@@ -85,8 +85,6 @@ class DBBot(discord.Bot):
         discordutils.PersistentView.bot = self
 
         self.prepared = False
-
-        self.log_func: Callable[..., Awaitable[None]] = self._log
 
     def load_cogs(self, directory: str) -> None:
         """
@@ -190,11 +188,8 @@ class DBBot(discord.Bot):
         return data['nation']['alliance_id']
 
     @staticmethod
-    async def _log(c, **kwargs):
+    async def log(c: str | None = None, **kwargs):
         pass
-
-    def log(self, content: str | None = None, **kwargs):
-        return self.log_func(content, **kwargs)
 
     def get_custom_id(self) -> Awaitable[int]:
         return self.view_table.get_id()

@@ -1,18 +1,28 @@
+from __future__ import annotations
+
 import itertools
 from typing import Callable, Iterable
 
 import discord
 
 # Setup what is exported by default
-__all__ = ('construct_embed', 'get_msg_chk', 'get_dm_msg_chk',
+__all__ = ('blank_colour', 'create_embed', 'get_msg_chk', 'get_dm_msg_chk',
            'split_blocks')
 
 
-def construct_embed(names: Iterable[str], values: Iterable[str], /, **kwargs: str) -> discord.Embed:
-    """Create embed from iterable of name, value pairs"""
+blank_colour = 3092790
+
+
+def create_embed(names: Iterable[str] = (), values: Iterable[str] = (), /,
+                 user: discord.User | discord.Member | None = None,
+                 **kwargs: str | int) -> discord.Embed:
+    """Create an embed from iterables of name, value pairs"""
+    kwargs.setdefault('colour', blank_colour)
     embed = discord.Embed(**kwargs)
     for k, v in zip(names, values):
         embed.add_field(name=k, value=v)
+    if user is not None:
+        embed.set_author(name=user.name, icon_url=user.avatar.url)
     return embed
 
 

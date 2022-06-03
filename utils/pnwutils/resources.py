@@ -5,8 +5,7 @@ from typing import ClassVar, TypedDict
 
 import discord
 
-from utils import config
-
+from utils import config, discordutils
 
 __all__ = ('ResourceDict', 'Resources')
 
@@ -66,18 +65,19 @@ class Resources:
     def to_row(self) -> str:
         return f'ROW({",".join(map(str, self.values()))})'
 
-    def create_embed(self, **kwargs: str) -> discord.Embed:
-        embed = discord.Embed(**kwargs)
+    def create_embed(self, **kwargs: object) -> discord.Embed:
+        embed = discordutils.create_embed(**kwargs)
         for name, amt in self:
             embed.add_field(name=name.title(), value=f'{config.resource_emojis[name]} {round(amt, 2):,}')
         if self or kwargs:
             return embed
         raise ValueError('The embed is empty and cannot be sent!')
 
-    def create_balance_embed(self, receiver: str) -> discord.Embed:
+    def create_balance_embed(self, user: discord.Member | discord.User) -> discord.Embed:
         if self:
-            return self.create_embed(title=f"{receiver}'s Balance")
-        return discord.Embed(title=f"{receiver}'s Balance", description='Hmm... Nothing here')
+            return self.create_embed(user=user, description=f"{user.mention}'s Balance")
+        return discordutils.create_embed(user=user, description=f"{user.mention}'s Balance").add_field(
+            name='Hmm...', value='Nothing Here')
 
     def all_positive(self) -> bool:
         return all(a >= 0 for a in self.values())
