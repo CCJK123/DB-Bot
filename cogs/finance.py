@@ -111,7 +111,6 @@ class FinanceCog(discordutils.CogBase):
                 for label, field in project_field_names.items():
                     if data[field]:
                         disabled.add(label)
-                project_field_names['test'] = 'test'
                 project_choice = discordutils.Choices(*project_field_names.keys(), disabled=disabled)
                 await author.send('Which project do you want?', view=project_choice)
 
@@ -144,13 +143,6 @@ class FinanceCog(discordutils.CogBase):
                             f'{data["num_cities"]} cities. Please try again next time.'
                         )
                         return
-                elif project == 'test':
-                    req_data.resources = pnwutils.Resources(money=10_000_000)
-                    req_data.presets = {'Test Preset': pnwutils.Resources(money=1_000_000)}
-                    req_data.reason = project
-                    req_data.note = f'{project} Project Grant'
-                    await self.on_request_fixed(req_data)
-                    return
                 presets = {
                     'center_for_civil_engineering': {},
                     'central_intelligence_agency': {},
