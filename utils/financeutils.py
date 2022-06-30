@@ -335,6 +335,7 @@ class RequestButtonsView(discordutils.PersistentView):
 
         custom_id = await self.bot.get_custom_id()
         response_view = ModificationResponseView(self.data, user.id, custom_id)
+        updated_res_embed = self.data.resources.create_embed(title='Updated Resources')
         await asyncio.gather(
             interaction.edit_original_message(
                 content=f'Modified {self.data.kind} Request from {self.data.requester.mention}',
@@ -346,8 +347,9 @@ class RequestButtonsView(discordutils.PersistentView):
                     description=f'{self.data.kind} Request for `{self.data.reason}` modified by '
                                 f'{user.mention}`'),
                 old_res.create_embed(title='Previous Resources'),
-                self.data.resources.create_embed(title='Updated Resources')
+                updated_res_embed
             )),
+            user.send('Request Modification Complete!', embed=updated_res_embed),
             response_view.send_response()
         )
 
@@ -458,7 +460,7 @@ class ModificationResponseView(discordutils.PersistentView):
 
         embed = self.data.resources.create_embed(title='Request Resources')
         await asyncio.gather(
-            interaction.edit_original_message(view=self, embed=embed),
+            interaction.response.edit_message(view=self, embed=embed),
             self.bot.log(embeds=(
                 discordutils.create_embed(
                     user=self.data.requester,
