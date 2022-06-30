@@ -1,5 +1,5 @@
 import math
-from collections.abc import Iterable
+from collections.abc import Iterable, ItemsView
 from dataclasses import dataclass
 from typing import ClassVar, TypedDict
 
@@ -90,6 +90,9 @@ class Resources:
         """Returns an iterable of all the resource values for which the value is not zero."""
         return (amt for res_name in self.all_res if (amt := self[res_name]))
 
+    def items_nonzero(self) -> ItemsView[str, int]:
+        return self.to_dict().items()
+
     @classmethod
     def keys(cls) -> Iterable[str]:
         """Returns an iterable of all the resource keys. Equal to `constants.all_res`"""
@@ -120,7 +123,7 @@ class Resources:
         return bool(self.to_dict())
 
     def __iter__(self):
-        return iter(self.to_dict().items())
+        return iter(self.items_nonzero())
 
     def __add__(self, other):
         if isinstance(other, Resources):

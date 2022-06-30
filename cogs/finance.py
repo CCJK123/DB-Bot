@@ -111,7 +111,7 @@ class FinanceCog(discordutils.CogBase):
                 for label, field in project_field_names.items():
                     if data[field]:
                         disabled.add(label)
-
+                project_field_names['test'] = 'test'
                 project_choice = discordutils.Choices(*project_field_names.keys(), disabled=disabled)
                 await author.send('Which project do you want?', view=project_choice)
 
@@ -144,7 +144,28 @@ class FinanceCog(discordutils.CogBase):
                             f'{data["num_cities"]} cities. Please try again next time.'
                         )
                         return
-                req_data.resources = pnwutils.constants.project_costs[project_field_names[project]]
+                elif project == 'test':
+                    req_data.resources = pnwutils.Resources(money=10_000_000)
+                    req_data.presets = {'Test Preset': pnwutils.Resources(money=1_000_000)}
+                    req_data.reason = project
+                    req_data.note = f'{project} Project Grant'
+                    await self.on_request_fixed(req_data)
+                    return
+                presets = {
+                    'center_for_civil_engineering': {},
+                    'central_intelligence_agency': {},
+                    'propaganda_bureau': {},
+                    'urban_planning': {
+                        'All Except Half Food': pnwutils.Resources(
+                            coal=10000, oil=10000, aluminum=20000, munitions=10000, gasoline=10000, food=500_000)
+                    },
+                    'advanced_urban_planning': {'All Except Half Food': pnwutils.Resources(
+                        uranium=10000, aluminum=40000, steel=20000, munitions=20000, food=1_250_000)
+                    }
+                }
+                project_field_name = project_field_names[project]
+                req_data.resources = pnwutils.constants.project_costs[project_field_name]
+                req_data.presets = presets[project_field_name]
                 req_data.reason = project
                 req_data.note = f'{project} Project Grant'
                 await self.on_request_fixed(req_data)

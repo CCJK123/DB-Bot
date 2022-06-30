@@ -412,7 +412,7 @@ class BankCog(discordutils.CogBase):
 
         withdrawal = pnwutils.Withdrawal(resources, await self.bot.get_offshore_id(),
                                          pnwutils.EntityType.ALLIANCE, 'Safekeeping')
-        if await withdrawal.withdraw(self.bot.session):
+        if await withdrawal.withdraw(self.bot.session) is pnwutils.WithdrawalResult.SUCCESS:
             await ctx.respond('The bank contents have successfully been sent to the offshore!')
             return
         await ctx.respond('An unexpected error occurred: Bank does not have enough resources to send its contents.')

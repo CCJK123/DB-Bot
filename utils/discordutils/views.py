@@ -26,9 +26,7 @@ class Choice(discord.ui.Button['Choices']):
             return
         self.view.set_result(self.label)
         self.style = discord.ButtonStyle.success
-        for child in self.view.children:
-            # assert isinstance(child, discord.ui.Button)  # just to shut up the linter
-            child.disabled = True
+        self.view.disable_all_items()
         self.view.stop()
         await interaction.response.edit_message(view=self.view)
 

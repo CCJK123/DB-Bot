@@ -7,7 +7,7 @@ import discord
 
 # Setup what is exported by default
 __all__ = ('blank_colour', 'create_embed', 'get_msg_chk', 'get_dm_msg_chk',
-           'split_blocks')
+           'split_blocks', 'respond_to_interaction')
 
 
 blank_colour = 3092790
@@ -60,4 +60,16 @@ def split_blocks(joiner: str, *iterables: Iterable[str], limit: int = 2000) -> I
     if s:
         yield s
     return
+
+
+async def respond_to_interaction(interaction: discord.Interaction) -> None:
+    """Responds to the given interaction without any changes."""
+
+    # intentionally send empty message, responding to the interaction but doing nothing
+    try:
+        await interaction.response.send_message('')
+    except discord.HTTPException:
+        pass
+    else:
+        raise AssertionError('HTTPException Not Raised!')
 

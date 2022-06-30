@@ -7,7 +7,7 @@ import aiohttp
 from . import api, resources
 from .. import config
 
-__all__ = ('Transaction', 'EntityType', 'TransactionType', 'Withdrawal')
+__all__ = ('Transaction', 'EntityType', 'TransactionType', 'WithdrawalResult', 'Withdrawal')
 
 from ..queries import withdrawal_query
 
@@ -45,16 +45,21 @@ class Transaction:
             return cls(res, t, TransactionType.DEPOSIT, e_type, int(data['sender_id']))
 
 
+class WithdrawalResult(enum.Enum):
+    SUCCESS = 0
+    LACK_RESOURCES = 1
+    BLOCKADED = 2
+
+
 @dataclass()
 class Withdrawal:
-
     resources: resources.Resources
     entity_id: int
     entity_type: EntityType = EntityType.NATION
     note: str = ''
     sent: bool = False
 
-    async def withdraw(self, session: aiohttp.ClientSession) -> bool:
+    async def withdraw(self, session: aiohttp.ClientSession) -> WithdrawalResult:
         if self.sent:
             raise ValueError('This withdrawal has already been sent!')
         if not self.resources:
@@ -65,7 +70,9 @@ class Withdrawal:
                                          note=self.note, **self.resources.to_dict())
         except api.APIError as e:
             if e.info[0]['message'] == "You don't have enough resources.":
-                return False
+                return WithdrawalResult.LACK_RESOURCES
+            elif e.info[0]['message'] == "You can't withdraw resources to a blockaded nation.":
+                return WithdrawalResult.BLOCKADED
             raise
         self.sent = True
-        return True
+        return WithdrawalResult.SUCCESS

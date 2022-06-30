@@ -3,8 +3,8 @@ from __future__ import annotations
 import asyncio
 import datetime
 import pickle
-from typing import Awaitable, Iterable, TypedDict
 from dataclasses import dataclass, field
+from typing import Awaitable, Iterable, TypedDict
 
 import discord
 
@@ -24,6 +24,7 @@ class RequestData:
     note: str = ''
     additional_info: dict[str, str] = field(default_factory=dict)
     _requester_id: int | None = None
+    presets: dict[str, pnwutils.Resources] = field(default_factory=dict)
 
     @property
     def nation_link(self):
@@ -56,14 +57,17 @@ class RequestData:
     def create_withdrawal(self) -> pnwutils.Withdrawal:
         return pnwutils.Withdrawal(self.resources, self.nation_id, pnwutils.EntityType.NATION, self.note)
 
+    def create_withdrawal_view(self, custom_id: int):
+        return WithdrawalView(self.requester_id, self.create_withdrawal(), custom_id=custom_id)
+
     def __getstate__(self) -> tuple:
         return (0, self.requester_id, self.nation_id, self.nation_name, self.kind, self.reason,
-                self.resources.to_dict(), self.note, self.additional_info)
+                self.resources.to_dict(), self.note, self.additional_info, self.presets)
 
     def __setstate__(self, state):
         if state[0] == 0:
             (_, self._requester_id, self.nation_id, self.nation_name, self.kind,
-             self.reason, res_dict, self.note, self.additional_info) = state
+             self.reason, res_dict, self.note, self.additional_info, self.presets) = state
             self.resources = pnwutils.Resources(**res_dict)
             self.requester = None
         else:
@@ -170,6 +174,49 @@ class RequestButtonsView(discordutils.PersistentView):
     def get_state(self) -> tuple:
         return {}, self.data
 
+    @classmethod
+    async def withdraw_for_request(cls, data: RequestData, processor: discord.User):
+        result = await data.create_withdrawal().withdraw(cls.bot.session)
+        messages = {
+            pnwutils.WithdrawalResult.SUCCESS: (
+                'You should have received the resources.',
+                'Requested resources have been sent'),
+            pnwutils.WithdrawalResult.LACK_RESOURCES: (
+                'The resources will be sent once available.',
+                'Withdrawal Request created due to insufficient resources in the bank'),
+            pnwutils.WithdrawalResult.BLOCKADED: (
+                'You are currently under a blockade, the resources can only be sent once it is broken.',
+                'Withdrawal Request created due to a blockade on the receiving nation.'
+            )
+        }
+        await asyncio.gather(
+            data.requester.send(
+                f'Your {data.kind} request for `{data.reason}` '
+                'has been accepted! ' +
+                messages[result][0]
+            ),
+            cls.bot.log(embeds=(
+                discordutils.create_embed(
+                    user=data.requester,
+                    description=f'{data.kind} Request for `{data.reason}` '
+                                f'accepted by {processor.mention}\n\n' +
+                                messages[result][1]),
+                data.resources.create_embed(title='Requested Resources')
+            )))
+        if result is not pnwutils.WithdrawalResult.SUCCESS:
+            await cls.send_withdrawal_view(data)
+
+    @classmethod
+    async def send_withdrawal_view(cls, data):
+        view = data.create_withdrawal_view(await cls.bot.get_custom_id())
+
+        channel = cls.bot.get_channel(await cls.bot.database.get_kv('channel_ids').get('withdrawal_channel'))
+        msg = await channel.send(f'Withdrawal Request from {data.requester.mention}',
+                                 embed=data.create_withdrawal_embed(),
+                                 allowed_mentions=discord.AllowedMentions.none(),
+                                 view=view)
+        await cls.bot.add_view(view, message_id=msg.id)
+
     @discordutils.persistent_button(label='Accept')
     async def accept(self, button: discord.ui.Button, interaction: discord.Interaction):
         button.style = discord.ButtonStyle.success
@@ -228,36 +275,8 @@ class RequestButtonsView(discordutils.PersistentView):
             interaction.response.edit_message(view=self, embed=embed),
             interaction.edit_original_message(
                 content=f'Accepted {self.data.kind} Request from {self.data.requester.mention}',
-                allowed_mentions=discord.AllowedMentions.none()))
-        sent = await self.data.create_withdrawal().withdraw(self.bot.session)
-        await asyncio.gather(
-            self.data.requester.send(
-                f'Your {self.data.kind} request for `{self.data.reason}` '
-                'has been accepted! ' +
-                ('You should have received the resources.' if sent else 'The resources will be sent once available.')
-            ),
-            self.bot.log(embeds=(
-                discordutils.create_embed(
-                    user=self.data.requester,
-                    description=f'{self.data.kind} Request for `{self.data.reason}` '
-                                f'accepted by {interaction.user.mention}\n\n' +
-                                ('Requested resources have been sent' if sent else
-                                 'Withdrawal Request created due to inadequate resources in the bank')),
-                self.data.resources.create_embed(title='Requested Resources')
-            )))
-        if not sent:
-            custom_id = await self.bot.get_custom_id()
-            view = WithdrawalView(
-                self.data.requester_id,
-                pnwutils.Withdrawal(self.data.resources, self.data.nation_id, note=self.data.reason),
-                custom_id=custom_id)
-
-            channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get('withdrawal_channel'))
-            msg = await channel.send(f'Withdrawal Request from {self.data.requester.mention}',
-                                     embed=self.data.create_withdrawal_embed(),
-                                     allowed_mentions=discord.AllowedMentions.none(),
-                                     view=view)
-            await self.bot.add_view(view, message_id=msg.id)
+                allowed_mentions=discord.AllowedMentions.none()),
+            self.withdraw_for_request(self.data, interaction.user))
 
     @discordutils.persistent_button(label='Reject')
     async def reject(self, button: discord.ui.Button, interaction: discord.Interaction):
@@ -267,14 +286,7 @@ class RequestButtonsView(discordutils.PersistentView):
         await interaction.response.send_modal(reason_modal)
         reject_reason = await reason_modal.result()
         # sent modal, must respond to its interaction to close it
-        # however, we do not want anything to happen with that interaction
-        # intentionally send empty message, closing the embed but doing nothing
-        try:
-            await reason_modal.interaction.response.send_message('')
-        except discord.HTTPException:
-            pass
-        else:
-            raise AssertionError('HTTPException Not Raised!')
+        await discordutils.respond_to_interaction(reason_modal.interaction)
 
         button.style = discord.ButtonStyle.success
         self.disable_all_items()
@@ -299,16 +311,160 @@ class RequestButtonsView(discordutils.PersistentView):
             ))
         )
 
-    '''
     @discordutils.persistent_button(label='Modify')
     async def modify(self, button: discord.ui.Button, interaction: discord.Interaction):
         button.style = discord.ButtonStyle.success
         self.disable_all_items()
         self.stop()
-        await self.bot.remove_view(self)
-        self.bot.log(f'rejecting {self.data.kind} request: {self.data}')
         self.data.set_requester(self.bot)
-    '''
+        user = interaction.user
+        old_res = self.data.resources
+        embed = interaction.message.embeds[0]
+        embed.description = f'Undergoing modification by {user.mention}'
+        embed.colour = discord.Colour.yellow()
+        preset_view = PresetView(self)
+        await asyncio.gather(
+            self.bot.remove_view(self),
+            interaction.response.edit_message(view=self, embed=embed),
+            user.send('How would you like to modify this grant request?', view=preset_view))
+
+        try:
+            await preset_view.complete
+        except asyncio.TimeoutError:
+            await user.send('You took too long to respond! Aborting...')
+
+        custom_id = await self.bot.get_custom_id()
+        response_view = ModificationResponseView(self.data, user.id, custom_id)
+        await asyncio.gather(
+            interaction.edit_original_message(
+                content=f'Modified {self.data.kind} Request from {self.data.requester.mention}',
+                allowed_mentions=discord.AllowedMentions.none()
+            ),
+            self.bot.log(embeds=(
+                discordutils.create_embed(
+                    user=self.data.requester,
+                    description=f'{self.data.kind} Request for `{self.data.reason}` modified by '
+                                f'{user.mention}`'),
+                old_res.create_embed(title='Previous Resources'),
+                self.data.resources.create_embed(title='Updated Resources')
+            )),
+            response_view.send_response()
+        )
+
+
+class PresetView(discord.ui.View):
+    def __init__(self, parent_view: RequestButtonsView):
+        super().__init__(CustomPresetButton(), timeout=config.timeout)
+        self.parent_view = parent_view
+        for b in PresetButton.create_buttons(parent_view.data.presets):
+            self.add_item(b)
+
+        self.complete: asyncio.Future[None] = asyncio.get_event_loop().create_future()
+
+    async def on_timeout(self) -> None:
+        self.complete.set_exception(asyncio.TimeoutError())
+
+
+class PresetButton(discord.ui.Button[PresetView]):
+    @classmethod
+    def create_buttons(cls, presets: dict[str, pnwutils.Resources]) -> Iterable[PresetButton]:
+        return (cls(n, r) for n, r in presets.items())
+
+    def __init__(self, name: str, resources: pnwutils.Resources):
+        self.resources = resources
+        super().__init__(label=name)
+
+    async def callback(self, interaction: discord.Interaction):
+        self.style = discord.ButtonStyle.success
+        self.view.disable_all_items()
+        self.view.stop()
+        await interaction.response.edit_message(view=self.view)
+        self.view.complete.set_result(None)
+        self.view.parent_view.data.resources = self.resources
+
+
+class CustomPresetButton(discord.ui.Button[PresetView]):
+    def __init__(self):
+        super().__init__(label='Custom Modification')
+
+    async def callback(self, interaction: discord.Interaction):
+        self.style = discord.ButtonStyle.success
+        self.view.disable_all_items()
+        self.view.stop()
+        modal = CustomModificationModal(self.view.parent_view)
+        await interaction.response.send_modal(modal)
+        await modal.complete
+        self.view.complete.set_result(None)
+        await interaction.edit_original_message(view=self.view)
+
+
+class CustomModificationModal(discord.ui.Modal):
+    def __init__(self, view: RequestButtonsView):
+        super().__init__(title='How would you like to modify this request?')
+        self.view = view
+        self.complete: asyncio.Future[None] = asyncio.get_event_loop().create_future()
+
+        for res_name, amt in view.data.resources.items_nonzero():
+            self.add_item(discord.ui.InputText(
+                label=f'How much {res_name} should this request be for?',
+                placeholder=str(amt),
+                required=False))
+
+    async def callback(self, interaction: discord.Interaction):
+        for res_name, input_text in zip(self.view.data.resources.keys_nonzero(), self.children):
+            if input_text.value is not None:
+                self.view.data.resources[res_name] = int(input_text.value)
+        self.complete.set_result(None)
+        await interaction.response.send_message('The request has been updated!', embed=self.view.data.create_embed())
+
+
+class ModificationResponseView(discordutils.PersistentView):
+    def __init__(self, data: RequestData, processor_id: int, custom_id: int):
+        super().__init__(custom_id=custom_id)
+        self.data = data
+        self.processor_id = processor_id
+
+    async def send_response(self):
+        await self.data.requester.send(
+            'Your request has been modified. Is this modified request acceptable, '
+            'or should the request be cancelled?', embed=self.data.create_withdrawal_embed(), view=self)
+
+    def get_state(self) -> tuple:
+        return {}, self.data, self.processor_id
+
+    @discordutils.persistent_button(label='Accept')
+    async def accept(self, button: discord.ui.Button, interaction: discord.Interaction):
+        button.style = discord.ButtonStyle.success
+        self.disable_all_items()
+        self.stop()
+
+        embed = self.data.resources.create_embed(title='Request Resources')
+        await asyncio.gather(
+            interaction.response.edit_message(view=self, embed=embed),
+            self.bot.log(embeds=(
+                discordutils.create_embed(
+                    user=self.data.requester,
+                    description=f'Accepted modified {self.data.kind} Request for `{self.data.reason}`'),
+                self.data.resources.create_embed(title='Request Resources')
+            )),
+            RequestButtonsView.withdraw_for_request(self.data, self.bot.get_user(self.processor_id))
+        )
+
+    @discordutils.persistent_button(label='Reject')
+    async def reject(self, button: discord.ui.Button, interaction: discord.Interaction):
+        button.style = discord.ButtonStyle.success
+        self.disable_all_items()
+        self.stop()
+
+        embed = self.data.resources.create_embed(title='Request Resources')
+        await asyncio.gather(
+            interaction.edit_original_message(view=self, embed=embed),
+            self.bot.log(embeds=(
+                discordutils.create_embed(
+                    user=self.data.requester,
+                    description=f'Rejected modified {self.data.kind} Request for `{self.data.reason}`'),
+                embed
+            )))
 
 
 class WithdrawalView(discordutils.PersistentView):
@@ -322,7 +478,8 @@ class WithdrawalView(discordutils.PersistentView):
 
     @discordutils.persistent_button(label='Send')
     async def send(self, button: discordutils.PersistentButton, interaction: discord.Interaction):
-        if await self.withdrawal.withdraw(self.bot.session):
+        result = await self.withdrawal.withdraw(self.bot.session)
+        if result is pnwutils.WithdrawalResult.SUCCESS:
             button.style = discord.ButtonStyle.success
             self.disable_all_items()
             self.stop()
@@ -336,11 +493,14 @@ class WithdrawalView(discordutils.PersistentView):
                 member.send('Your withdrawal request for the following has been sent to your nation!',
                             embed=contents_embed),
                 self.bot.log(embeds=(
-                    discordutils.create_embed(user=member,
-                                              description=f'Withdrawal Sent by {interaction.user.mention}'),
+                    discordutils.create_embed(
+                        user=member, description=f'Withdrawal Sent by {interaction.user.mention}'),
                     contents_embed)))
-        else:
-            await interaction.response.send_message('The bank does not have enough on hand to fulfill this withdrawal!')
+            return
+        await interaction.response.send_message(
+            'The bank does not have enough on hand to fulfill this withdrawal!'
+            if result is pnwutils.WithdrawalResult.LACK_RESOURCES else
+            'The recipient is currently blockaded and cannot receive resources.')
 
     @discordutils.persistent_button(label='Cancel')
     async def cancel(self, button: discordutils.PersistentButton, interaction: discord.Interaction):
@@ -348,12 +508,8 @@ class WithdrawalView(discordutils.PersistentView):
             f'Why cancel this withdrawal request?', 'Cancellation Reason', discord.InputTextStyle.paragraph)
         await interaction.response.send_modal(reason_modal)
         cancel_reason = await reason_modal.result()
-        try:
-            await reason_modal.interaction.response.send_message('')
-        except discord.HTTPException:
-            pass
-        else:
-            raise AssertionError('HTTPException Not Raised!')
+        # close modal
+        await discordutils.respond_to_interaction(reason_modal.interaction)
 
         await self.bot.database.get_table('users').update(
             f'balance = balance + {self.withdrawal.resources.to_row()}').where(discord_id=self.receiver_id)
