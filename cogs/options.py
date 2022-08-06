@@ -62,7 +62,7 @@ class OptionsCog(discordutils.CogBase):
         else:
             key = 'updates_channel'
             kind_text = 'Updates'
-        await self.channel_ids.set(key, kind_text)
+        await self.channel_ids.set(key, ctx.channel_id)
         await ctx.respond(f'{kind_text} channel set!')
 
     market_options = options.create_subgroup('market', 'Options for the market system!')

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 import discord
+import pnwkit
 from discord import commands
 from discord.ext import tasks
 
@@ -14,11 +16,38 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
         self.last_monitoring: list[tuple[dict[str, Any], pnwutils.WarType]] | None = None
-        self.channels = {pnwutils.WarType.ATT: 'offensive_channel', pnwutils.WarType.DEF: 'defensive_channel'}
+        self.channels = {pnwutils.WarType.ATT: 'offensive_channel', pnwutils.WarType.DEF: 'defensive_channel',
+                         None: 'updates_channel'}
 
         self.monitor_att = discordutils.SetProperty(self, 'monitor_att')
         self.monitor_def = discordutils.SetProperty(self, 'monitor_def')
         self.monitor = {pnwutils.WarType.ATT: self.monitor_att, pnwutils.WarType.DEF: self.monitor_def}
+
+        self.monitor_subscription: pnwkit.Subscription | None = None
+
+    async def subscribe(self):
+        self.monitor_subscription = await pnwkit.Subscription.subscribe(
+            self.bot.kit,
+            'war', 'create',
+            {'alliance_id': config.alliance_id} and {},
+            self.on_new_war
+        )
+
+    async def on_ready(self):
+        if self.running:
+            await self.subscribe()
+
+    async def on_cleanup(self):
+        if self.monitor_subscription is not None:
+            await self.monitor_subscription.unsubscribe()
+
+    async def on_new_war(self, war):
+        if war['attacker']['alliance'] and war['attacker']['alliance']['id'] == config.alliance_id:
+            kind = pnwutils.WarType.ATT
+        else:
+            kind = pnwutils.WarType.DEF
+        channel = await self.bot.database.get_kv('channel_ids').get(self.channels[kind])
+        await channel.send(embed=await self.new_war_embed(war, kind))
 
     @staticmethod
     async def new_war_embed(data: dict[str, Any], kind: pnwutils.WarType) -> discord.Embed:
@@ -46,7 +75,6 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
             embed.add_field(name='Military', value=pnwutils.mil_text(nation))
         return embed
 
-    @tasks.loop(minutes=2)
     async def task(self) -> None:
         data = await alliance_wars_query.query(self.bot.session, alliance_id=config.alliance_id)
         data = data['data']
@@ -104,33 +132,24 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
         return a == b
 
     detector = commands.SlashCommandGroup('detector', "The bot's war detector!", guild_ids=config.guild_ids,
-                                          default_permission=False, permissions=[config.gov_role_permission])
+                                          default_permission=False)
 
     @detector.command(guild_ids=config.guild_ids, default_permission=False)
     async def toggle(self, ctx: discord.ApplicationContext):
         """Toggles the war detector on and off"""
-        for c in self.channels.values():
-            if await c.get(None) is None:
-                await ctx.respond('Not all of the defensive, offensive and updates wars channels have been set! '
-                                  'Set them with the `options war_detector channel` command '
-                                  'in the respective channels.')
-                return
-
-        running_state = await self.running.get()
-        if self.task.is_running():
-            self.task.stop()
-            if running_state:
-                await ctx.respond('War Detector stopping!')
-                await self.running.set(False)
-            else:
-                await ctx.respond('War Detector is in the process of stopping!')
+        channel_ids_table = self.bot.database.get_kv('channel_ids')
+        if not await channel_ids_table.all_set(*self.channels.values()):
+            await ctx.respond('Not all of the defensive, offensive and updates war channels have been set! '
+                              'Set them with the `options war_detector channel` command '
+                              'in the respective channels.')
             return
-        self.task.start()
-        if running_state:
-            # not sure if ValueError is appropriate here
-            raise ValueError('state is running but detector is not running!')
-        await self.running.set(True)
-        await ctx.respond('War detector started!')
+
+        if self.running.get():
+            await asyncio.gather(self.monitor_subscription.unsubscribe(), ctx.respond('War Detector Stopping!'))
+            await asyncio.gather(self.running.set(False), ctx.respond('War Detector Stopped!'))
+            return
+        await asyncio.gather(self.subscribe(), ctx.respond('War Detector Starting!'))
+        await asyncio.gather(self.running.set(True), ctx.respond('War Detector Started!'))
 
     @detector.command(guild_ids=config.guild_ids, default_permission=False)
     async def monitor_ongoing(self, ctx: discord.ApplicationContext):

@@ -1,4 +1,4 @@
-# use to convert the dict to the file database
+# use to convert the dict to the psql database
 import asyncio
 
 import aiofiles

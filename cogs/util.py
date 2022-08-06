@@ -333,6 +333,37 @@ class UtilCog(discordutils.CogBase):
             return
         await ctx.respond(f'The cog `{cog}` has been reloaded!')
 
+
+    # im not sure if i should impl this
+    '''
+    formulas = commands.SlashCommandGroup('formulas', 'List of formulas for reference!', guild_ids=config.guild_ids)
+
+    war_formulas = formulas.create_subgroup('application', 'Options for the application system!')
+    war_formulas.guild_ids = config.guild_ids
+
+    @war_formulas.command()
+    async def ground(self, ctx: discord.ApplicationContext):
+        """Information on ground battles."""
+        embed = discord.Embed(title='Ground Battle Formulas')
+        embed.add_field(name='Army Strength',
+                        value='Unarmed Soldiers - 1\nArmedSoldiers - 1.75\nTank - 40\n\n'
+                              'A tank is worth approximately 23 armed soldiers.\n\n'
+                              'Note: A defender has population / 400 added to their army strength, '
+                              "representing a resisting population. Don't expect to win with 5 soldiers against none.")
+        embed.add_field(name='Loot',
+                        value='(1.1 * (Attacking Soldiers) + 25.15 * (Attacking Tanks)) * '
+                              '(Victory Factor) * (War Type Factor) * (War Policy Factor) * (Random Factor)\n\n'
+                              'Victory Factor - Battle Outcome. IT - 3, MS - 2, PV - 1, UF - 0\n'
+                              'War Type Factor - 1 for Raid, 0.5 for Ordinary, 0.25 for Attrition\n'
+                              'War Policy Factor - Default 1, +0.4 if attacker has Pirate war policy,'
+                              ' -0.4 if defender has Moneybags policy\n'
+                              'Random Factor - A random number ranging from 0.8 - 1.1\n\n'
+                              "Note: You cannot steal more than 75% of the defender's cash, nor their last 1000000")
+        embed.add_field(name='Infrastructure Damage',
+                        value=)
+        await ctx.respond(embed=embed)
+    '''
+
     @commands.command(name='help', guild_ids=config.guild_ids)
     async def help_(self, ctx: discord.ApplicationContext,
                     command: discord.Option(str, 'Cog or Command name', required=False,

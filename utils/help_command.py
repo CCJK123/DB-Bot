@@ -26,7 +26,7 @@ async def help_command(bot: discord.Bot, ctx: discord.ApplicationContext, name: 
         return
     # command
     for command in bot.walk_application_commands():
-        if command.qualified_name == name:
+        if command.qualified_name.lower() == name.lower():
             break
     else:
         await ctx.respond('No command, cog or group by that name found.', ephemeral=True)
@@ -46,10 +46,9 @@ async def help_command(bot: discord.Bot, ctx: discord.ApplicationContext, name: 
 
 
 def create_cog_embed(ctx: discord.ApplicationContext, cog: discord.Cog) -> discord.Embed | None:
-    # cog.walk_commands doesn't actually walk down the slashcommandgroups
-    filtered = filter(functools.partial(check_permissions, ctx.author), walk_commands(cog.get_commands()))
+    # cog.walk_commands doesn't actually walk down the slash command groups
     embed = discord.Embed(title=cog.qualified_name, description=cog.description)
-    for cmd in filtered:
+    for cmd in filter(functools.partial(check_permissions, ctx.author), walk_commands(cog.get_commands())):
         embed.add_field(name=get_command_name(cmd),
                         value=get_command_description(cmd),
                         inline=False)
@@ -68,13 +67,12 @@ def check_permissions(user: discord.Member, command: discord.ApplicationCommand)
     if command.parent is not None:
         return check_permissions(user, command.parent)
     if hasattr(command, 'permissions'):
-        perm: commands.CommandPermission
         for perm in command.permissions:
             if perm.type == 1:
                 check = any(role.id == perm.id for role in user.roles)
             else:
                 check = user.id == perm.id
-            if not (not check) ^ perm.permission:
+            if (not check) == perm.permission:
                 return False
     return True
 

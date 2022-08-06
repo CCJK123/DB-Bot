@@ -2,7 +2,7 @@
     a. this converts the indexes of some mappings (loans, balances) to be indexed by discord id rather than nation id
 2. on replit, run convert_dict.py
     a. this stores the contents of the database as a dict in a .txt format, in a file named dict.txt
-    b. this is required as trying to download the pickled file, the current db format, would not work
+    b. this is required as trying to download the pickled file, the current db format, does not work (not too sure why)
 3. download dict.txt
 4. now, on a non replit copy, run convert_database.py
     a. this actually converts the dict.txt to a format that the current version uses
