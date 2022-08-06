@@ -172,7 +172,7 @@ class DBBot(discord.Bot):
             await ctx.send('Sorry, an exception occurred.')
 
         s = ''
-        for ex in traceback.format_exception(exception):  # type: ignore
+        for ex in traceback.format_exception(type(exception), exception, exception.__traceback__):
             if ex == '\nThe above exception was the direct cause of the following exception:\n\n':
                 await ctx.send(f'```{s}```')
                 s = ex
@@ -181,7 +181,7 @@ class DBBot(discord.Bot):
         await ctx.send(f'```{s}```')
 
         # print the exception to stderr too
-        traceback.print_exception(type(exception), exception, exception.__traceback__, file=sys.stderr)
+        traceback.print_exception(type(exception), exception, exception.__traceback__)
 
     async def get_offshore_id(self):
         data = await offshore_info_query.query(self.session, api_key=config.offshore_api_key)
