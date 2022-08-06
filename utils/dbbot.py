@@ -49,7 +49,7 @@ class DBBot(discord.Bot):
                  possible_statuses: Sequence[discord.Activity] | None = None):
         intents = discord.Intents(guilds=True, messages=True, members=True)
         super().__init__(intents=intents)
-        self.excluded = {'open_slots_detector', 'market'}
+        self.excluded = {'open_slots_detector', 'new_war_detector', 'market'}
         self.session = None
         self.kit = pnwkit.QueryKit(config.api_key)
 
