@@ -56,6 +56,10 @@ class BankCog(discordutils.CogBase):
         )
 
         # actual displaying
+        if rec is None:
+            await ctx.respond('You have not been registered!')
+            return
+
         await ctx.respond(embed=pnwutils.Resources(**rec['balance']).create_balance_embed(ctx.author),
                           allowed_mentions=discord.AllowedMentions.none(),
                           ephemeral=True)
@@ -71,7 +75,7 @@ class BankCog(discordutils.CogBase):
         # various data access
         nation_id = await self.users_table.select_val('nation_id').where(discord_id=ctx.author.id)
         if nation_id is None:
-            await ctx.respond('Your nation id has not been set!', ephemeral=True)
+            await ctx.respond('Your nation id has not been registered!', ephemeral=True)
             return
 
         await ctx.respond('Please check your DMs!', ephemeral=True)
