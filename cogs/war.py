@@ -111,6 +111,7 @@ class WarCog(discordutils.CogBase):
 
     @commands.command(guild_ids=config.guild_ids)
     async def find_spy_sat(self, ctx: discord.ApplicationContext, target_score: int):
+        """Looks for nations in the alliance with Spy Satellite who can spy on targets with the given score"""
         mi, ma = pnwutils.formulas.inverse_spy_range(target_score)
         data = await spy_sat_query.query(self.bot.session, alliance_id=config.alliance_id,
                                          min_score=mi, max_score=ma)
