@@ -37,7 +37,7 @@ class WarCog(discordutils.CogBase):
                    member: discord.Option(discord.Member, 'Member to check the wars of', required=False, default=None),
                    nation_id: discord.Option(str, 'Nation ID of checked nation (overrides member)',
                                              required=False, default=None)):
-        """Check the active wars of the given member/nation (default yourself)."""
+        """Check the active wars of the given member/nation (default yourself)"""
         if member is None and nation_id is None:
             member = ctx.author
         if member is not None:

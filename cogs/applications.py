@@ -88,7 +88,7 @@ class ApplicationCog(discordutils.CogBase):
     @discord.option('question_number', description='What question number to start from. Leave blank.',
                     min_value=1, max_value=len(config.interview_questions))
     async def start_interview(self, ctx: discord.ApplicationContext, question_number: int = 1) -> None:
-        """Gives you interview questions for you to respond to."""
+        """Gives you interview questions for you to respond to"""
         applicant_id = await self.applications_table.select_val('discord_id').where(channel_id=ctx.channel_id)
         if applicant_id is None:
             await ctx.respond('This channel is not an application channel!')

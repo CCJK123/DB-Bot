@@ -316,7 +316,7 @@ class UtilCog(discordutils.CogBase):
 
     @commands.command(guild_ids=config.guild_ids)
     async def time_in(self, ctx: discord.ApplicationContext, turns: discord.Option(int, 'Time in how many turns')):
-        """Express the time in n turns."""
+        """Express the time in n turns"""
         s = pnwutils.time_after_turns(turns)
         await ctx.respond(f'It would be {s} (`{s}`) in {turns} turns.')
 
