@@ -28,7 +28,7 @@ bank_gov_role_id: int = 490527202643935234  # unused
 on_accepted_added_roles: tuple[int, ...] = (member_role_id, 540341927191642131, 362266182663012393)
 
 api_key: str = os.environ['MYSQLCONNSTR_API_KEY']
-api_key_mut: str = os.environ['MYSQLCONNSTR_BOT_KEY']
+api_key_mut: str = os.environ['MYSQLCONNSTR_API_KEY_MUT']
 offshore_api_key = os.environ['MYSQLCONNSTR_OFFSHORE_API_KEY']
 database_url: str = os.environ['MYSQLCONNSTR_DB_URL']
 alliance_id: str = '4221'
