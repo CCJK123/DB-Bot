@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Awaitable, Iterable, AsyncIterable
+from collections.abc import Awaitable, Iterable
 from typing import Any, TypeVar
 
 import asyncpg

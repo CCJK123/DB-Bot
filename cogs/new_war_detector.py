@@ -6,7 +6,6 @@ from typing import Any
 import discord
 import pnwkit
 from discord import commands
-from discord.ext import tasks
 
 from utils import discordutils, pnwutils, config, dbbot
 from utils.queries import alliance_wars_query

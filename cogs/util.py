@@ -334,7 +334,7 @@ class UtilCog(discordutils.CogBase):
         await ctx.respond(f'The cog `{cog}` has been reloaded!')
 
 
-    # im not sure if i should impl this
+    # im not sure if I should impl this
     '''
     formulas = commands.SlashCommandGroup('formulas', 'List of formulas for reference!', guild_ids=config.guild_ids)
 

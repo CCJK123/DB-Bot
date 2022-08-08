@@ -4,7 +4,6 @@ import functools
 from typing import Iterable
 
 import discord
-from discord import commands
 
 __all__ = ('help_command', 'autocomplete')
 

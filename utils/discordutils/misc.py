@@ -43,7 +43,7 @@ def get_dm_msg_chk(auth_id: int) -> Callable[[discord.Message], bool]:
 
 
 def split_blocks(joiner: str, *iterables: Iterable[str], limit: int = 2000) -> Iterable[str]:
-    """split a message from a string.join into blocks smaller than limit"""
+    """split a message from a string, join into blocks smaller than limit"""
     s = ''
     join_no_sep = True
     for i in itertools.chain.from_iterable(iterables):

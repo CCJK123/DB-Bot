@@ -239,7 +239,7 @@ class FinanceCog(discordutils.CogBase):
                     Offensive: {num_off}
                     Defensive: {len(wars) - num_off}
                 '''
-                # fsr the value of turns_left when war is over seems to be always -12? i am not sure
+                # fsr the value of turns_left when war is over seems to be always -12? I am not sure
                 # maybe its diff for wars that ended recently? did not check
             }
 
