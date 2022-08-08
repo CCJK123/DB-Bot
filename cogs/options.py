@@ -101,6 +101,9 @@ class OptionsCog(discordutils.CogBase):
             await self.channel_ids.set('application_log_channel', ctx.channel_id)
             await ctx.respond('Application log channel set!')
             return
+        if ctx.channel.category is None:
+            await ctx.respond('This channel is not in a category! Aborting...')
+            return
         await self.channel_ids.set('application_category', ctx.channel.category.id)
         await ctx.respond(f'Application category set to {ctx.channel.category.name}!')
 
