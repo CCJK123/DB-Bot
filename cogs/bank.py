@@ -411,7 +411,7 @@ class BankCog(discordutils.CogBase):
 
     @_bank.command(guild_ids=config.guild_ids)
     async def safekeep(self, ctx: discord.ApplicationContext):
-        """Get a link to send the entire bank to an offshore"""
+        """Send the entire bank to the offshore for safekeeping"""
 
         data = await bank_info_query.query(self.bot.session, alliance_id=config.alliance_id)
         resources = pnwutils.Resources(**data['data'][0])
