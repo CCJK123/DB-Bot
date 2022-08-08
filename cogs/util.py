@@ -31,8 +31,6 @@ class UtilCog(discordutils.CogBase):
                      nation_id: discord.Option(int, 'Your Nation ID', default=None),
                      nation_link: discord.Option(str, 'Your Nation ID', default=None)):
         """Use to manually add your nation to the database, with either an ID or a link"""
-        assert isinstance(nation_id, int)
-        assert isinstance(nation_link, str)
         if await self.users_table.exists(discord_id=ctx.author.id):
             await ctx.respond('You are already registered!', ephemeral=True)
             return
