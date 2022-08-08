@@ -317,7 +317,7 @@ class BankCog(discordutils.CogBase):
                 )))
             return
         await ctx.respond('You do not have enough resources to repay your loan.', ephemeral=True,
-                          embed=loaned.create_embed(title=f"{ctx.author.mention}'s Loan"))
+                          embed=loaned.create_embed(title=f"Loaned Resources"))
 
     @loan.command(guild_ids=config.guild_ids)
     async def status(self, ctx: discord.ApplicationContext):
