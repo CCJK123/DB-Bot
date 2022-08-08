@@ -125,7 +125,7 @@ class ApplicationCog(discordutils.CogBase):
     @application.command(guild_ids=config.guild_ids, default_permission=False)
     @cmds.max_concurrency(1, cmds.BucketType.channel)
     async def accept(self, ctx: discord.ApplicationContext):
-        """Accept someone into the alliance!"""
+        """Accept someone into the alliance"""
         record = await self.applications_table.select_row('discord_id', 'status').where(channel_id=ctx.channel_id)
         if record is None:
             await ctx.respond('This channel is not an application channel!')
@@ -160,7 +160,7 @@ class ApplicationCog(discordutils.CogBase):
     @application.command(guild_ids=config.guild_ids)
     @cmds.max_concurrency(1, cmds.BucketType.channel)
     async def close(self, ctx: discord.ApplicationContext):
-        """Close this application channel."""
+        """Close this application channel"""
         application_log = await self.bot.database.get_kv('channel_ids').get('application_log')
         if application_log is None:
             await ctx.respond('Application Log channel is unset! Aborting...')

@@ -19,7 +19,7 @@ class FinanceCog(discordutils.CogBase):
     @commands.command(guild_ids=config.guild_ids)
     @cmds.max_concurrency(1, cmds.BucketType.user)
     async def request(self, ctx: discord.ApplicationContext) -> None:
-        """Request for a grant, loan, or war aid (if enabled) from the bank."""
+        """Request for a grant, loan, or war aid (if enabled) from the bank"""
         # Command Run Validity Check -
         # Check if output channel has been set
         channel_ids_table = self.bot.database.get_kv('channel_ids')

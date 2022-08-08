@@ -16,7 +16,7 @@ class WarCog(discordutils.CogBase):
 
     @commands.command(guild_ids=config.guild_ids)
     async def war(self, ctx: discord.ApplicationContext, war: discord.Option(str, 'War ID or link')):
-        """Gives information on a war given an ID or link!"""
+        """Gives information on a war given an ID or link"""
         war = war.removeprefix(f'{pnwutils.constants.base_url}nation/war/timeline/war=')
 
         try:

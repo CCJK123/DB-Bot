@@ -112,7 +112,7 @@ class OptionsCog(discordutils.CogBase):
 
     @logging_options.command(guild_ids=config.guild_ids)
     async def channel(self, ctx: discord.ApplicationContext):
-        """Set the logging channel!"""
+        """Set the logging channel"""
         await self.channel_ids.set('logging_channel', ctx.channel_id)
         await ctx.respond('Logging channel set!')
 
