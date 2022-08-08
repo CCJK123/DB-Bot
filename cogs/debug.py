@@ -21,9 +21,9 @@ class DebugCog(discordutils.CogBase):
     async def a(self, ctx: commands.ApplicationContext):
         embed = discord.Embed(title='Title!',
                               description=f'Ran the command `a` at {discord.utils.format_dt(discord.utils.utcnow())}')
-        embed.set_author(name=ctx.author.name, icon_url=ctx.author.avatar.url)
-        embed.set_footer(text=f'footer text {ctx.author.mention}', icon_url=ctx.author.avatar.url)
-        embed.set_thumbnail(url=ctx.author.avatar.url)
+        embed.set_author(name=ctx.author.name, icon_url=ctx.author.display_avatar.url)
+        embed.set_footer(text=f'footer text {ctx.author.mention}', icon_url=ctx.author.display_avatar.url)
+        embed.set_thumbnail(url=ctx.author.display_avatar.url)
         await ctx.respond(embed=embed)
 
 

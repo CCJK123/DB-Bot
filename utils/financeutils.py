@@ -38,7 +38,7 @@ class RequestData:
 
     def create_embed(self, **kwargs) -> discord.Embed:
         embed = discord.Embed(**kwargs)
-        embed.set_author(name=self.requester.name, icon_url=self.requester.avatar.url)
+        embed.set_author(name=self.requester.name, icon_url=self.requester.display_avatar.url)
         embed.add_field(name='Nation', value=f'[{self.nation_name}]({self.nation_link})')
         embed.add_field(name='Request Type', value=self.kind)
         embed.add_field(name='Reason', value=self.reason)
