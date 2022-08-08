@@ -49,7 +49,7 @@ class DBBot(discord.Bot):
         intents = discord.Intents(guilds=True, messages=True, members=True)
         super().__init__(intents=intents)
         self.excluded = {'open_slots_detector', 'new_war_detector', 'market'}
-        self.session = None
+        self.session: aiohttp.ClientSession | None = None
         self.kit = pnwkit.QueryKit(config.api_key)
 
         self.database: databases.Database = databases.PGDatabase(db_url)
@@ -131,9 +131,8 @@ class DBBot(discord.Bot):
         if not self.prepared:
             await self.prepare()
             self.prepared = True
-        for cog in self.cogs.values():
-            if isinstance(cog, discordutils.CogBase):
-                await cog.on_ready()
+
+        await asyncio.gather(*(cog.on_ready for cog in self.cogs.values() if isinstance(cog, discordutils.CogBase)))
 
         # add views
         async for view in self.view_table.get_all():
