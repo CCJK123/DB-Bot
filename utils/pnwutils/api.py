@@ -48,7 +48,7 @@ class APIQuery:
                 variables[k] = list(map(ty[0], variables[k]))
             else:
                 variables[k] = ty(variables[k])
-        headers = {'X-Bot-Key': config.bot_key, 'X-Api-Key': config.api_key} if self.bot_headers else {}
+        headers = {'X-Bot-Key': config.api_key_mut, 'X-Api-Key': config.api_key} if self.bot_headers else {}
         async with session.post(constants.base_api_url, params={'api_key': api_key},
                                 json=self.get_query(variables), headers=headers) as response:
             data = await response.json()
