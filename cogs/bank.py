@@ -472,9 +472,9 @@ class BankCog(discordutils.CogBase):
         text = 'adjust' if adjust else 'set'
         msg_chk = discordutils.get_dm_msg_chk(author.id)
         await author.send(f'What resources would you like to {text}?', view=res_select_view)
-
+        last = 'by' if adjust else 'to'
         for res in await res_select_view.result():
-            await author.send(f'What would you like to {text} {res} to?')
+            await author.send(f'What would you like to {text} {res} {last}?')
             while True:
                 try:
                     amt = (await self.bot.wait_for('message', check=msg_chk, timeout=config.timeout)
