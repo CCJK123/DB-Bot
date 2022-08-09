@@ -162,8 +162,8 @@ class UtilCog(discordutils.CogBase):
         'check', 'Various checks on members of the alliance', guild_ids=config.guild_ids,
         default_permission=False, default_member_permissions=discord.Permissions())
 
-    @check.command(name='ran_out', guild_ids=config.guild_ids)
-    async def check_ran_out(self, ctx: discord.ApplicationContext):
+    @check.command(name='resources', guild_ids=config.guild_ids)
+    async def check_resources(self, ctx: discord.ApplicationContext):
         """List all nations that have run out of food or uranium in the alliance."""
         data = await alliance_member_res_query.query(self.bot.session, alliance_id=config.alliance_id)
         data = data['data']
@@ -189,7 +189,7 @@ class UtilCog(discordutils.CogBase):
                 async with conn.transaction():
                     map_discord = {rec['nation_id']: rec['discord_id'] async for rec in
                                    self.users_table.select('discord_id', 'nation_id').where(
-                                       f'nation_id IN [{",".join(map(str, ids))}]').cursor(conn)}
+                                       f'nation_id IN ({",".join(map(str, ids))})').cursor(conn)}
 
             embed = discord.Embed(title='Ran Out Of...')
             for k, ns in result.items():
@@ -228,7 +228,7 @@ class UtilCog(discordutils.CogBase):
         for m in discordutils.split_blocks('\n', itertools.chain(
                 ('Inactives:',), (f'<@{d_id}>' for d_id in map_discord.values()))):
             await ctx.respond(m)
-        for m in discordutils.split_blocks('\n', (f'[{nation_names[n]}]({pnwutils.link.nation(n)})'
+        for m in discordutils.split_blocks('\n', (f'[{nation_names[n]}/{n}](<{pnwutils.link.nation(n)}>)'
                                                   for n in inactives - map_discord.keys())):
             await ctx.respond(m)
 
