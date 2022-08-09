@@ -194,7 +194,7 @@ class UtilCog(discordutils.CogBase):
             embed = discord.Embed(title='Ran Out Of...')
             for k, ns in result.items():
                 string = '\n'.join((f'<@{d_id}>' if (d_id := map_discord.get(na[0])) else
-                                    f'[{na[1]}/{na[0]}({pnwutils.link.nation(na[0])})') for na in ns)
+                                    f'[{na[1]}/{na[0]}]({pnwutils.link.nation(na[0])})') for na in ns)
                 if string:
                     embed.add_field(name=k, value=string)
             await ctx.respond(embed=embed)
@@ -228,6 +228,8 @@ class UtilCog(discordutils.CogBase):
         for m in discordutils.split_blocks('\n', itertools.chain(
                 ('Inactives:',), (f'<@{d_id}>' for d_id in map_discord.values()))):
             await ctx.respond(m)
+        await ctx.respond(inactives)
+        await ctx.respond(map_discord)
         for m in discordutils.split_blocks('\n', (f'[{nation_names[n]}/{n}](<{pnwutils.link.nation(n)}>)'
                                                   for n in (inactives - map_discord.keys()))):
             await ctx.respond(m)
