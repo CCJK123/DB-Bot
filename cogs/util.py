@@ -216,8 +216,9 @@ class UtilCog(discordutils.CogBase):
                 continue
             time_since_active = now - datetime.datetime.fromisoformat(nation['last_active'])
             if time_since_active >= datetime.timedelta(days=days):
-                inactives.add(nation['id'])
-                nation_names[nation['id']] = nation['nation_name']
+                nation_id = int(nation['id'])
+                inactives.add(nation_id)
+                nation_names[nation_id] = nation['nation_name']
 
         async with self.bot.database.acquire() as conn:
             async with conn.transaction():
@@ -228,8 +229,6 @@ class UtilCog(discordutils.CogBase):
         for m in discordutils.split_blocks('\n', itertools.chain(
                 ('Inactives:',), (f'<@{d_id}>' for d_id in map_discord.values()))):
             await ctx.respond(m)
-        await ctx.respond(inactives)
-        await ctx.respond(map_discord)
         for m in discordutils.split_blocks('\n', (f'[{nation_names[n]}/{n}](<{pnwutils.link.nation(n)}>)'
                                                   for n in (inactives - map_discord.keys()))):
             await ctx.respond(m)
