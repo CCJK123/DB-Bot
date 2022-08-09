@@ -277,7 +277,8 @@ class UtilCog(discordutils.CogBase):
         if discord_id is None:
             await ctx.respond('No user linked to that nation was found!')
             return
-        await ctx.respond(f'User found: <@{discord_id}>', allowed_mentions=discord.AllowedMentions.none())
+        await ctx.respond(f'<@{discord_id}> has nation ID {nation_id}.',
+                          allowed_mentions=discord.AllowedMentions.none())
 
     @commands.message_command(guild_ids=config.guild_ids)
     async def discords(self, ctx: discord.ApplicationContext, message: discord.Message):
