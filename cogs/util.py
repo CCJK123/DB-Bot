@@ -268,6 +268,16 @@ class UtilCog(discordutils.CogBase):
             embed.add_field(name='Current Wars', value=s)
         await ctx.respond(embed=embed, view=discordutils.LinkView('Nation Link', pnwutils.link.nation(nation_id)))
 
+    @commands.command(guild_ids=config.guild_ids)
+    async def discord(self, ctx: discord.ApplicationContext,
+                      nation_id: discord.Option(int, description='Nation ID of the user you are trying to find!',
+                                                min_value=1)):
+        discord_id = await self.users_table.select_val('discord_id').where(nation_id=nation_id)
+        if discord_id is None:
+            await ctx.respond('No user linked to that nation was found!')
+            return
+        await ctx.respond(f'User found: <@{discord_id}>', allowed_mentions=discord.AllowedMentions.none())
+
     @commands.message_command(guild_ids=config.guild_ids)
     async def discords(self, ctx: discord.ApplicationContext, message: discord.Message):
         """Look for the discord accounts of the nation links in the message!"""
