@@ -153,9 +153,9 @@ class DBBot(discord.Bot):
             cmds.MissingRole,
             cmds.MissingRequiredArgument
         )
-        await ctx.respond(str(exception) + ' ' + str(c) + ' ' + str({k: getattr(c, k) for k in dir(c)}))
-        if (c := exception.__cause__) is discord.NotFound:
 
+        if isinstance(c := exception.__cause__, discord.NotFound):
+            await ctx.respond(str(exception) + ' ' + str(c) + ' ' + str({k: getattr(c, k) for k in dir(c)}))
             await ctx.respond('Sorry, please rerun your command.')
         elif not isinstance(exception, ignored):
             await self.default_on_error(ctx, exception)

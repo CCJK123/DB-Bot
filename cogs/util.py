@@ -79,7 +79,7 @@ class UtilCog(discordutils.CogBase):
     @register.command(name='list', guild_ids=config.guild_ids)
     async def register_list(self, ctx: discord.ApplicationContext):
         """List all nations registered in our database"""
-        await ctx.defer()
+        # await ctx.defer()
         nation_pages = []
         async with self.bot.database.acquire() as conn:
             async with conn.transaction():
