@@ -147,6 +147,7 @@ class ApplicationCog(discordutils.CogBase):
     @application.command(guild_ids=config.guild_ids)
     @cmds.max_concurrency(1, cmds.BucketType.channel)
     async def reject(self, ctx: discord.ApplicationContext):
+        """Reject someone from the alliance"""
         record = await self.applications_table.select_row('discord_id', 'status').where(channel_id=ctx.channel_id)
         if record is None:
             await ctx.respond('This channel is not an application channel!')
