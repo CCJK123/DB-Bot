@@ -272,6 +272,7 @@ class UtilCog(discordutils.CogBase):
     async def _discord(self, ctx: discord.ApplicationContext,
                        nation_id: discord.Option(int, description='Nation ID of the user you are trying to find!',
                                                  min_value=1)):
+        """Find a user from their nation ID"""
         discord_id = await self.users_table.select_val('discord_id').where(nation_id=nation_id)
         if discord_id is None:
             await ctx.respond('No user linked to that nation was found!')
