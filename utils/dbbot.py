@@ -132,7 +132,7 @@ class DBBot(discord.Bot):
             await self.prepare()
             self.prepared = True
 
-        await asyncio.gather(*(cog.on_ready for cog in self.cogs.values() if isinstance(cog, discordutils.CogBase)))
+        await asyncio.gather(*(cog.on_ready() for cog in self.cogs.values() if isinstance(cog, discordutils.CogBase)))
 
         # add views
         async for view in self.view_table.get_all():
