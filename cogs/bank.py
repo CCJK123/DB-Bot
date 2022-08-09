@@ -278,7 +278,7 @@ class BankCog(discordutils.CogBase):
         final_sender_bal = sender_bal - t_resources
         await self.users_table.update(f'balance = {final_sender_bal.to_row()}').where(discord_id=author.id)
         final_receiver_bal_rec = await self.users_table.update(
-            f'balance = balance - {t_resources.to_row()}').where(discord_id=member.id).returning_val('balance')
+            f'balance = balance + {t_resources.to_row()}').where(discord_id=member.id).returning_val('balance')
         await asyncio.gather(
             author.send(f'You have sent {member.display_name} [{t_resources}]!\n\nYour balance is now:',
                         embed=final_sender_bal.create_balance_embed(author)),
