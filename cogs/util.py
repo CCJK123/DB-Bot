@@ -155,8 +155,8 @@ class UtilCog(discordutils.CogBase):
     async def register_purge(self, ctx: discord.ApplicationContext):
         """Purge accounts that are not in the server from the database"""
         ids = ', '.join(str(member.id) for member in ctx.guild.members)
-        await ctx.respond(await self.bot.database.execute(f'DELETE FROM users WHERE discord_id NOT IN ({ids})'))
-        await ctx.respond('Accounts not in the server have been purged!')
+        _, n = (await self.bot.database.execute(f'DELETE FROM users WHERE discord_id NOT IN ({ids})')).split(' ')
+        await ctx.respond(f'{n} accounts not in the server have been purged!')
 
     check = commands.SlashCommandGroup(
         'check', 'Various checks on members of the alliance', guild_ids=config.guild_ids,
