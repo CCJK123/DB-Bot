@@ -300,6 +300,7 @@ class UtilCog(discordutils.CogBase):
     async def alliance_tiers(self, ctx: discord.ApplicationContext,
                              alliances: discord.Option(str, 'Comma separated string of alliance ids',
                                                        default=config.alliance_id)):
+        """Create a plot of the tiers of some alliances"""
         try:
             alliance_ids = map(int, alliances.split(','))
         except ValueError:
