@@ -154,19 +154,17 @@ class DBBot(discord.Bot):
             cmds.MissingRequiredArgument
         )
 
-        if isinstance(c := exception.__cause__, discord.NotFound):
-            await ctx.respond(str(exception) + ' ' + str(c) + ' ' + str({k: getattr(c, k) for k in dir(c)}))
-            await ctx.respond('Sorry, please rerun your command.')
+        if isinstance(c := exception.__cause__, discord.NotFound) and getattr(c, 'text') == 'Unknown Interaction':
+            try:
+                await ctx.respond('Sorry, please rerun your command.')
+            except discord.HTTPException as e:
+                print('Responding failed! Exc Type: ', type(e))
+                await ctx.send('Sorry, please rerun your command.')
         elif not isinstance(exception, ignored):
             await self.default_on_error(ctx, exception)
 
     @staticmethod
     async def default_on_error(ctx: discord.ApplicationContext, exception: discord.DiscordException):
-        print(exception, exception.__cause__, exception.__cause__.args)
-        if (exception is discord.ApplicationCommandInvokeError and exception.__cause__ is discord.NotFound and
-                exception.__cause__.args[0] == '404 Not Found (error code: 10062): Unknown interaction'):
-            await ctx.respond('Sorry, your request timed out. Please redo your command.')
-            return
         try:
             await ctx.respond(f'Sorry, an exception occurred in the command `{ctx.command}`.')
         except discord.HTTPException as e:
