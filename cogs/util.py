@@ -268,10 +268,10 @@ class UtilCog(discordutils.CogBase):
             embed.add_field(name='Current Wars', value=s)
         await ctx.respond(embed=embed, view=discordutils.LinkView('Nation Link', pnwutils.link.nation(nation_id)))
 
-    @commands.command(guild_ids=config.guild_ids)
-    async def discord(self, ctx: discord.ApplicationContext,
-                      nation_id: discord.Option(int, description='Nation ID of the user you are trying to find!',
-                                                min_value=1)):
+    @commands.command(name='discord', guild_ids=config.guild_ids)
+    async def _discord(self, ctx: discord.ApplicationContext,
+                       nation_id: discord.Option(int, description='Nation ID of the user you are trying to find!',
+                                                 min_value=1)):
         discord_id = await self.users_table.select_val('discord_id').where(nation_id=nation_id)
         if discord_id is None:
             await ctx.respond('No user linked to that nation was found!')
@@ -349,7 +349,6 @@ class UtilCog(discordutils.CogBase):
             await ctx.respond(f'The cog `{cog}` was not previously loaded!')
             return
         await ctx.respond(f'The cog `{cog}` has been reloaded!')
-
 
     # im not sure if I should impl this
     '''
