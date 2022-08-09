@@ -44,12 +44,8 @@ class BankCog(discordutils.CogBase):
     bank = commands.SlashCommandGroup('bank', 'Bank related commands!', guild_ids=config.guild_ids)
 
     @bank.command(guild_ids=config.guild_ids)
-    async def balance(self, ctx: discord.ApplicationContext):
+    async def balance(self, ctx: discord.ApplicationContext, ephemeral: bool = True):
         """Check your bank balance"""
-        '''
-        rec = await self.users_table.select_row('balance', 'loaned', 'due_date').join(
-            'INNER', self.loans_table, 'discord_id').where(discord_id=ctx.author.id)
-        '''
         rec = await self.bot.database.fetch_row(
             'SELECT balance, loaned, due_date FROM users LEFT JOIN loans ON users.discord_id = loans.discord_id '
             'WHERE users.discord_id = $1', ctx.author.id
@@ -62,11 +58,11 @@ class BankCog(discordutils.CogBase):
 
         await ctx.respond(embed=pnwutils.Resources(**rec['balance']).create_balance_embed(ctx.author),
                           allowed_mentions=discord.AllowedMentions.none(),
-                          ephemeral=True)
+                          ephemeral=ephemeral)
         if (date := rec['due_date']) is not None:
             await ctx.respond(
                 f'You have a loan due {discord.utils.format_dt(date)} ({discord.utils.format_dt(date, "R")})',
-                embed=pnwutils.Resources(**rec['loaned']).create_embed(title='Loaned Resources'), ephemeral=True)
+                embed=pnwutils.Resources(**rec['loaned']).create_embed(title='Loaned Resources'), ephemeral=ephemeral)
 
     @bank.command(guild_ids=config.guild_ids)
     @cmds.max_concurrency(1, cmds.BucketType.user)
