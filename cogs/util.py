@@ -223,7 +223,7 @@ class UtilCog(discordutils.CogBase):
             async with conn.transaction():
                 map_discord = {rec['nation_id']: rec['discord_id'] async for rec in
                                self.users_table.select('discord_id', 'nation_id').where(
-                                   f'nation_id IN [{",".join(map(str, inactives))}]').cursor(conn)}
+                                   f'nation_id IN ({",".join(map(str, inactives))})').cursor(conn)}
 
         for m in discordutils.split_blocks('\n', itertools.chain(
                 ('Inactives:',), (f'<@{d_id}>' for d_id in map_discord.values()))):
