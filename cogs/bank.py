@@ -44,6 +44,7 @@ class BankCog(discordutils.CogBase):
     bank = commands.SlashCommandGroup('bank', 'Bank related commands!', guild_ids=config.guild_ids)
 
     @bank.command(guild_ids=config.guild_ids)
+    @discord.option('ephemeral', bool, description='Whether to only allow you to see the message')
     async def balance(self, ctx: discord.ApplicationContext, ephemeral: bool = True):
         """Check your bank balance"""
         rec = await self.bot.database.fetch_row(
@@ -367,6 +368,7 @@ class BankCog(discordutils.CogBase):
                                        default_member_permissions=discord.Permissions())
 
     @_bank.command(guild_ids=config.guild_ids)
+    @discord.option('ephemeral', bool, description='Whether to only allow you to see the message')
     async def loan_list(self, ctx: discord.ApplicationContext, ephemeral: bool = True):
         """List all the loans that are currently active"""
         paginator_pages = []
