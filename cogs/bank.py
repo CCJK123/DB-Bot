@@ -456,6 +456,7 @@ class BankCog(discordutils.CogBase):
         resources_rec = await self.users_table.select_val('balance').where(discord_id=member.id)
         if resources_rec is None:
             await ctx.respond('This user has not been registered!', ephemeral=True)
+            return
         resources = pnwutils.Resources(**resources_rec)
 
         await ctx.respond('Please check your DMs!', ephemeral=True)
