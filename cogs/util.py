@@ -285,7 +285,7 @@ class UtilCog(discordutils.CogBase):
         nation_ids = list(map(int, self.nation_link_pattern.findall(message.content)))
         if not nation_ids:
             await ctx.respond('No nation links found in this message!')
-        found = await self.users_table.select('discord_id', 'nation_id').where(f'nation_id IN [{nation_ids}]')
+        found = await self.users_table.select('discord_id', 'nation_id').where(f'nation_id IN ({nation_ids})')
 
         if found:
             await ctx.respond(embed=discord.Embed(
