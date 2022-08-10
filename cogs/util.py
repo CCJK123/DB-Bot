@@ -115,7 +115,6 @@ class UtilCog(discordutils.CogBase):
                         if nation_id not in nation_ids:
                             count += 1
                             await self.users_table.insert(discord_id=member.id, nation_id=nation_id)
-        # there are no await statements between get and set, so this is fine
         await ctx.respond(f'{count} members have been added to the database.')
 
     @_register.command(name='other', guild_ids=config.guild_ids, default_permission=False)
@@ -383,12 +382,14 @@ class UtilCog(discordutils.CogBase):
         await ctx.respond(embed=embed)
     '''
 
+    '''
     @commands.command(name='help', guild_ids=config.guild_ids)
     async def help_(self, ctx: discord.ApplicationContext,
                     command: discord.Option(str, 'Cog or Command name', required=False,
                                             autocomplete=help_command.autocomplete) = None):
         """Get help on DBBot's cogs and commands"""
         await help_command.help_command(self.bot, ctx, command)
+    '''
 
 
 # Setup Utility Cog as an extension
