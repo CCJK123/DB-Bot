@@ -155,6 +155,7 @@ class DBBot(discord.Bot):
 
         if isinstance(c := exception.__cause__, discord.NotFound) and getattr(c, 'text', None) == 'Unknown interaction':
             await ctx.send('Sorry, please rerun your command.')
+            await self.log(f'NotFound Exception in command {command.name}')
         elif not isinstance(exception, ignored):
             await self.default_on_error(ctx, exception)
 
