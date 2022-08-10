@@ -157,11 +157,11 @@ class UtilCog(discordutils.CogBase):
         _, n = (await self.bot.database.execute(f'DELETE FROM users WHERE discord_id NOT IN ({ids})')).split(' ')
         await ctx.respond(f'{n} accounts not in the server have been purged!')
 
-    check = commands.SlashCommandGroup(
-        'check', 'Various checks on members of the alliance', guild_ids=config.guild_ids,
+    _check = commands.SlashCommandGroup(
+        '_check', 'Various checks on members of the alliance', guild_ids=config.guild_ids,
         default_permission=False, default_member_permissions=discord.Permissions())
 
-    @check.command(name='resources', guild_ids=config.guild_ids)
+    @_check.command(name='resources', guild_ids=config.guild_ids)
     async def check_resources(self, ctx: discord.ApplicationContext):
         """List all nations that have run out of food or uranium in the alliance."""
         data = await alliance_member_res_query.query(self.bot.session, alliance_id=config.alliance_id)
@@ -200,7 +200,7 @@ class UtilCog(discordutils.CogBase):
         else:
             await ctx.respond('No one has ran out of food or uranium!')
 
-    @check.command(name='activity', guild_ids=config.guild_ids)
+    @_check.command(name='activity', guild_ids=config.guild_ids)
     async def check_activity(self, ctx: discord.ApplicationContext,
                              days: discord.Option(int, 'How many days inactive', default=3)):
         """Lists nations that have not been active in the last n days (defaults to 3 days)"""
@@ -232,7 +232,7 @@ class UtilCog(discordutils.CogBase):
                                                   for n in (inactives - map_discord.keys()))):
             await ctx.respond(m)
 
-    @check.command(name='military', guild_ids=config.guild_ids)
+    @_check.command(name='military', guild_ids=config.guild_ids)
     async def check_military(self, ctx: discord.ApplicationContext):
         """Not implemented as of now. Check back soon!"""
         await ctx.respond('Not Implemented!')
@@ -341,7 +341,7 @@ class UtilCog(discordutils.CogBase):
         s = pnwutils.time_after_turns(turns)
         await ctx.respond(f'It would be {s} (`{s}`) in {turns} turns.')
 
-    @commands.command(guild_ids=config.guild_ids, default_permission=False)
+    @commands.command(name='_reload', guild_ids=config.guild_ids, default_permission=False)
     @commands.default_permissions(manage_guild=True)
     async def reload(self, ctx: discord.ApplicationContext, cog: str) -> None:
         """Reload the given cog"""

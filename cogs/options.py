@@ -13,10 +13,10 @@ class OptionsCog(discordutils.CogBase):
         await self.bot.database.execute('INSERT INTO kv_bools(key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING',
                                         'has_war_aid', False)
 
-    options = commands.SlashCommandGroup('options', "Edit the options of the bot!", guild_ids=config.guild_ids,
-                                         default_member_permissions=discord.Permissions())
+    _options = commands.SlashCommandGroup('_options', "Edit the options of the bot!", guild_ids=config.guild_ids,
+                                          default_member_permissions=discord.Permissions())
 
-    request_options = options.create_subgroup('request', 'Set options for request!')
+    request_options = _options.create_subgroup('request', 'Set options for request!')
     request_options.guild_ids = config.guild_ids
 
     @request_options.command(name='channel', guild_ids=config.guild_ids)
@@ -44,7 +44,7 @@ class OptionsCog(discordutils.CogBase):
         await ints_table.set('infra_rebuild_cap', cap)
         await ctx.respond(f'The infrastructure rebuild cap has been set to {cap}.')
 
-    new_war_detector_options = options.create_subgroup('war_detector', "Options for the new war detector")
+    new_war_detector_options = _options.create_subgroup('war_detector', "Options for the new war detector")
     new_war_detector_options.guild_ids = config.guild_ids
 
     @new_war_detector_options.command(name='channel', guild_ids=config.guild_ids)
@@ -65,7 +65,7 @@ class OptionsCog(discordutils.CogBase):
         await self.channel_ids.set(key, ctx.channel_id)
         await ctx.respond(f'{kind_text} channel set!')
 
-    market_options = options.create_subgroup('market', 'Options for the market system!')
+    market_options = _options.create_subgroup('market', 'Options for the market system!')
     market_options.guild_ids = config.guild_ids
 
     @market_options.command(guild_ids=config.guild_ids)
@@ -90,7 +90,7 @@ class OptionsCog(discordutils.CogBase):
     # bank_options = options.create_subgroup('bank', 'Options for the bank system!')
     # bank_options.guild_ids = config.guild_ids
 
-    application_options = options.create_subgroup('application', 'Options for the application system!')
+    application_options = _options.create_subgroup('application', 'Options for the application system!')
     application_options.guild_ids = config.guild_ids
 
     @application_options.command(name='channel', guild_ids=config.guild_ids)
@@ -107,7 +107,7 @@ class OptionsCog(discordutils.CogBase):
         await self.channel_ids.set('application_category', ctx.channel.category.id)
         await ctx.respond(f'Application category set to {ctx.channel.category.name}!')
 
-    logging_options = options.create_subgroup('logging', 'Options for the logging system!')
+    logging_options = _options.create_subgroup('logging', 'Options for the logging system!')
     logging_options.guild_ids = config.guild_ids
 
     @logging_options.command(guild_ids=config.guild_ids)
