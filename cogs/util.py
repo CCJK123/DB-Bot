@@ -283,7 +283,7 @@ class UtilCog(discordutils.CogBase):
     @commands.message_command(guild_ids=config.guild_ids)
     async def discords(self, ctx: discord.ApplicationContext, message: discord.Message):
         """Look for the discord accounts of the nation links in the message!"""
-        nation_ids = list(map(int, self.nation_link_pattern.findall(message.content)))
+        nation_ids = ','.join(self.nation_link_pattern.findall(message.content))
         if not nation_ids:
             await ctx.respond('No nation links found in this message!')
         found = await self.users_table.select('discord_id', 'nation_id').where(f'nation_id IN ({nation_ids})')
