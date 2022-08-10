@@ -220,7 +220,7 @@ class BankCog(discordutils.CogBase):
     async def transfer(self, ctx: discord.ApplicationContext, member: discord.Member):
         """Transfer some of your balance to someone else"""
         if member == ctx.author:
-            await ctx.respond('You cannot transfer resources to yourself!')
+            await ctx.respond('You cannot transfer resources to yourself!', ephemeral=True)
             return
         sender_bal_rec = await self.users_table.select_val('balance').where(discord_id=ctx.author.id)
         if sender_bal_rec is None:
@@ -280,17 +280,20 @@ class BankCog(discordutils.CogBase):
         await self.users_table.update(f'balance = {final_sender_bal.to_row()}').where(discord_id=author.id)
         final_receiver_bal_rec = await self.users_table.update(
             f'balance = balance + {t_resources.to_row()}').where(discord_id=member.id).returning_val('balance')
+        t_embed = t_resources.create_embed(title='Transferred Resources')
         await asyncio.gather(
-            author.send(f'You have sent {member.display_name} [{t_resources}]!\n\nYour balance is now:',
-                        embed=final_sender_bal.create_balance_embed(author)),
-            member.send(
-                f'You have been transferred [{t_resources}] from {author.display_name}!\n\nYour balance is now:',
-                embed=pnwutils.Resources(**final_receiver_bal_rec).create_balance_embed(member)),
+            author.send(f'You have sent {member.mention} the following resources.', embed=t_embed),
+            member.send(f'You have been transferred the following resources from {author.mention}.', embed=t_embed))
+        await asyncio.gather(
+            author.send('Your balance is now:', embed=final_sender_bal.create_balance_embed(author)),
+            member.send(f'Your balance is now:',
+                        embed=pnwutils.Resources(**final_receiver_bal_rec).create_balance_embed(member)),
             self.bot.log(embeds=(
                 discordutils.create_embed(
                     user=author, description=f'{author.mention} transferred resources to {member.mention}'),
-                t_resources.create_embed(title='Transferred Resources')
+                t_embed
             )))
+
 
     loan = bank.create_subgroup('loan', 'Commands related to loans')
     loan.guild_ids = config.guild_ids
