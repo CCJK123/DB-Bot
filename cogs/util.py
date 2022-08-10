@@ -290,7 +290,7 @@ class UtilCog(discordutils.CogBase):
 
         if found:
             await ctx.respond(embed=discord.Embed(
-                title='Discord Accounts Found:',
+                title='Discord Accounts Found',
                 description='\n'.join(
                     f'{pnwutils.link.nation(rec["nation_id"])} - <@{rec["discord_id"]}>' for rec in found)))
         else:
