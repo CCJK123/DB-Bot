@@ -226,7 +226,8 @@ class UtilCog(discordutils.CogBase):
                                    f'nation_id IN ({",".join(map(str, inactives))})').cursor(conn)}
 
         for m in discordutils.split_blocks('\n', itertools.chain(
-                ('Inactives:',), (f'<@{d_id}>' for d_id in map_discord.values()))):
+                (f'Inactive for {days} day{"s" if days!=1 else ""}:',),
+                (f'<@{d_id}>' for d_id in map_discord.values()))):
             await ctx.respond(m)
         for m in discordutils.split_blocks('\n', (f'[{nation_names[n]}/{n}](<{pnwutils.link.nation(n)}>)'
                                                   for n in (inactives - map_discord.keys()))):
