@@ -153,13 +153,8 @@ class DBBot(discord.Bot):
             cmds.MissingRequiredArgument
         )
 
-        if isinstance(c := exception.__cause__, discord.NotFound):
-            print(getattr(c, 'text'))
-            try:
-                await ctx.respond('Sorry, please rerun your command.')
-            except discord.HTTPException as e:
-                print('Responding failed! Exc Type: ', type(e))
-                await ctx.send('Sorry, please rerun your command.')
+        if isinstance(c := exception.__cause__, discord.NotFound) and getattr(c, 'text', None) == 'Unknown interaction':
+            await ctx.send('Sorry, please rerun your command.')
         elif not isinstance(exception, ignored):
             await self.default_on_error(ctx, exception)
 
