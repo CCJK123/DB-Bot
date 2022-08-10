@@ -35,15 +35,6 @@ class OptionsCog(discordutils.CogBase):
             key='has_war_aid').returning_val('value')
         await ctx.respond(f'War Aid is now {(not now) * "not "}available!')
 
-    @request_options.command(guild_ids=config.guild_ids)
-    async def infra_rebuild_cap(self, ctx: discord.ApplicationContext,
-                                cap: discord.Option(int, 'What level to provide aid up to', min_value=0)) -> None:
-        """Set the infra rebuild cap for war aid"""
-        ints_table = self.bot.database.get_kv('kv_ints')
-        cap = 100 * (cap // 100)
-        await ints_table.set('infra_rebuild_cap', cap)
-        await ctx.respond(f'The infrastructure rebuild cap has been set to {cap}.')
-
     new_war_detector_options = _options.create_subgroup('war_detector', "Options for the new war detector")
     new_war_detector_options.guild_ids = config.guild_ids
 
