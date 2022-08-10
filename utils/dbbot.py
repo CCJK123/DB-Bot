@@ -69,7 +69,6 @@ class DBBot(discord.Bot):
                                 sell_price='INT DEFAULT NULL', stock='BIGINT DEFAULT 0 NOT NULL')
 
         self.database.new_kv('channel_ids', 'BIGINT')
-        self.database.new_kv('kv_ints', 'INT')
         self.database.new_kv('kv_bools', 'BOOL')
         self.view_table = databases.ViewTable(self.database, 'views')
         self.database.add_table(self.view_table)
