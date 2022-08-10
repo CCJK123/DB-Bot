@@ -383,7 +383,7 @@ class BankCog(discordutils.CogBase):
                     paginator_pages.append(embeds)
         if paginator_pages:
             paginator = pages.Paginator(paginator_pages, timeout=config.timeout)
-            await paginator.respond(ctx.interaction)
+            await paginator.respond(ctx.interaction, ephemeral=ephemeral)
             return
         await ctx.respond('There are no active loans!', ephemeral=ephemeral)
 
