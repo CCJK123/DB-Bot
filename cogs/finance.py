@@ -437,7 +437,7 @@ class FinanceCog(discordutils.CogBase):
             await asyncio.gather(
                 self.bot.add_view(process_view, message_id=msg.id),
                 self.bot.log(embeds=(
-                    discordutils.create_embed(user=author, description='Request Completed'),
+                    discordutils.create_embed(user=author, description=f'{author.mention} completed a request'),
                     embed
                 )))
             return

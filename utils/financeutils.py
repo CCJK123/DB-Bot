@@ -198,7 +198,7 @@ class RequestButtonsView(discordutils.PersistentView):
             cls.bot.log(embeds=(
                 discordutils.create_embed(
                     user=data.requester,
-                    description=f'{data.kind} Request for `{data.reason}` '
+                    description=f"{data.requester.mention}'s {data.kind} Request for `{data.reason}` "
                                 f'accepted by {processor.mention}\n\n' +
                                 messages[result][1]),
                 data.resources.create_embed(title='Requested Resources')
@@ -252,7 +252,8 @@ class RequestButtonsView(discordutils.PersistentView):
                 self.bot.log(embeds=(
                     discordutils.create_embed(
                         user=self.data.requester,
-                        description=f'Loan Request for {self.data.reason} accepted by {interaction.user.mention}'),
+                        description=f"{self.data.requester.mention}'s Loan Request for {self.data.reason} "
+                                    f"accepted by {interaction.user.mention}"),
                     self.data.resources.create_embed(title='Loaned Resources')
                 )))
 
@@ -305,8 +306,8 @@ class RequestButtonsView(discordutils.PersistentView):
             self.bot.log(embeds=(
                 discordutils.create_embed(
                     user=self.data.requester,
-                    description=f'{self.data.kind} Request for `{self.data.reason}` rejected by '
-                                f'{interaction.user.mention} for the reason of `{reject_reason}`'),
+                    description=f"{self.data.requester.mention}'s {self.data.kind} Request for `{self.data.reason}` "
+                                f'rejected by {interaction.user.mention} for the reason of `{reject_reason}`'),
                 self.data.resources.create_embed(title='Requested Resources')
             ))
         )
@@ -344,8 +345,8 @@ class RequestButtonsView(discordutils.PersistentView):
             self.bot.log(embeds=(
                 discordutils.create_embed(
                     user=self.data.requester,
-                    description=f'{self.data.kind} Request for `{self.data.reason}` modified by '
-                                f'{user.mention}`'),
+                    description=f"{self.data.requester.mention}'s {self.data.kind} Request for `{self.data.reason}` "
+                                f'modified by {user.mention}`'),
                 old_res.create_embed(title='Previous Resources'),
                 updated_res_embed
             )),
@@ -446,7 +447,8 @@ class ModificationResponseView(discordutils.PersistentView):
             self.bot.log(embeds=(
                 discordutils.create_embed(
                     user=self.data.requester,
-                    description=f'Accepted modified {self.data.kind} Request for `{self.data.reason}`'),
+                    description=f'{self.data.requester.mention} accepted their modified {self.data.kind} request '
+                                f'for `{self.data.reason}`'),
                 self.data.resources.create_embed(title='Request Resources')
             )),
             RequestButtonsView.withdraw_for_request(self.data, self.bot.get_user(self.processor_id))
@@ -464,7 +466,8 @@ class ModificationResponseView(discordutils.PersistentView):
             self.bot.log(embeds=(
                 discordutils.create_embed(
                     user=self.data.requester,
-                    description=f'Rejected modified {self.data.kind} Request for `{self.data.reason}`'),
+                    description=f'{self.data.requester.mention} rejected their modified {self.data.kind} request '
+                                f'for `{self.data.reason}`'),
                 embed
             )))
 
@@ -496,7 +499,7 @@ class WithdrawalView(discordutils.PersistentView):
                             embed=contents_embed),
                 self.bot.log(embeds=(
                     discordutils.create_embed(
-                        user=member, description=f'Withdrawal Sent by {interaction.user.mention}'),
+                        user=member, description=f"{member.mention}'s withdrawal Sent by {interaction.user.mention}"),
                     contents_embed)))
             return
         await interaction.response.send_message(
@@ -530,8 +533,9 @@ class WithdrawalView(discordutils.PersistentView):
             member.send(f'Your withdrawal request for the following has been cancelled!\n\nReason:\n`{cancel_reason}`',
                         embed=contents_embed),
             self.bot.log(embeds=(
-                discordutils.create_embed(user=member,
-                                          description=f'Withdrawal Cancelled by {interaction.user.mention}'
-                                                      f'for reason of `{cancel_reason}`'),
+                discordutils.create_embed(
+                    user=member,
+                    description=f"{member.mention}'s withdrawal was cancelled "
+                                f'by {interaction.user.mention} for reason of `{cancel_reason}`'),
                 contents_embed
             )))

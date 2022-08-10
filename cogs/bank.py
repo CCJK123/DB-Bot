@@ -105,7 +105,7 @@ class BankCog(discordutils.CogBase):
                 author.send('Deposits Recorded! Your balance is now:',
                             embed=pnwutils.Resources(**new_bal_rec).create_balance_embed(author)),
                 self.bot.log(embeds=(
-                    discordutils.create_embed(user=author, description='Deposited some resources'),
+                    discordutils.create_embed(user=author, description=f'{author.mention} deposited some resources'),
                     deposited.create_embed(title='Resources Deposited')
                 )))
             return
@@ -201,7 +201,7 @@ class BankCog(discordutils.CogBase):
                         'It will be sent to your nation soon.\n\nYour balance is now:',
                         embed=pnwutils.Resources(**new_bal_rec).create_balance_embed(author)),
             self.bot.log(embeds=(
-                discordutils.create_embed(user=author, description='Asked for a withdrawal'),
+                discordutils.create_embed(user=author, description=f'{author.mention} asked for a withdrawal'),
                 req_resources.create_embed(title='Requested Resources')
             ))
         )
@@ -287,7 +287,8 @@ class BankCog(discordutils.CogBase):
                 f'You have been transferred [{t_resources}] from {author.display_name}!\n\nYour balance is now:',
                 embed=pnwutils.Resources(**final_receiver_bal_rec).create_balance_embed(member)),
             self.bot.log(embeds=(
-                discordutils.create_embed(user=author, description=f'Transferred resources to {member.mention}'),
+                discordutils.create_embed(
+                    user=author, description=f'{author.mention} transferred resources to {member.mention}'),
                 t_resources.create_embed(title='Transferred Resources')
             )))
 
@@ -313,7 +314,7 @@ class BankCog(discordutils.CogBase):
                 ctx.respond('Your loan has been successfully repaid!\n\nYour balance is now:',
                             embed=res.create_balance_embed(ctx.author), ephemeral=True),
                 self.bot.log(embeds=(
-                    discordutils.create_embed(user=ctx.author, description='Repaid their loan'),
+                    discordutils.create_embed(user=ctx.author, description=f'{ctx.author.mention} repaid their loan'),
                     loaned.create_embed(title='Loan Value')
                 )))
             return
@@ -496,7 +497,8 @@ class BankCog(discordutils.CogBase):
                         embed=resources.create_balance_embed(member),
                         allowed_mentions=discord.AllowedMentions.none()),
             self.bot.log(embeds=(
-                discordutils.create_embed(user=member, description=f'Had their balance modified by {author.mention}'),
+                discordutils.create_embed(
+                    user=member, description=f'{member.mention} had their balance modified by {author.mention}'),
                 resources.create_embed(title='Balance after modification')
             )))
 
