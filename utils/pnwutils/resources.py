@@ -71,9 +71,9 @@ class Resources:
         embed = discordutils.create_embed(**kwargs)
         for name, amt in self:
             embed.add_field(name=name.title(), value=f'{config.resource_emojis[name]} {round(amt, 2):,}')
-        if self or kwargs:
-            return embed
-        raise ValueError('The embed is empty and cannot be sent!')
+        if not self:
+            embed.add_field(name='Hmm...', value='Nothing Here')
+        return embed
 
     def create_balance_embed(self, user: discord.Member | discord.User) -> discord.Embed:
         if self:
