@@ -339,9 +339,7 @@ class BankCog(discordutils.CogBase):
             await ctx.respond('This user is not registered!')
             return
         await ctx.respond(
-            f"{member.mention}'s Balance",
             embed=pnwutils.Resources(**bal_rec).create_balance_embed(member),
-            allowed_mentions=discord.AllowedMentions.none(),
             ephemeral=True
         )
 
