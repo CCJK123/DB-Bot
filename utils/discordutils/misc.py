@@ -22,7 +22,8 @@ def create_embed(names: Iterable[str] = (), values: Iterable[str] = (), /,
     for k, v in zip(names, values):
         embed.add_field(name=k, value=v)
     if user is not None:
-        embed.set_author(name=user.name, icon_url=user.display_avatar.url)
+        embed.set_author(name=user.name if user.nick is None else f'{user.nick} ({user.name})',\
+                         icon_url=user.display_avatar.url)
     return embed
 
 
