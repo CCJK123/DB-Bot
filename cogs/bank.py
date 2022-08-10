@@ -294,7 +294,6 @@ class BankCog(discordutils.CogBase):
                 t_embed
             )))
 
-
     loan = bank.create_subgroup('loan', 'Commands related to loans')
     loan.guild_ids = config.guild_ids
 
