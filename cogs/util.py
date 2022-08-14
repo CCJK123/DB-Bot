@@ -5,13 +5,13 @@ import itertools
 import operator
 import re
 
+import discord
 import matplotlib.pyplot as plt
 import numpy as np
-import discord
 from discord import commands
 from discord.ext import pages
 
-from utils import discordutils, pnwutils, config, help_command, dbbot
+from utils import discordutils, pnwutils, config, dbbot
 from utils.queries import (nation_register_query, alliance_member_res_query,
                            alliance_activity_query, alliance_tiers_query, nation_info_query)
 
@@ -238,6 +238,32 @@ class UtilCog(discordutils.CogBase):
         """Not implemented as of now. Check back soon!"""
         await ctx.respond('Not Implemented!')
 
+    async def nation_info_embed(self, nation_id: int,
+                                member: 'discord.Member | None' = None) -> 'discord.Embed | None':
+        data = await nation_info_query.query(self.bot.session, nation_id=nation_id)
+        if not data['data']:
+            return None
+        data = data['data'][0]
+        embed = discord.Embed(title=data['nation_name'],
+                              description='' if member is None else f"{member.mention}'s Nation")
+        embed.add_field(name='Score', value=data['score'])
+        embed.add_field(name='Domestic Policy', value=data['domestic_policy'])
+        embed.add_field(name='War Policy', value=data['war_policy'])
+        wars = [w for w in data['wars'] if w['turns_left'] > 0]
+        print(wars)
+        if wars:
+            offensive = sum(int(w['att_id']) == nation_id for w in wars)
+            block = any(int(w['naval_blockade']) not in (nation_id, 0) for w in wars)
+            s = ''
+            if offensive:
+                s = f'{offensive} Offensive War{"s" if offensive != 1 else ""}\n'
+            if defensive := len(wars) - offensive:
+                s += f'{defensive} Defensive War{"s" if offensive != 1 else ""}\n'
+            if block:
+                s += 'Currently under a naval blockade!'
+            embed.add_field(name='Current Wars', value=s)
+        return embed
+
     @commands.user_command(guild_ids=config.guild_ids)
     async def nation(self, ctx: discord.ApplicationContext, member: discord.Member):
         """Get the nation of this member"""
@@ -245,27 +271,22 @@ class UtilCog(discordutils.CogBase):
         if nation_id is None:
             await ctx.respond('This user does not have their nation registered!')
             return
-        data = await nation_info_query.query(self.bot.session, nation_id=nation_id)
-        if not data['data']:
+
+        embed = await self.nation_info_embed(nation_id, member)
+        if embed is None:
             await ctx.respond("This member's registered nation does not exist! Aborting...")
             return
-        data = data['data'][0]
-        embed = discord.Embed(title=data['nation_name'], description=f"{member.mention}'s Nation")
-        embed.add_field(name='Score', value=data['score'])
-        embed.add_field(name='Domestic Policy', value=data['domestic_policy'])
-        embed.add_field(name='War Policy', value=data['war_policy'])
-        wars = [w for w in data['wars'] if w['turns_left'] > 0]
-        if wars:
-            offensive = sum(w['att_id'] == nation_id for w in wars)
-            block = any(w['naval_blockade'] not in (nation_id, 0) for w in wars)
-            s = ''
-            if offensive:
-                s = f'{offensive} Offensive Wars\n'
-            if defensive := len(wars) - offensive:
-                s += f'{defensive} Defensive Wars\n'
-            if block:
-                s += 'Currently under a naval blockade!'
-            embed.add_field(name='Current Wars', value=s)
+
+        await ctx.respond(embed=embed, view=discordutils.LinkView('Nation Link', pnwutils.link.nation(nation_id)))
+
+    @commands.command(name='nation_info', guild_ids=config.guild_ids)
+    async def nation_info(self, ctx: discord.ApplicationContext, nation_id: int):
+        """Get some basic information about a nation. 'nation' command equivalent for nation IDs"""
+        embed = await self.nation_info_embed(nation_id)
+        if embed is None:
+            await ctx.respond("This member's registered nation does not exist! Aborting...")
+            return
+
         await ctx.respond(embed=embed, view=discordutils.LinkView('Nation Link', pnwutils.link.nation(nation_id)))
 
     @commands.command(name='discord', guild_ids=config.guild_ids)

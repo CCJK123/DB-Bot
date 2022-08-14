@@ -13,7 +13,9 @@ async def main():
     d = eval(data)
     loans = d['cogs.finance.loans']
     tasks = []
+
     async with db:
+        await db.execute('DELETE FROM loans')
         for d_id, loan in loans.items():
             d_id = int(d_id)
             if d_id in (826281787948138496, 759557583933145129):
