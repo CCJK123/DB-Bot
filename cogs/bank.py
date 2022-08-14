@@ -282,8 +282,8 @@ class BankCog(discordutils.CogBase):
             f'balance = balance + {t_resources.to_row()}').where(discord_id=member.id).returning_val('balance')
         t_embed = t_resources.create_embed(title='Transferred Resources')
         await asyncio.gather(
-            author.send(f'You have sent {member.mention} the following resources.', embed=t_embed),
-            member.send(f'You have been transferred the following resources from {author.mention}.', embed=t_embed))
+            author.send(f'You have sent {member.mention} the following resources:', embed=t_embed),
+            member.send(f'You have   been transferred the following resources from {author.mention}:', embed=t_embed))
         await asyncio.gather(
             author.send('Your balance is now:', embed=final_sender_bal.create_balance_embed(author)),
             member.send(f'Your balance is now:',
@@ -311,7 +311,7 @@ class BankCog(discordutils.CogBase):
         res -= loaned
         if res.all_positive():
             await asyncio.gather(
-                self.users_table.update(f'balance = {res.to_row()}'),
+                self.users_table.update(f'balance = {res.to_row()}').where(discord_id=ctx.author.id),
                 self.loans_table.delete().where(discord_id=ctx.author.id),
                 ctx.respond('Your loan has been successfully repaid!\n\nYour balance is now:',
                             embed=res.create_balance_embed(ctx.author), ephemeral=True),
