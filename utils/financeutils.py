@@ -283,7 +283,7 @@ class RequestButtonsView(discordutils.PersistentView):
     async def reject(self, button: discord.ui.Button, interaction: discord.Interaction):
         self.data.set_requester(self.bot)
         reason_modal = discordutils.SingleModal(
-            f'Why reject the {self.data.reason} request?', 'Rejection Reason', discord.InputTextStyle.paragraph)
+            'Rejection Reason', f'Why reject the {self.data.reason} request?', discord.InputTextStyle.paragraph)
         await interaction.response.send_modal(reason_modal)
         reject_reason = await reason_modal.result()
         # sent modal, must respond to its interaction to close it
