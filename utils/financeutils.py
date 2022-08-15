@@ -316,24 +316,33 @@ class RequestButtonsView(discordutils.PersistentView):
     async def modify(self, button: discord.ui.Button, interaction: discord.Interaction):
         button.style = discord.ButtonStyle.success
         self.disable_all_items()
-        self.stop()
         self.data.set_requester(self.bot)
         user = interaction.user
-        old_res = self.data.resources
+        old_res = self.data.resources.copy()
         embed = interaction.message.embeds[0]
         embed.description = f'Undergoing modification by {user.mention}'
         embed.colour = discord.Colour.yellow()
         preset_view = PresetView(self)
         await asyncio.gather(
-            self.bot.remove_view(self),
             interaction.response.edit_message(view=self, embed=embed),
             user.send('How would you like to modify this grant request?', view=preset_view))
 
         try:
             await preset_view.complete
-        except asyncio.TimeoutError:
-            await user.send('You took too long to respond! Aborting...')
+        except (asyncio.TimeoutError, asyncio.CancelledError) as e:
+            if isinstance(e, asyncio.TimeoutError):
+                await user.send('You took too long to respond! Aborting...')
+            else:
+                await user.send('Cancelling modification...')
 
+            self.enable_all_items()
+            embed.description = ''
+            embed.colour = discord.Colour.blue()
+            await interaction.edit_original_message(view=self, embed=embed)
+            return
+
+        self.stop()
+        await self.bot.remove_view(self)
         custom_id = await self.bot.get_custom_id()
         response_view = ModificationResponseView(self.data, user.id, custom_id)
         updated_res_embed = self.data.resources.create_embed(title='Updated Resources')
@@ -361,11 +370,24 @@ class PresetView(discord.ui.View):
         self.parent_view = parent_view
         for b in PresetButton.create_buttons(parent_view.data.presets):
             self.add_item(b)
+        self.add_item(CancelButton())
 
         self.complete: asyncio.Future[None] = asyncio.get_event_loop().create_future()
 
     async def on_timeout(self) -> None:
         self.complete.set_exception(asyncio.TimeoutError())
+
+
+class CancelButton(discord.ui.Button[PresetView]):
+    def __init__(self):
+        super().__init__(label='Cancel')
+
+    async def callback(self, interaction: discord.Interaction):
+        self.style = discord.ButtonStyle.success
+        self.view.disable_all_items()
+        self.view.stop()
+        await interaction.response.edit_message(view=self.view)
+        self.view.complete.set_exception(asyncio.CancelledError())
 
 
 class PresetButton(discord.ui.Button[PresetView]):

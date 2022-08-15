@@ -201,3 +201,6 @@ class Resources:
         for k in self.all_res:
             self[k] = math.floor(self[k])
         return self
+
+    def copy(self) -> 'Resources':
+        return Resources(**self.to_dict())
