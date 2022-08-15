@@ -336,6 +336,7 @@ class RequestButtonsView(discordutils.PersistentView):
                 await user.send('Cancelling modification...')
 
             self.enable_all_items()
+            button.style = discord.ButtonStyle.secondary
             embed.description = ''
             embed.colour = discord.Colour.blue()
             await interaction.edit_original_message(view=self, embed=embed)
