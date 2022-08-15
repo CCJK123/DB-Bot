@@ -330,10 +330,9 @@ class RequestButtonsView(discordutils.PersistentView):
         try:
             await preset_view.complete
         except (asyncio.TimeoutError, asyncio.CancelledError) as e:
-            if isinstance(e, asyncio.TimeoutError):
-                await user.send('You took too long to respond! Aborting...')
-            else:
-                await user.send('Cancelling modification...')
+            await user.send('You took too long to respond! Aborting...'
+                            if isinstance(e, asyncio.TimeoutError) else
+                            'Cancelling modification...')
 
             self.enable_all_items()
             button.style = discord.ButtonStyle.secondary
