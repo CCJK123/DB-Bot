@@ -158,7 +158,12 @@ class Resources:
         return NotImplemented
 
     def __mul__(self, other):
-        if isinstance(other, (int, float)):
+        if isinstance(other, int):
+            r = Resources()
+            for name in self.all_res:
+                r[name] = self[name] * other
+            return r
+        if isinstance(other, float):
             r = Resources()
             for name in self.all_res:
                 r[name] = int(self[name] * other)
@@ -166,9 +171,28 @@ class Resources:
         return NotImplemented
 
     def __imul__(self, other):
-        if isinstance(other, (int, float)):
+        if isinstance(other, int):
+            for name in self.all_res:
+                self[name] *= other
+            return self
+        if isinstance(other, float):
             for name in self.all_res:
                 self[name] = int(self[name] * other)
+            return self
+        return NotImplemented
+
+    def __floordiv__(self, other):
+        if isinstance(other, int):
+            r = Resources()
+            for name in self.all_res:
+                r[name] = self[name] // other
+            return r
+        return NotImplemented
+
+    def __ifloordiv__(self, other):
+        if isinstance(other, int):
+            for name in self.all_res:
+                self[name] //= other
             return self
         return NotImplemented
 

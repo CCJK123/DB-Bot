@@ -86,10 +86,16 @@ class FinanceCog(discordutils.CogBase):
                 has_mp = data['metropolitan_planning']
                 # Calculate city cost
                 req_data.resources = pnwutils.Resources(
-                    money=(50000 * (data['num_cities'] - 1) ** 3 +
-                           150000 * data['num_cities'] + 75000 -
-                           50_000000 * has_up - 100_000000 * has_aup - 150_000000 * has_mp
-                           ) // 20 * 19)
+                    money=50000 * (data['num_cities'] - 1) ** 3 +
+                          150000 * data['num_cities'] + 75000 -
+                          50_000000 * has_up - 100_000000 * has_aup - 150_000000 * has_mp
+                )
+                if data['government_support_agency']:
+                    req_data.resources //= 40
+                    req_data.resources *= 37
+                else:
+                    req_data.resources //= 20
+                    req_data.resources *= 19
                 # Create embed
 
                 project_string = ', '.join(
@@ -164,6 +170,13 @@ class FinanceCog(discordutils.CogBase):
                 }
                 project_field_name = project_field_names[project]
                 req_data.resources = pnwutils.constants.project_costs[project_field_name]
+                if data['government_support_agency']:
+                    req_data.resources //= 40
+                    req_data.resources *= 37
+                else:
+                    req_data.resources //= 20
+                    req_data.resources *= 19
+
                 req_data.presets = presets[project_field_name]
                 req_data.reason = project
                 req_data.note = f'{project} Project Grant'
