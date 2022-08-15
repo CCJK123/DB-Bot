@@ -83,19 +83,26 @@ class FinanceCog(discordutils.CogBase):
                 # Get data of projects which affect city cost
                 has_up = data['urban_planning']
                 has_aup = data['advanced_urban_planning']
+                has_mp = data['metropolitan_planning']
                 # Calculate city cost
                 req_data.resources = pnwutils.Resources(
                     money=(50000 * (data['num_cities'] - 1) ** 3 +
                            150000 * data['num_cities'] + 75000 -
-                           50000000 * has_up - 100000000 * has_aup) // 20 * 19)
+                           50_000000 * has_up - 100_000000 * has_aup - 150_000000 * has_mp
+                           ) // 20 * 19)
                 # Create embed
-                project_string = ('Urban Planning' * has_up + ' and ' * (has_up and has_aup) +
-                                  'Advanced Urban Planning' * has_aup) or 'None'
+
+                project_string = ', '.join(
+                    k for k, v in {
+                        'Urban Planning': has_up,
+                        'Advanced Urban Planning': has_aup,
+                        'Metropolitan Planning': has_mp
+                    } if v) or 'None'
                 req_data.reason = f'City {data["num_cities"] + 1}'
                 req_data.note = f'{req_data.reason} Grant'
                 req_data.additional_info = {'Projects': project_string, 'Domestic Policy': data['domestic_policy']}
                 await self.on_request_fixed(req_data)
-                return None
+                return
 
             elif grant_type == 'Project':
                 project_field_names = {

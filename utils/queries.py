@@ -52,6 +52,7 @@ query finance_nation_info($nation_id: [Int]) {
             # City Grants & Project Grants 
             urban_planning
             advanced_urban_planning
+            metropolitan_planning
 
             # Project Grants
             central_intelligence_agency

@@ -22,6 +22,8 @@ project_costs = {
     'iron_dome': Resources(aluminum=500, steel=1250, gasoline=500, money=6_000_000),
     'iron_works': Resources(aluminum=750, gasoline=1500, money=5_000_000),
     'mass_irrigation': Resources(aluminum=500, steel=500, money=3_000_000),
+    'metropolitan_planning': Resources(aluminum=60000, steel=40000, uranium=30000,
+                                       lead=15000, iron=15000, bauxite=15000, oil=10000, coal=10000),
     'missile_launch_pad': Resources(steel=1000, gasoline=350, money=8_000_000),
     'nuclear_research_facility': Resources(steel=5000, gasoline=7500, money=50_000_000),
     'pirate_economy': Resources(aluminum=10000, munitions=10000, gasoline=10000, steel=10000, money=25_000_000),
