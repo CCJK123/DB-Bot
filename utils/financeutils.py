@@ -283,7 +283,7 @@ class RequestButtonsView(discordutils.PersistentView):
     async def reject(self, button: discord.ui.Button, interaction: discord.Interaction):
         self.data.set_requester(self.bot)
         reason_modal = discordutils.SingleModal(
-            'Rejection Reason', f'Why reject the {self.data.reason} request?', discord.InputTextStyle.paragraph)
+            'Why is this request being rejected?', 'Rejection Reason', discord.InputTextStyle.paragraph)
         await interaction.response.send_modal(reason_modal)
         reject_reason = await reason_modal.result()
         # sent modal, must respond to its interaction to close it
@@ -532,7 +532,7 @@ class WithdrawalView(discordutils.PersistentView):
     @discordutils.persistent_button(label='Cancel')
     async def cancel(self, button: discordutils.PersistentButton, interaction: discord.Interaction):
         reason_modal = discordutils.SingleModal(
-            f'Why cancel this withdrawal request?', 'Cancellation Reason', discord.InputTextStyle.paragraph)
+            f'Why is this withdrawal request being cancelled?', 'Cancellation Reason', discord.InputTextStyle.paragraph)
         await interaction.response.send_modal(reason_modal)
         cancel_reason = await reason_modal.result()
         # close modal
