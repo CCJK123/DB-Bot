@@ -77,9 +77,9 @@ class Resources:
 
     def create_balance_embed(self, user: discord.Member | discord.User | None = None) -> discord.Embed:
         if self:
-            return self.create_embed(user=user, description=f"{user.mention}'s Balance")
-        return discordutils.create_embed(user=user, description=f"{user.mention}'s Balance").add_field(
-            name='Hmm...', value='Nothing Here')
+            return self.create_embed(user=user, description='' if user is None else f"{user.mention}'s Balance")
+        return discordutils.create_embed(user=user, description='' if user is None else f"{user.mention}'s Balance"
+                                         ).add_field(name='Hmm...', value='Nothing Here')
 
     def all_positive(self) -> bool:
         return all(a >= 0 for a in self.values())
