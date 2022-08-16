@@ -103,7 +103,7 @@ class FinanceCog(discordutils.CogBase):
                         'Urban Planning': has_up,
                         'Advanced Urban Planning': has_aup,
                         'Metropolitan Planning': has_mp
-                    } if v) or 'None'
+                    }.values() if v) or 'None'
                 req_data.reason = f'City {data["num_cities"] + 1}'
                 req_data.note = f'{req_data.reason} Grant'
                 req_data.additional_info = {'Projects': project_string, 'Domestic Policy': data['domestic_policy']}
