@@ -18,11 +18,8 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
         self.channels = {pnwutils.WarType.ATT: 'offensive_channel', pnwutils.WarType.DEF: 'defensive_channel',
                          None: 'updates_channel'}
 
-        self.monitor_att = discordutils.SetProperty(self, 'monitor_att')
-        self.monitor_def = discordutils.SetProperty(self, 'monitor_def')
-        self.monitor = {pnwutils.WarType.ATT: self.monitor_att, pnwutils.WarType.DEF: self.monitor_def}
-
         self.monitor_subscription: pnwkit.Subscription | None = None
+        self.subscribed = False
 
     async def subscribe(self):
         self.monitor_subscription = await pnwkit.Subscription.subscribe(
@@ -31,9 +28,10 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
             {'alliance_id': config.alliance_id} and {},
             self.on_new_war
         )
+        self.subscribed = True
 
     async def on_ready(self):
-        if self.running:
+        if not self.subscribed:
             await self.subscribe()
 
     async def on_cleanup(self):
@@ -41,7 +39,9 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
             await self.monitor_subscription.unsubscribe()
 
     async def on_new_war(self, war):
-        if war['attacker']['alliance'] and war['attacker']['alliance']['id'] == config.alliance_id:
+        print('New War:')
+        print(war)
+        if (att_aa := war.attacker.alliance) and att_aa.id == config.alliance_id:
             kind = pnwutils.WarType.ATT
         else:
             kind = pnwutils.WarType.DEF
@@ -49,28 +49,29 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
         await channel.send(embed=await self.new_war_embed(war, kind))
 
     @staticmethod
-    async def new_war_embed(data: dict[str, Any], kind: pnwutils.WarType) -> discord.Embed:
+    async def new_war_embed(data: pnwkit.War, kind: pnwutils.WarType) -> discord.Embed:
         if kind == pnwutils.WarType.ATT:
-            title = f'New Offensive {data["war_type"].title()} War'
+            title = f'New Offensive {data.war_type.title()} War'
         elif kind == pnwutils.WarType.DEF:
-            title = f'New Defensive {data["war_type"].title()} War'
+            title = f'New Defensive {data.war_type.title()} War'
         else:
-            title = f'Losing {data["war_type"].title()} War!'
+            title = f'Losing {data.war_type.title()} War!'
 
         embed = discord.Embed(title=title, description=f'[War Page]({pnwutils.link.war(data["id"])})')
         for t in pnwutils.WarType.ATT, pnwutils.WarType.DEF:
-            nation = data[t.string]
-            embed.add_field(name=t.string.capitalize(),
-                            value=f'[{nation["nation_name"]}]({pnwutils.link.nation(data[f"{t.string_short}id"])})',
-                            inline=False)
-            a = nation['alliance']
-            aa_text = 'None' if a is None else f'[{a["name"]}]({pnwutils.link.alliance(a["id"])})'
+            nation: pnwkit.Nation = getattr(data, t.string)
+            embed.add_field(
+                name=t.string.capitalize(),
+                value=f'[{nation.nation_name}]({pnwutils.link.nation(getattr(data, f"{t.string_short}id"))})',
+                inline=False)
+            a = nation.alliance
+            aa_text = 'None' if a is None else f'[{a.name}]({pnwutils.link.alliance(a.id)})'
             embed.add_field(name='Alliance', value=aa_text, inline=False)
-            embed.add_field(name='Score', value=nation['score'])
-            r = pnwutils.formulas.war_range(nation['score'])
+            embed.add_field(name='Score', value=str(nation.score))
+            r = pnwutils.formulas.war_range(nation.score)
             embed.add_field(name='Range', value=f'{r[0]:.2f}-{r[1]:.2f}')
-            embed.add_field(name='Cities', value=nation['num_cities'], inline=False)
-            embed.add_field(name='War Policy', value=nation['warpolicy'], inline=False)
+            embed.add_field(name='Cities', value=str(nation.num_cities), inline=False)
+            embed.add_field(name='War Policy', value=nation.warpolicy, inline=False)
             embed.add_field(name='Military', value=pnwutils.mil_text(nation))
         return embed
 

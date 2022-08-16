@@ -368,6 +368,21 @@ class BankCog(discordutils.CogBase):
     _bank = commands.SlashCommandGroup('_bank', "Gov Bank Commands", guild_ids=config.guild_ids,
                                        default_member_permissions=discord.Permissions())
 
+    check = _bank.create_subgroup('check', guild_ids=config.guild_ids)
+
+    @check.command(guild_ids=config.guild_ids)
+    @discord.option('ephemeral', bool, description='Whether to only allow you to see the message')
+    async def balance(self, ctx: discord.ApplicationContext, nation_id: int, ephemeral: bool = True):
+        """Check the bank balance of this nation"""
+        bal_rec = await self.users_table.select_val('balance').where(nation_id=nation_id)
+        if bal_rec is None:
+            await ctx.respond('This user is not registered!')
+            return
+        await ctx.respond(
+            embed=pnwutils.Resources(**bal_rec).create_balance_embed(None),
+            ephemeral=ephemeral
+        )
+
     @_bank.command(guild_ids=config.guild_ids)
     @discord.option('ephemeral', bool, description='Whether to only allow you to see the message')
     async def loan_list(self, ctx: discord.ApplicationContext, ephemeral: bool = True):

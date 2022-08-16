@@ -75,7 +75,7 @@ class Resources:
             embed.add_field(name='Hmm...', value='Nothing Here')
         return embed
 
-    def create_balance_embed(self, user: discord.Member | discord.User) -> discord.Embed:
+    def create_balance_embed(self, user: discord.Member | discord.User | None = None) -> discord.Embed:
         if self:
             return self.create_embed(user=user, description=f"{user.mention}'s Balance")
         return discordutils.create_embed(user=user, description=f"{user.mention}'s Balance").add_field(
