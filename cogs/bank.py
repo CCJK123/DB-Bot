@@ -368,7 +368,8 @@ class BankCog(discordutils.CogBase):
     _bank = commands.SlashCommandGroup('_bank', "Gov Bank Commands", guild_ids=config.guild_ids,
                                        default_member_permissions=discord.Permissions())
 
-    check = _bank.create_subgroup('check', guild_ids=config.guild_ids)
+    check = _bank.create_subgroup('check')
+    check.guild_ids = config.guild_ids
 
     @check.command(guild_ids=config.guild_ids)
     @discord.option('ephemeral', bool, description='Whether to only allow you to see the message')
