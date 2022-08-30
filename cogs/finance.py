@@ -144,7 +144,7 @@ class FinanceCog(discordutils.CogBase):
                     )
                     return
                 elif project == 'Advanced Urban Planning':
-                    if not data['city_planning']:
+                    if not data['advanced_urban_planning']:
                         await author.send(
                             'You have not built the Urban Planning project, which is needed to build the Advanced '
                             'Urban Planning project. Please try again next time.'
