@@ -431,13 +431,14 @@ class CustomModificationModal(discord.ui.Modal):
         self.complete: asyncio.Future[None] = asyncio.get_event_loop().create_future()
 
         for res_name, amt in view.data.resources.items_nonzero():
-            self.add_item(discord.ui.InputText(
+            self.add_item(discord.ui.TextInput(
                 label=f'How much {res_name} should this request be for?',
                 placeholder=str(amt),
                 required=False))
 
     async def callback(self, interaction: discord.Interaction):
         for res_name, input_text in zip(self.view.data.resources.keys_nonzero(), self.children):
+            assert isinstance(input_text, discord.ui.TextInput)
             if input_text.value is not None:
                 self.view.data.resources[res_name] = int(input_text.value)
         self.complete.set_result(None)

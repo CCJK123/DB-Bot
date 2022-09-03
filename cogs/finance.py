@@ -32,10 +32,10 @@ class FinanceCog(discordutils.CogBase):
             await interaction.response.send_message('Your nation id has not been set! Aborting...', ephemeral=True)
             return
 
-        await interaction.response.send_message('Please check your DMs!', ephemeral=True)
-
         user = interaction.user
-        await user.send('Welcome to the DB Finance Request Interface.')
+        await asyncio.gather(
+            interaction.response.send_message('Please check your DMs!', ephemeral=True),
+            user.send('Welcome to the DB Finance Request Interface.'))
 
         # Check that reply was sent from same author in DMs
         msg_chk = discordutils.get_dm_msg_chk(user.id)
@@ -281,8 +281,8 @@ class FinanceCog(discordutils.CogBase):
                 # Calculate resources needed to buy needed military units
                 req_data.resources = pnwutils.Resources(
                     money=(
-                        5 * needed_units['soldiers'] + 60 * needed_units['tanks']
-                        + 4000 * needed_units['aircraft'] + 50000 * needed_units['ships']),
+                            5 * needed_units['soldiers'] + 60 * needed_units['tanks']
+                            + 4000 * needed_units['aircraft'] + 50000 * needed_units['ships']),
                     steel=int(0.5 * (needed_units['tanks']) + 1) + 30 * needed_units['ships'],
                     aluminum=5 * needed_units['aircraft']
                 )
@@ -311,8 +311,8 @@ class FinanceCog(discordutils.CogBase):
                 # Calculate resources needed to buy needed military improvements
                 req_data.resources = pnwutils.Resources(
                     money=(
-                        3000 * needed_improvements['barracks'] + 15000 * needed_improvements['factory'] +
-                        100000 * needed_improvements['hangar'] + 250000 * needed_improvements['drydock']),
+                            3000 * needed_improvements['barracks'] + 15000 * needed_improvements['factory'] +
+                            100000 * needed_improvements['hangar'] + 250000 * needed_improvements['drydock']),
                     steel=10 * needed_improvements['hangar'],
                     aluminum=5 * needed_improvements['factory'] + 20 * needed_improvements['drydock'])
 
