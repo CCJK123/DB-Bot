@@ -26,6 +26,7 @@ class Choice(discord.ui.Button['Choices']):
             return
         self.view.set_result(self.label)
         self.style = discord.ButtonStyle.success
+        disable_all(self.view)
         self.view.stop()
         await interaction.response.edit_message(view=self.view)
 
@@ -47,6 +48,7 @@ class Choices(discord.ui.View):
         return self._fut
 
     async def on_timeout(self):
+
         self._fut.set_exception(asyncio.TimeoutError())
 
 

@@ -90,8 +90,7 @@ class Pager(discord.ui.View):
         await interaction.response.edit_message(view=self, embeds=e)
 
     async def on_timeout(self) -> None:
-        self.left.disabled = True
-        self.right.disabled = True
+        discordutils.disable_all(self)
         self.stop()
         await self.interaction.edit_original_response(view=self)
 
