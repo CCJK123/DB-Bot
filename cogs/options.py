@@ -6,7 +6,7 @@ from discord.ext import commands
 from utils import discordutils, pnwutils, config, dbbot
 
 
-class OptionsCog(commands.GroupCog, discordutils.CogBase):
+class OptionsCog(commands.GroupCog, discordutils.CogBase, group_name='_options'):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
         self.channel_ids = bot.database.get_kv('channel_ids')
