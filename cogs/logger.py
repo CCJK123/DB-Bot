@@ -12,5 +12,5 @@ class LoggingCog(discordutils.CogBase):
         await self.bot.get_channel(channel_id).send(content, **kwargs)
 
 
-def setup(bot: dbbot.DBBot) -> None:
-    bot.add_cog(LoggingCog(bot))
+async def setup(bot: dbbot.DBBot) -> None:
+    await bot.add_cog(LoggingCog(bot))

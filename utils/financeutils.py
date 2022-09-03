@@ -220,7 +220,6 @@ class RequestButtonsView(discordutils.PersistentView):
     @discordutils.persistent_button(label='Accept')
     async def accept(self, button: discord.ui.Button, interaction: discord.Interaction):
         button.style = discord.ButtonStyle.success
-        self.disable_all_items()
         self.stop()
         await self.bot.remove_view(self)
 
@@ -243,7 +242,7 @@ class RequestButtonsView(discordutils.PersistentView):
                 self.bot.database.execute(
                     f'INSERT INTO loans(discord_id, due_date, loaned) VALUES ($1, $2, {self.data.resources.to_row()})',
                     self.data.requester_id, loan_data.due_date),
-                interaction.edit_original_message(
+                interaction.edit_original_response(
                     content=f'{self.data.kind} Request from {self.data.requester.mention}',
                     allowed_mentions=discord.AllowedMentions.none()),
                 self.data.requester.send(
@@ -274,7 +273,7 @@ class RequestButtonsView(discordutils.PersistentView):
         # split things up in order to use allowed_mentions
         await asyncio.gather(
             interaction.response.edit_message(view=self, embed=embed),
-            interaction.edit_original_message(
+            interaction.edit_original_response(
                 content=f'Accepted {self.data.kind} Request from {self.data.requester.mention}',
                 allowed_mentions=discord.AllowedMentions.none()),
             self.withdraw_for_request(self.data, interaction.user))
@@ -282,15 +281,14 @@ class RequestButtonsView(discordutils.PersistentView):
     @discordutils.persistent_button(label='Reject')
     async def reject(self, button: discord.ui.Button, interaction: discord.Interaction):
         self.data.set_requester(self.bot)
-        reason_modal = discordutils.SingleModal(
-            'Why is this request being rejected?', 'Rejection Reason', discord.InputTextStyle.paragraph)
+        reason_modal = discordutils.single_modal(
+            'Why is this request being rejected?', 'Rejection Reason', discord.TextStyle.paragraph)
         await interaction.response.send_modal(reason_modal)
         reject_reason = await reason_modal.result()
         # sent modal, must respond to its interaction to close it
         await discordutils.respond_to_interaction(reason_modal.interaction)
 
         button.style = discord.ButtonStyle.success
-        self.disable_all_items()
         self.stop()
         embed = interaction.message.embeds[0]
         embed.add_field(name='Rejection Reason', value=reject_reason, inline=True)
@@ -299,7 +297,7 @@ class RequestButtonsView(discordutils.PersistentView):
             self.data.requester.send(
                 f'Your {self.data.kind} request for `{self.data.reason}` '
                 f'has been rejected!\n\nReason:\n`{reject_reason}`'),
-            interaction.edit_original_message(
+            interaction.edit_original_response(
                 content=f'Rejected {self.data.kind} Request from {self.data.requester.mention}',
                 view=self, embed=embed, allowed_mentions=discord.AllowedMentions.none()),
             self.bot.remove_view(self),
@@ -315,7 +313,7 @@ class RequestButtonsView(discordutils.PersistentView):
     @discordutils.persistent_button(label='Modify')
     async def modify(self, button: discord.ui.Button, interaction: discord.Interaction):
         button.style = discord.ButtonStyle.success
-        self.disable_all_items()
+        discordutils.disable_all(self)
         self.data.set_requester(self.bot)
         user = interaction.user
         old_res = self.data.resources.copy()
@@ -334,11 +332,11 @@ class RequestButtonsView(discordutils.PersistentView):
                             if isinstance(e, asyncio.TimeoutError) else
                             'Cancelling modification...')
 
-            self.enable_all_items()
+            discordutils.enable_all(self)
             button.style = discord.ButtonStyle.secondary
             embed.description = ''
             embed.colour = discord.Colour.blue()
-            await interaction.edit_original_message(view=self, embed=embed)
+            await interaction.edit_original_response(view=self, embed=embed)
             return
 
         self.stop()
@@ -347,7 +345,7 @@ class RequestButtonsView(discordutils.PersistentView):
         response_view = ModificationResponseView(self.data, user.id, custom_id)
         updated_res_embed = self.data.resources.create_embed(title='Updated Resources')
         await asyncio.gather(
-            interaction.edit_original_message(
+            interaction.edit_original_response(
                 content=f'Modified {self.data.kind} Request from {self.data.requester.mention}',
                 allowed_mentions=discord.AllowedMentions.none()
             ),
@@ -366,8 +364,9 @@ class RequestButtonsView(discordutils.PersistentView):
 
 class PresetView(discord.ui.View):
     def __init__(self, parent_view: RequestButtonsView):
-        super().__init__(CustomPresetButton(), timeout=config.timeout)
+        super().__init__(timeout=config.timeout)
         self.parent_view = parent_view
+        self.add_item(CustomPresetButton())
         for b in PresetButton.create_buttons(parent_view.data.presets):
             self.add_item(b)
         self.add_item(CancelButton())
@@ -384,7 +383,6 @@ class CancelButton(discord.ui.Button[PresetView]):
 
     async def callback(self, interaction: discord.Interaction):
         self.style = discord.ButtonStyle.success
-        self.view.disable_all_items()
         self.view.stop()
         await interaction.response.edit_message(view=self.view)
         self.view.complete.set_exception(asyncio.CancelledError())
@@ -401,7 +399,6 @@ class PresetButton(discord.ui.Button[PresetView]):
 
     async def callback(self, interaction: discord.Interaction):
         self.style = discord.ButtonStyle.success
-        self.view.disable_all_items()
         self.view.stop()
         await interaction.response.edit_message(view=self.view)
         self.view.complete.set_result(None)
@@ -414,13 +411,12 @@ class CustomPresetButton(discord.ui.Button[PresetView]):
 
     async def callback(self, interaction: discord.Interaction):
         self.style = discord.ButtonStyle.success
-        self.view.disable_all_items()
         self.view.stop()
         modal = CustomModificationModal(self.view.parent_view)
         await interaction.response.send_modal(modal)
         await modal.complete
         self.view.complete.set_result(None)
-        await interaction.edit_original_message(view=self.view)
+        await interaction.edit_original_response(view=self.view)
 
 
 class CustomModificationModal(discord.ui.Modal):
@@ -460,7 +456,6 @@ class ModificationResponseView(discordutils.PersistentView):
     @discordutils.persistent_button(label='Accept')
     async def accept(self, button: discord.ui.Button, interaction: discord.Interaction):
         button.style = discord.ButtonStyle.success
-        self.disable_all_items()
         self.stop()
 
         embed = self.data.resources.create_embed(title='Request Resources')
@@ -479,7 +474,6 @@ class ModificationResponseView(discordutils.PersistentView):
     @discordutils.persistent_button(label='Reject')
     async def reject(self, button: discord.ui.Button, interaction: discord.Interaction):
         button.style = discord.ButtonStyle.success
-        self.disable_all_items()
         self.stop()
 
         embed = self.data.resources.create_embed(title='Request Resources')
@@ -508,7 +502,6 @@ class WithdrawalView(discordutils.PersistentView):
         result = await self.withdrawal.withdraw(self.bot.session)
         if result is pnwutils.WithdrawalResult.SUCCESS:
             button.style = discord.ButtonStyle.success
-            self.disable_all_items()
             self.stop()
             embed = interaction.message.embeds[0]
             embed.colour = discord.Colour.green()
@@ -531,8 +524,8 @@ class WithdrawalView(discordutils.PersistentView):
 
     @discordutils.persistent_button(label='Cancel')
     async def cancel(self, button: discordutils.PersistentButton, interaction: discord.Interaction):
-        reason_modal = discordutils.SingleModal(
-            f'Why is this withdrawal request being cancelled?', 'Cancellation Reason', discord.InputTextStyle.paragraph)
+        reason_modal = discordutils.single_modal(
+            f'Why is this withdrawal request being cancelled?', 'Cancellation Reason', discord.TextStyle.paragraph)
         await interaction.response.send_modal(reason_modal)
         cancel_reason = await reason_modal.result()
         # close modal
@@ -542,7 +535,6 @@ class WithdrawalView(discordutils.PersistentView):
             f'balance = balance + {self.withdrawal.resources.to_row()}').where(discord_id=self.receiver_id)
 
         button.style = discord.ButtonStyle.success
-        self.disable_all_items()
         self.stop()
         embed = interaction.message.embeds[0]
         embed.colour = discord.Colour.red()
@@ -551,7 +543,7 @@ class WithdrawalView(discordutils.PersistentView):
         contents_embed = self.withdrawal.resources.create_embed(title='Withdrawal Contents')
         await asyncio.gather(
             self.bot.remove_view(self),
-            interaction.edit_original_message(view=self, embed=embed),
+            interaction.edit_original_response(view=self, embed=embed),
             member.send(f'Your withdrawal request for the following has been cancelled!\n\nReason:\n`{cancel_reason}`',
                         embed=contents_embed),
             self.bot.log(embeds=(

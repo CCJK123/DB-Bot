@@ -9,7 +9,7 @@ from collections.abc import Awaitable, Callable, Sequence
 import aiohttp
 import discord
 import pnwkit
-from discord.ext import tasks, commands as cmds
+from discord.ext import tasks, commands as cmds, commands
 
 from utils import discordutils, databases, config
 from utils.queries import offshore_info_query
@@ -43,13 +43,13 @@ async def database_initialisation(database):
         ''')
 
 
-class DBBot(discord.Bot):
-    def __init__(self, db_url: str, on_ready_func: Callable[[], None] | None = None,
+class DBBot(commands.Bot):
+    def __init__(self, session: aiohttp.ClientSession, db_url: str, on_ready_func: Callable[[], None] | None = None,
                  possible_statuses: Sequence[discord.Activity] | None = None):
-        intents = discord.Intents(guilds=True, messages=True, members=True)
-        super().__init__(intents=intents)
-        self.excluded = {'open_slots_detector', 'new_war_detector', 'market', 'debug', 'applications'}
-        self.session: aiohttp.ClientSession | None = None
+        intents = discord.Intents(guilds=True, messages=True, message_content=True, members=True)
+        super().__init__(intents=intents, command_prefix='`!')
+        self.session = session
+        self.excluded = {'open_slots_detector', 'new_war_detector', 'market', 'applications'}
         self.kit = pnwkit.QueryKit(config.api_key)
 
         self.database: databases.Database = databases.PGDatabase(db_url)
@@ -84,7 +84,12 @@ class DBBot(discord.Bot):
 
         self.prepared = False
 
-    def load_cogs(self, directory: str) -> None:
+    async def setup_hook(self) -> None:
+        await self.load_cogs('cogs')
+        for guild in config.guild_ids:
+            self.tree.copy_global_to(guild=discord.Object(id=guild))
+
+    async def load_cogs(self, directory: str) -> None:
         """
         directory: str
         Name of directory where the cogs can be found.
@@ -94,19 +99,12 @@ class DBBot(discord.Bot):
         cogs = {file.split('.')[0] for file in os.listdir(directory)
                 if file.endswith('.py') and not file.startswith('_')}
         for ext in cogs - self.excluded:
-            self.load_extension(f'{directory}.{ext}')
+            await self.load_extension(f'{directory}.{ext}')
 
-    async def prepare(self):
-        self.session = await aiohttp.ClientSession().__aenter__()
-        self.database = await self.database.__aenter__()
+    async def __aenter__(self):
         self.kit.aiohttp_session = self.session
 
-        self.change_status.start()
-
-    async def cleanup(self):
-        await self.session.__aexit__(None, None, None)
-        await self.database.__aexit__(None, None, None)
-
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
         self.change_status.stop()
 
         for cog in self.cogs.values():
@@ -127,10 +125,7 @@ class DBBot(discord.Bot):
         await self.view_table.remove(view.custom_id)
 
     async def on_ready(self):
-        if not self.prepared:
-            await self.prepare()
-            self.prepared = True
-
+        self.change_status.start()
         await asyncio.gather(*(cog.on_ready() for cog in self.cogs.values() if isinstance(cog, discordutils.CogBase)))
 
         # add views
@@ -142,8 +137,9 @@ class DBBot(discord.Bot):
             self.on_ready_func()
         print('Ready!')
 
-    async def on_application_command_error(self, ctx: discord.ApplicationContext, exception: discord.DiscordException):
-        command = ctx.command
+    async def on_application_command_error(self, interaction: discord.Interaction,
+                                           exception: discord.app_commands.AppCommandError):
+        command = interaction.command
         if command and command.has_error_handler():
             return
 
@@ -153,28 +149,35 @@ class DBBot(discord.Bot):
             cmds.MissingRequiredArgument
         )
 
-        if isinstance(c := exception.__cause__, discord.NotFound) and getattr(c, 'text', None) == 'Unknown interaction':
-            await ctx.send('Sorry, please rerun your command.')
-            await self.log(f'NotFound Exception in command {command.name}')
-        elif not isinstance(exception, ignored):
-            await self.default_on_error(ctx, exception)
+        if not isinstance(exception, ignored):
+            await self.default_on_error(interaction, exception)
 
     @staticmethod
-    async def default_on_error(ctx: discord.ApplicationContext, exception: discord.DiscordException):
+    async def default_on_error(interaction: discord.Interaction, exception: discord.app_commands.AppCommandError):
         try:
-            await ctx.respond(f'Sorry, an exception occurred in the command `{ctx.command}`.')
+            await interaction.response.send_message(
+                f'Sorry, an exception occurred in the command `{interaction.command}`.')
+
+            s = ''
+            for ex in traceback.format_exception(type(exception), exception, exception.__traceback__):
+                if ex == '\nThe above exception was the direct cause of the following exception:\n\n':
+                    await interaction.followup.send(f'```{s}```')
+                    s = ex
+                else:
+                    s += ex
+            await interaction.followup.send(f'```{s}```')
         except discord.HTTPException as e:
             print('Responding failed! Exc Type: ', type(e))
-            await ctx.send('Sorry, an exception occurred.')
+            await interaction.channel.send('Sorry, an exception occurred.')
 
-        s = ''
-        for ex in traceback.format_exception(type(exception), exception, exception.__traceback__):
-            if ex == '\nThe above exception was the direct cause of the following exception:\n\n':
-                await ctx.send(f'```{s}```')
-                s = ex
-            else:
-                s += ex
-        await ctx.send(f'```{s}```')
+            s = ''
+            for ex in traceback.format_exception(type(exception), exception, exception.__traceback__):
+                if ex == '\nThe above exception was the direct cause of the following exception:\n\n':
+                    await interaction.channel.send(f'```{s}```')
+                    s = ex
+                else:
+                    s += ex
+            await interaction.channel.send(f'```{s}```')
 
         # print the exception to stderr too
         traceback.print_exception(type(exception), exception, exception.__traceback__)

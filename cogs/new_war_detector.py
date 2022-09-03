@@ -5,7 +5,6 @@ from typing import Any
 
 import discord
 import pnwkit
-from discord import commands
 
 from utils import discordutils, pnwutils, config, dbbot
 from utils.queries import alliance_wars_query
@@ -135,24 +134,25 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
                                           default_permission=False)
 
     @detector.command(guild_ids=config.guild_ids, default_permission=False)
-    async def toggle(self, ctx: discord.ApplicationContext):
+    async def toggle(self, interaction: discord.Interaction):
         """Toggles the war detector on and off"""
         channel_ids_table = self.bot.database.get_kv('channel_ids')
         if not await channel_ids_table.all_set(*self.channels.values()):
-            await ctx.respond('Not all of the defensive, offensive and updates war channels have been set! '
-                              'Set them with the `options war_detector channel` command '
-                              'in the respective channels.')
+            await interaction.response.send_message(
+                'Not all of the defensive, offensive and updates war channels have been set! '
+                'Set them with the `options war_detector channel` command in the respective channels.')
             return
 
         if self.running.get():
-            await asyncio.gather(self.monitor_subscription.unsubscribe(), ctx.respond('War Detector Stopping!'))
-            await asyncio.gather(self.running.set(False), ctx.respond('War Detector Stopped!'))
+            await asyncio.gather(self.monitor_subscription.unsubscribe(),
+                                 interaction.response.send_message('War Detector Stopping!'))
+            await asyncio.gather(self.running.set(False), interaction.response.send_message('War Detector Stopped!'))
             return
-        await asyncio.gather(self.subscribe(), ctx.respond('War Detector Starting!'))
-        await asyncio.gather(self.running.set(True), ctx.respond('War Detector Started!'))
+        await asyncio.gather(self.subscribe(), interaction.response.send_message('War Detector Starting!'))
+        await asyncio.gather(self.running.set(True), interaction.response.send_message('War Detector Started!'))
 
     @detector.command(guild_ids=config.guild_ids, default_permission=False)
-    async def monitor_ongoing(self, ctx: discord.ApplicationContext):
+    async def monitor_ongoing(self, interaction: discord.Interaction):
         """Makes the detector check for ongoing wars that it missed while offline to monitor."""
         data = await alliance_wars_query.query(self.bot.session, alliance_id=config.alliance_id)
         data = data['data']
@@ -170,7 +170,7 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
                     await self.monitor_def.add(war['id'])
                 c += 1
 
-        await ctx.respond(f'Complete! {c} wars added.')
+        await interaction.response.send_message(f'Complete! {c} wars added.')
 
 
 # Setup War Detector Cog as an extension

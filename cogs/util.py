@@ -8,8 +8,7 @@ import re
 import discord
 import matplotlib.pyplot as plt
 import numpy as np
-from discord import commands
-from discord.ext import pages
+from discord.ext import commands
 
 from utils import discordutils, pnwutils, config, dbbot
 from utils.queries import (nation_register_query, alliance_member_res_query,
@@ -22,64 +21,77 @@ class UtilCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
         self.users_table = self.bot.database.get_table('users')
+        self.bot.tree.add_command(discord.app_commands.ContextMenu(
+            name='nation',
+            callback=self.nation
+        ))
+        self.bot.tree.add_command(discord.app_commands.ContextMenu(
+            name='discords',
+            callback=self.discords
+        ))
 
-    register = commands.SlashCommandGroup('register', 'Commands related to the user to nation registry the bot keeps!',
-                                          guild_ids=config.guild_ids)
+    register = discord.app_commands.Group(name='register',
+                                          description='Commands related to the user to nation registry the bot keeps!')
 
-    @register.command(guild_ids=config.guild_ids)
-    async def nation(self, ctx: discord.ApplicationContext,
-                     nation_id: discord.Option(int, 'Your Nation ID', default=None),
-                     nation_link: discord.Option(str, 'Your Nation ID', default=None)):
+    @register.command(name='nation')
+    @discord.app_commands.describe(
+        nation_id='Your Nation ID',
+        nation_link='Your Nation Link'
+    )
+    async def register_nation(self, interaction: discord.Interaction,
+                              nation_id: int = None,
+                              nation_link: str = None):
         """Use to manually add your nation to the database, with either an ID or a link"""
-        if await self.users_table.exists(discord_id=ctx.author.id):
-            await ctx.respond('You are already registered!', ephemeral=True)
+        if await self.users_table.exists(discord_id=interaction.user.id):
+            await interaction.response.send_message('You are already registered!', ephemeral=True)
             return
 
         if nation_id is None and nation_link is None:
-            if '/' in ctx.author.display_name:
+            if '/' in interaction.user.display_name:
                 try:
-                    nation_id = int(ctx.author.display_name.split('/')[-1])
+                    nation_id = int(interaction.user.display_name.split('/')[-1])
                 except ValueError:
-                    await ctx.respond('Please provide your nation id!')
+                    await interaction.response.send_message('Please provide your nation id!')
                     return
-                await self.users_table.insert(discord_id=ctx.author.id, nation_id=nation_id)
-                await ctx.respond('You have been registered to our database!', ephemeral=True)
+                await self.users_table.insert(discord_id=interaction.user.id, nation_id=nation_id)
+                await interaction.response.send_message('You have been registered to our database!', ephemeral=True)
                 return
-            await ctx.respond('Please provide your nation id!', ephemeral=True)
+            await interaction.response.send_message('Please provide your nation id!', ephemeral=True)
             return
         elif nation_id is None:
             try:
                 nation_id = int(nation_link.removeprefix(f'{pnwutils.constants.base_url}nation/id='))
             except ValueError:
-                await ctx.respond("The given ID isn't a number!", ephemeral=True)
+                await interaction.response.send_message("The given ID isn't a number!", ephemeral=True)
                 return
 
         data = await nation_register_query.query(self.bot.session, nation_id=nation_id)
         data = data['data']
         if not data:
             # nation does not exist, empty list returned
-            await ctx.respond('This nation does not exist!', ephemeral=True)
+            await interaction.response.send_message('This nation does not exist!', ephemeral=True)
             return
         data = data[0]
         # nation exists, is in one elem list
         if data['alliance_id'] != config.alliance_id:
             off_id = await self.bot.get_offshore_id()
             if data['alliance_id'] != off_id:
-                await ctx.respond(f'This nation is not in {config.alliance_name}!')
+                await interaction.response.send_message(f'This nation is not in {config.alliance_name}!')
                 return
-        username = f'{ctx.author.name}#{ctx.author.discriminator}'
+        username = f'{interaction.user.name}#{interaction.user.discriminator}'
         if data['discord'] != username:
-            await ctx.respond('Your Discord Username is not set! Please edit your nation and set your discord tag to '
-                              f'{username}, then try this command again.', ephemeral=True)
+            await interaction.response.send_message(
+                'Your Discord Username is not set! Please edit your nation and set your discord tag to '
+                f'{username}, then try this command again.', ephemeral=True)
             return
-        await self.users_table.insert(discord_id=ctx.author.id, nation_id=nation_id)
-        await ctx.respond('You have been registered to our database!', ephemeral=True)
+        await self.users_table.insert(discord_id=interaction.user.id, nation_id=nation_id)
+        await interaction.response.send_message('You have been registered to our database!', ephemeral=True)
         return
 
-    @register.command(name='list', guild_ids=config.guild_ids)
-    async def register_list(self, ctx: discord.ApplicationContext):
+    @register.command(name='list')
+    async def register_list(self, interaction: discord.Interaction):
         """List all nations registered in our database"""
-        await ctx.defer()
+        await interaction.response.defer()
         nation_pages = []
         async with self.bot.database.acquire() as conn:
             async with conn.transaction():
@@ -90,23 +102,22 @@ class UtilCog(discordutils.CogBase):
                         embed.add_field(name=pnwutils.link.nation(rec['nation_id']), value=f'<@{rec["discord_id"]}>')
                     nation_pages.append(embed)
         if nation_pages:
-            await pages.Paginator(nation_pages, timeout=config.timeout).respond(ctx.interaction, ephemeral=True)
+            await discordutils.Pager(nation_pages).respond(interaction, ephemeral=True)
             return
-        await ctx.respond('There are no registrations!', ephemeral=True)
+        await interaction.followup.send('There are no registrations!', ephemeral=True)
 
-    _register = commands.SlashCommandGroup('_register', 'Government Registry commands', guild_ids=config.guild_ids,
-                                           default_member_permissions=discord.Permissions())
+    _register = discord.app_commands.Group(name='_register', description='Government Registry commands',
+                                           default_permissions=None)
 
-    @_register.command(name='update', guild_ids=config.guild_ids, default_permission=False)
-    @commands.default_permissions()
-    async def register_update(self, ctx: discord.ApplicationContext):
+    @_register.command(name='update')
+    async def register_update(self, interaction: discord.Interaction):
         """Update registry using the / separated nation ids in nicknames"""
         count = 0
-        await ctx.defer()
+        await interaction.response.defer()
         async with self.bot.database.acquire() as conn:
             async with conn.transaction():
                 nation_ids = [rec['nation_id'] async for rec in self.users_table.select('nation_id').cursor(conn)]
-                for member in ctx.guild.members:
+                for member in interaction.guild.members:
                     if '/' in member.display_name:
                         try:
                             nation_id = int(member.display_name.split('/')[-1])
@@ -115,54 +126,53 @@ class UtilCog(discordutils.CogBase):
                         if nation_id not in nation_ids:
                             count += 1
                             await self.users_table.insert(discord_id=member.id, nation_id=nation_id)
-        await ctx.respond(f'{count} members have been added to the database.')
+        await interaction.followup.send(f'{count} members have been added to the database.')
 
-    @_register.command(name='other', guild_ids=config.guild_ids, default_permission=False)
-    @commands.default_permissions()
-    async def register_other(self, ctx: discord.ApplicationContext, member: discord.Member, nation_id: int):
+    @_register.command(name='other')
+    async def register_other(self, interaction: discord.Interaction, member: discord.Member, nation_id: int):
         """Update someone else's nation in the registry for them"""
         if await self.users_table.exists_or(discord_id=member.id, nation_id=nation_id):
-            await ctx.respond('A user with this discord ID or nation ID has already been registered!')
+            await interaction.response.send_message(
+                'A user with this discord ID or nation ID has already been registered!')
             return
 
         data = await nation_register_query.query(self.bot.session, nation_id=nation_id)
         data = data['data']
         if not data:
             # nation does not exist, empty list returned
-            await ctx.respond('This nation does not exist!', ephemeral=True)
+            await interaction.response.send_message('This nation does not exist!', ephemeral=True)
             return
         data = data[0]
         # nation exists, is in one elem list
         if data['alliance_id'] != config.alliance_id:
             off_id = await self.bot.get_offshore_id()
             if data['alliance_id'] != off_id:
-                await ctx.respond(f'This nation is not in {config.alliance_name}!')
+                await interaction.response.send_message(f'This nation is not in {config.alliance_name}!')
                 return
         username = f'{member.name}#{member.discriminator}'
         if data['discord'] != username:
-            await ctx.respond(
+            await interaction.response.send_message(
                 "This nation's Discord Username is not set! "
                 f'Please ask {member.mention} to edit their nation and set their discord tag to {username}, '
                 'then try this command again.', ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
             return
         await self.users_table.insert(discord_id=member.id, nation_id=nation_id)
-        await ctx.respond(f'{member.mention} has been registered to our database!',
-                          ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
+        await interaction.response.send_message(f'{member.mention} has been registered to our database!',
+                                                ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
         return
 
-    @_register.command(name='purge', guild_ids=config.guild_ids, default_permission=False)
-    async def register_purge(self, ctx: discord.ApplicationContext):
+    @_register.command(name='purge')
+    async def register_purge(self, interaction: discord.Interaction):
         """Purge accounts that are not in the server from the database"""
-        ids = ', '.join(str(member.id) for member in ctx.guild.members)
+        ids = ', '.join(str(member.id) for member in interaction.guild.members)
         _, n = (await self.bot.database.execute(f'DELETE FROM users WHERE discord_id NOT IN ({ids})')).split(' ')
-        await ctx.respond(f'{n} accounts not in the server have been purged!')
+        await interaction.response.send_message(f'{n} accounts not in the server have been purged!')
 
-    _check = commands.SlashCommandGroup(
-        '_check', 'Various checks on members of the alliance', guild_ids=config.guild_ids,
-        default_permission=False, default_member_permissions=discord.Permissions())
+    _check = discord.app_commands.Group(name='_check', description='Various checks on members of the alliance',
+                                        default_permissions=None)
 
-    @_check.command(name='resources', guild_ids=config.guild_ids)
-    async def check_resources(self, ctx: discord.ApplicationContext):
+    @_check.command(name='resources')
+    async def check_resources(self, interaction: discord.Interaction):
         """List all nations that have run out of food or uranium in the alliance."""
         data = await alliance_member_res_query.query(self.bot.session, alliance_id=config.alliance_id)
         data = data['data']
@@ -196,13 +206,16 @@ class UtilCog(discordutils.CogBase):
                                     f'[{na[1]}/{na[0]}]({pnwutils.link.nation(na[0])})') for na in ns)
                 if string:
                     embed.add_field(name=k, value=string)
-            await ctx.respond(embed=embed)
-        else:
-            await ctx.respond('No one has ran out of food or uranium!')
+            await interaction.response.send_message(embed=embed)
+            return
+        await interaction.response.send_message('No one has ran out of food or uranium!')
 
-    @_check.command(name='activity', guild_ids=config.guild_ids)
-    async def check_activity(self, ctx: discord.ApplicationContext,
-                             days: discord.Option(int, 'How many days inactive', default=3)):
+    @_check.command(name='activity')
+    @discord.app_commands.describe(
+        days='How many days inactive'
+    )
+    async def check_activity(self, interaction: discord.Interaction,
+                             days: int = 3):
         """Lists nations that have not been active in the last n days (defaults to 3 days)"""
         data = (await alliance_activity_query.query(self.bot.session, alliance_id=config.alliance_id))
         data = data['data']
@@ -228,18 +241,18 @@ class UtilCog(discordutils.CogBase):
         for m in discordutils.split_blocks('\n', itertools.chain(
                 (f'Inactive for {days} day{"s" if days != 1 else ""}:',),
                 (f'<@{d_id}>' for d_id in map_discord.values()))):
-            await ctx.respond(m)
+            await discordutils.interaction_send(interaction, m)
         for m in discordutils.split_blocks('\n', (f'[{nation_names[n]}/{n}](<{pnwutils.link.nation(n)}>)'
                                                   for n in (inactives - map_discord.keys()))):
-            await ctx.respond(m)
+            await discordutils.interaction_send(interaction, m)
 
-    @_check.command(name='military', guild_ids=config.guild_ids)
-    async def check_military(self, ctx: discord.ApplicationContext):
+    @_check.command(name='military')
+    async def check_military(self, interaction: discord.Interaction):
         """Not implemented as of now. Check back soon!"""
-        await ctx.respond('Not Implemented!')
+        await interaction.response.send_message('Not Implemented!', ephemeral=True)
 
     async def nation_info_embed(self, nation_id: int,
-                                member: 'discord.Member | None' = None) -> 'discord.Embed | None':
+                                member: 'discord.Member | discord.User | None' = None) -> 'discord.Embed | None':
         data = await nation_info_query.query(self.bot.session, nation_id=nation_id)
         if not data['data']:
             return None
@@ -250,7 +263,6 @@ class UtilCog(discordutils.CogBase):
         embed.add_field(name='Domestic Policy', value=data['domestic_policy'])
         embed.add_field(name='War Policy', value=data['war_policy'])
         wars = [w for w in data['wars'] if w['turns_left'] > 0]
-        print(wars)
         if wars:
             offensive = sum(int(w['att_id']) == nation_id for w in wars)
             block = any(int(w['naval_blockade']) not in (nation_id, 0) for w in wars)
@@ -264,70 +276,76 @@ class UtilCog(discordutils.CogBase):
             embed.add_field(name='Current Wars', value=s)
         return embed
 
-    @commands.user_command(guild_ids=config.guild_ids)
-    async def nation(self, ctx: discord.ApplicationContext, member: discord.Member):
+    async def nation(self, interaction: discord.Interaction, member: discord.Member | discord.User):
         """Get the nation of this member"""
         nation_id = await self.users_table.select_val('nation_id').where(discord_id=member.id)
         if nation_id is None:
-            await ctx.respond('This user does not have their nation registered!')
+            await interaction.response.send_message('This user does not have their nation registered!')
             return
 
         embed = await self.nation_info_embed(nation_id, member)
         if embed is None:
-            await ctx.respond("This member's registered nation does not exist! Aborting...")
+            await interaction.response.send_message("This member's registered nation does not exist! Aborting...")
             return
 
-        await ctx.respond(embed=embed, view=discordutils.LinkView('Nation Link', pnwutils.link.nation(nation_id)))
+        await interaction.response.send_message(
+            embed=embed, view=discordutils.LinkView('Nation Link', pnwutils.link.nation(nation_id)))
 
-    @commands.command(name='nation_info', guild_ids=config.guild_ids)
-    async def nation_info(self, ctx: discord.ApplicationContext, nation_id: int):
+    @discord.app_commands.command(name='nation_info')
+    async def nation_info(self, interaction: discord.Interaction, nation_id: int):
         """Get some basic information about a nation. 'nation' command equivalent for nation IDs"""
         embed = await self.nation_info_embed(nation_id)
         if embed is None:
-            await ctx.respond("This member's registered nation does not exist! Aborting...")
+            await interaction.response.send_message("This member's registered nation does not exist! Aborting...")
             return
 
-        await ctx.respond(embed=embed, view=discordutils.LinkView('Nation Link', pnwutils.link.nation(nation_id)))
+        await interaction.response.send_message(
+            embed=embed, view=discordutils.LinkView('Nation Link', pnwutils.link.nation(nation_id)))
 
-    @commands.command(name='discord', guild_ids=config.guild_ids)
-    async def _discord(self, ctx: discord.ApplicationContext,
-                       nation_id: discord.Option(int, description='Nation ID of the user you are trying to find!',
-                                                 min_value=1)):
+    @discord.app_commands.command(name='discord')
+    @discord.app_commands.describe(nation_id='Nation ID of the user you are trying to find!')
+    async def _discord(self, interaction: discord.Interaction,
+                       nation_id: discord.app_commands.Range[int, 1, None]):
         """Find a user from their nation ID"""
         discord_id = await self.users_table.select_val('discord_id').where(nation_id=nation_id)
         if discord_id is None:
-            await ctx.respond('No user linked to that nation was found!')
+            await interaction.response.send_message('No user linked to that nation was found!')
             return
-        await ctx.respond(f'<@{discord_id}> has nation ID {nation_id}.',
-                          allowed_mentions=discord.AllowedMentions.none())
+        await interaction.response.send_message(f'<@{discord_id}> has nation ID {nation_id}.',
+                                                allowed_mentions=discord.AllowedMentions.none())
 
-    @commands.message_command(guild_ids=config.guild_ids)
-    async def discords(self, ctx: discord.ApplicationContext, message: discord.Message):
+    async def discords(self, interaction: discord.Interaction, message: discord.Message):
         """Look for the discord accounts of the nation links in the message!"""
         nation_ids = ','.join(self.nation_link_pattern.findall(message.content))
         if not nation_ids:
-            await ctx.respond('No nation links found in this message!')
+            await interaction.response.send_message('No nation links found in this message!')
+            return
         found = await self.users_table.select('discord_id', 'nation_id').where(f'nation_id IN ({nation_ids})')
 
         if found:
-            await ctx.respond(embed=discord.Embed(
+            await interaction.response.send_message(embed=discord.Embed(
                 title='Discord Accounts Found',
                 description='\n'.join(
                     f'{pnwutils.link.nation(rec["nation_id"])} - <@{rec["discord_id"]}>' for rec in found)))
-        else:
-            await ctx.respond('No discord accounts associated with those nations found in our registry!')
+            return
 
-    plot = commands.SlashCommandGroup('plot', 'Plotting commands!', guild_ids=config.guild_ids)
+        await interaction.response.send_message(
+            'No discord accounts associated with those nations found in our registry!')
+
+    plot = discord.app_commands.Group(name='plot', description='Plotting commands!')
 
     @plot.command()
-    async def alliance_tiers(self, ctx: discord.ApplicationContext,
-                             alliances: discord.Option(str, 'Comma separated string of alliance ids',
-                                                       default=config.alliance_id)):
+    @discord.app_commands.describe(
+        alliances='Comma separated string of alliance ids'
+    )
+    async def alliance_tiers(self, interaction: discord.Interaction,
+                             alliances: str = config.alliance_id):
         """Create a plot of the tiers of some alliances"""
         try:
             alliance_ids = map(int, alliances.split(','))
         except ValueError:
-            await ctx.respond('Improper input! Please provide a comma separated list of ids, e.g. `4221,1234`')
+            await interaction.response.send_message(
+                'Improper input! Please provide a comma separated list of ids, e.g. `4221,1234`')
             return
         fig, ax = plt.subplots(figsize=(20, 12))
         data = await alliance_tiers_query.query(self.bot.session, alliance_ids=alliance_ids)
@@ -355,34 +373,43 @@ class UtilCog(discordutils.CogBase):
         buf = io.BytesIO()
         fig.savefig(buf)
         buf.seek(0)
-        await ctx.respond(file=discord.File(buf, 'tiers.png'))
+        await interaction.response.send_message(file=discord.File(buf, 'tiers.png'))
 
-    @commands.command(guild_ids=config.guild_ids)
-    async def time_in(self, ctx: discord.ApplicationContext, turns: discord.Option(int, 'Time in how many turns')):
+    @discord.app_commands.command()
+    @discord.app_commands.describe(
+        turns='Time in how many turns'
+    )
+    async def time_in(self, interaction: discord.Interaction, turns: int):
         """Express the time in n turns"""
         s = pnwutils.time_after_turns(turns)
-        await ctx.respond(f'It would be {s} (`{s}`) in {turns} turns.')
+        await interaction.response.send_message(f'It would be {s} (`{s}`) in {turns} turns.')
 
-    @commands.command(name='_reload', guild_ids=config.guild_ids, default_permission=False)
-    @commands.default_permissions(manage_guild=True)
-    async def reload(self, ctx: discord.ApplicationContext, cog: str) -> None:
+    @discord.app_commands.command(name='_reload')
+    @discord.app_commands.default_permissions(manage_guild=True)
+    async def reload(self, interaction: discord.Interaction, cog: str) -> None:
         """Reload the given cog"""
         try:
-            self.bot.reload_extension(f'cogs.{cog}')
-        except discord.ExtensionNotLoaded:
-            await ctx.respond(f'The cog `{cog}` was not previously loaded!')
+            await self.bot.reload_extension(f'cogs.{cog}')
+        except commands.ExtensionNotLoaded:
+            await interaction.response.send_message(f'The cog `{cog}` was not previously loaded!')
             return
-        await ctx.respond(f'The cog `{cog}` has been reloaded!')
+        await interaction.response.send_message(f'The cog `{cog}` has been reloaded!')
+
+    @commands.command()
+    @commands.has_guild_permissions(administrator=True)
+    async def sync(self, ctx: commands.Context):
+        await self.bot.tree.sync(guild=ctx.guild)
+        await ctx.send('Synced!')
 
     # im not sure if I should impl this
     '''
     formulas = commands.SlashCommandGroup('formulas', 'List of formulas for reference!', guild_ids=config.guild_ids)
 
-    war_formulas = formulas.create_subgroup('application', 'Options for the application system!')
+    war_formulas = formulas.create_subgroup('war', 'Formulas for war!')
     war_formulas.guild_ids = config.guild_ids
 
     @war_formulas.command()
-    async def ground(self, ctx: discord.ApplicationContext):
+    async def ground(self, interaction: discord.Interaction):
         """Information on ground battles."""
         embed = discord.Embed(title='Ground Battle Formulas')
         embed.add_field(name='Army Strength',
@@ -401,12 +428,12 @@ class UtilCog(discordutils.CogBase):
                               "Note: You cannot steal more than 75% of the defender's cash, nor their last 1000000")
         embed.add_field(name='Infrastructure Damage',
                         value=)
-        await ctx.respond(embed=embed)
+        await interaction.response.send_message(embed=embed)
     '''
 
     '''
     @commands.command(name='help', guild_ids=config.guild_ids)
-    async def help_(self, ctx: discord.ApplicationContext,
+    async def help_(self, interaction: discord.Interaction,
                     command: discord.Option(str, 'Cog or Command name', required=False,
                                             autocomplete=help_command.autocomplete) = None):
         """Get help on DBBot's cogs and commands"""
@@ -415,5 +442,5 @@ class UtilCog(discordutils.CogBase):
 
 
 # Setup Utility Cog as an extension
-def setup(bot: dbbot.DBBot) -> None:
-    bot.add_cog(UtilCog(bot))
+async def setup(bot: dbbot.DBBot) -> None:
+    await bot.add_cog(UtilCog(bot))

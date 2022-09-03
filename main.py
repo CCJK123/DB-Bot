@@ -1,26 +1,25 @@
 import asyncio
 import logging
 
+import aiohttp
+import discord.utils
+
 from utils import config, dbbot
 
 cog_logger = logging.getLogger('cogs')
 cog_logger.addHandler(logging.FileHandler('logs.txt'))
 
+
+async def main():
+    async with aiohttp.ClientSession() as session:
+        discord.utils.setup_logging(root=False)
+        bot = dbbot.DBBot(session, config.database_url)
+
+        async with bot.database:
+            async with bot:
+                print('Starting bot...')
+                await bot.start(config.token)
+
+
 if __name__ == '__main__':
-    bot = dbbot.DBBot(config.database_url)
-
-    # Load cogs
-    bot.load_cogs('cogs')
-
-    # bot.help_command.cog = bot.get_cog('UtilCog')
-    # the new bot does not seem to have a help command, the help command has not been ported over to slash yet, I think
-
-    print('running bot...')
-
-    try:
-        bot.run(config.token)
-    finally:
-        # When bot stops
-        print('cleaning up')
-        asyncio.run(bot.cleanup())
-        print('cleanup complete!')
+    asyncio.run(main())

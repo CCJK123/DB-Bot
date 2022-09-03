@@ -8,8 +8,8 @@ from typing import Awaitable, Callable, Mapping, TypeVar
 
 import discord
 
-__all__ = ('Choices', 'LinkButton', 'LinkView', 'MultiLinkView', 'PersistentView',
-           'PersistentButton', 'persistent_button', 'SingleModal')
+__all__ = ('Choices', 'LinkButton', 'LinkView', 'MultiLinkView', 'PersistentView', 'PersistentButton',
+           'persistent_button', 'single_modal', 'disable_all', 'enable_all')
 
 
 # Setup buttons for user to make choices
@@ -26,7 +26,6 @@ class Choice(discord.ui.Button['Choices']):
             return
         self.view.set_result(self.label)
         self.style = discord.ButtonStyle.success
-        self.view.disable_all_items()
         self.view.stop()
         await interaction.response.edit_message(view=self.view)
 
@@ -130,18 +129,45 @@ def persistent_button(**kwargs) -> Callable[[WrappedCallback], WrappedCallback]:
         func.__persistent_class__ = PersistentButton
         func.__persistent_kwargs__ = kwargs
         return func
+
     return deco
 
 
 class SingleModal(discord.ui.Modal):
-    def __init__(self, title: str, label: str, style=discord.InputTextStyle.short):
-        super().__init__(discord.ui.InputText(label=label, style=style), title=title)
+    def __init__(self, title: str):
+        super().__init__(title=title)
         self._fut = asyncio.get_event_loop().create_future()
         self.interaction: discord.Interaction | None = None
 
     def result(self) -> Awaitable[str]:
         return self._fut
 
-    async def callback(self, interaction: discord.Interaction):
-        self._fut.set_result(self.children[0].value)
-        self.interaction = interaction
+    async def on_timeout(self) -> None:
+        self._fut.set_result(asyncio.TimeoutError())
+
+
+@functools.cache
+def single_modal(title: str, label: str, style=discord.TextStyle.short) -> SingleModal:
+    class _Modal(SingleModal):
+        input_box = discord.ui.TextInput(
+            label=label,
+            style=style
+        )
+
+        async def on_submit(self, interaction: discord.Interaction) -> None:
+            self._fut.set_result(self.input_box.value)
+            self.interaction = interaction
+
+    return _Modal(title)
+
+
+def disable_all(view: discord.ui.View):
+    for c in view.children:
+        if isinstance(c, discord.ui.Button):
+            c.disabled = True
+
+
+def enable_all(view: discord.ui.View):
+    for c in view.children:
+        if isinstance(c, discord.ui.Button):
+            c.disabled = False

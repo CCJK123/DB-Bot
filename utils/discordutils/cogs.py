@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import discord
+from discord.ext import commands
 
 if TYPE_CHECKING:
     from .. import dbbot
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 __all__ = ('CogBase', 'LoopedCogBase')
 
 
-class CogBase(discord.Cog):
+class CogBase(commands.Cog):
     def __init__(self, bot: "dbbot.DBBot", prefix: str):
         self.bot = bot
         self.prefix = prefix

@@ -2,8 +2,7 @@ import asyncio
 import datetime
 
 import discord
-from discord import commands
-from discord.ext import commands as cmds, pages
+from discord.ext import commands
 
 from utils import financeutils, discordutils, pnwutils, config, dbbot
 from utils.queries import (bank_transactions_query, bank_info_query, nation_name_query,
@@ -15,6 +14,15 @@ class BankCog(discordutils.CogBase):
         super().__init__(bot, __name__)
         self.users_table = self.bot.database.get_table('users')
         self.loans_table = self.bot.database.get_table('loans')
+
+        self.bot.tree.add_command(discord.app_commands.ContextMenu(
+            name='Check Balance',
+            callback=self.check_bal
+        ))
+        self.bot.tree.add_command(discord.app_commands.ContextMenu(
+            name='Check Resources',
+            callback=self.check_res
+        ))
 
     async def get_transactions(self, entity_id: 'str | int | None' = None,
                                entity_type: 'pnwutils.EntityType | None' = None,
@@ -41,47 +49,51 @@ class BankCog(discordutils.CogBase):
 
         return transactions
 
-    bank = commands.SlashCommandGroup('bank', 'Bank related commands!', guild_ids=config.guild_ids)
+    bank = discord.app_commands.Group(name='bank', description='Bank related commands!')
 
-    @bank.command(guild_ids=config.guild_ids)
-    @discord.option('ephemeral', bool, description='Whether to only allow you to see the message')
-    async def balance(self, ctx: discord.ApplicationContext, ephemeral: bool = True):
+    @bank.command()
+    @discord.app_commands.describe(ephemeral='Whether to only allow you to see the message')
+    async def balance(self, interaction: discord.Interaction, ephemeral: bool = True):
         """Check your bank balance"""
         rec = await self.bot.database.fetch_row(
             'SELECT balance, loaned, due_date FROM users LEFT JOIN loans ON users.discord_id = loans.discord_id '
-            'WHERE users.discord_id = $1', ctx.author.id
+            'WHERE users.discord_id = $1', interaction.user.id
         )
 
         # actual displaying
         if rec is None:
-            await ctx.respond('You have not been registered!')
+            await interaction.response.send_message('You have not been registered!')
             return
 
-        await ctx.respond(embed=pnwutils.Resources(**rec['balance']).create_balance_embed(ctx.author),
-                          allowed_mentions=discord.AllowedMentions.none(),
-                          ephemeral=ephemeral)
+        await interaction.response.send_message(
+            embed=pnwutils.Resources(**rec['balance']).create_balance_embed(interaction.user),
+            allowed_mentions=discord.AllowedMentions.none(),
+            ephemeral=ephemeral
+        )
         if (date := rec['due_date']) is not None:
-            await ctx.respond(
+            await interaction.followup.send(
                 f'You have a loan due {discord.utils.format_dt(date)} ({discord.utils.format_dt(date, "R")})',
-                embed=pnwutils.Resources(**rec['loaned']).create_embed(title='Loaned Resources'), ephemeral=ephemeral)
+                embed=pnwutils.Resources(**rec['loaned']).create_embed(title='Loaned Resources'),
+                ephemeral=ephemeral
+            )
 
-    @bank.command(guild_ids=config.guild_ids)
-    @cmds.max_concurrency(1, cmds.BucketType.user)
-    async def deposit(self, ctx: discord.ApplicationContext):
+    @bank.command()
+    @commands.max_concurrency(1, commands.BucketType.user)
+    async def deposit(self, interaction: discord.Interaction):
         """Deposit resources into your balance"""
         # various data access
-        nation_id = await self.users_table.select_val('nation_id').where(discord_id=ctx.author.id)
+        nation_id = await self.users_table.select_val('nation_id').where(discord_id=interaction.user.id)
         if nation_id is None:
-            await ctx.respond('Your nation id has not been registered!', ephemeral=True)
+            await interaction.response.send_message('Your nation id has not been registered!', ephemeral=True)
             return
 
-        await ctx.respond('Please check your DMs!', ephemeral=True)
-        author = ctx.author
+        await interaction.response.send_message('Please check your DMs!', ephemeral=True)
+        user = interaction.user
 
         # deposit check
         view = DepositView('Deposit Link', pnwutils.link.bank('d', note='Deposit to balance'))
         start_time = datetime.datetime.now(tz=datetime.timezone.utc)
-        await author.send(
+        await user.send(
             'You now have 5 minutes to deposit your resources into the bank. '
             'Once you are done, press the button.', view=view
         )
@@ -89,8 +101,8 @@ class BankCog(discordutils.CogBase):
         try:
             await view.result()
         except asyncio.TimeoutError:
-            await author.send('You have not responded for 5 minutes! '
-                              'Automatically checking for deposits...')
+            await user.send('You have not responded for 5 minutes! '
+                            'Automatically checking for deposits...')
 
         # get transactions since start_time involving deposits by nation
         dep_transactions = list(filter(
@@ -100,83 +112,83 @@ class BankCog(discordutils.CogBase):
                         pnwutils.Resources())
         if deposited:
             new_bal_rec = await self.users_table.update(f'balance = balance + {deposited.to_row()}').where(
-                discord_id=ctx.author.id).returning_val('balance')
+                discord_id=user.id).returning_val('balance')
             await asyncio.gather(
-                author.send('Deposits Recorded! Your balance is now:',
-                            embed=pnwutils.Resources(**new_bal_rec).create_balance_embed(author)),
+                user.send('Deposits Recorded! Your balance is now:',
+                          embed=pnwutils.Resources(**new_bal_rec).create_balance_embed(user)),
                 self.bot.log(embeds=(
-                    discordutils.create_embed(user=author, description=f'{author.mention} deposited some resources'),
+                    discordutils.create_embed(user=user, description=f'{user.mention} deposited some resources'),
                     deposited.create_embed(title='Resources Deposited')
                 )))
             return
-        await author.send('You did not deposit any resources! Aborting!')
+        await user.send('You did not deposit any resources! Aborting!')
 
-    @bank.command(guild_ids=config.guild_ids)
-    @cmds.max_concurrency(1, cmds.BucketType.user)
-    async def withdraw(self, ctx: discord.ApplicationContext):
+    @bank.command()
+    @commands.max_concurrency(1, commands.BucketType.user)
+    async def withdraw(self, interaction: discord.Interaction):
         """Withdraw resources from your balance"""
-        rec = await self.users_table.select_row('nation_id', 'balance').where(discord_id=ctx.author.id)
+        rec = await self.users_table.select_row('nation_id', 'balance').where(discord_id=interaction.user.id)
         if rec is None:
-            await ctx.respond('Your nation id has not been set!', ephemeral=True)
+            await interaction.response.send_message('Your nation id has not been set!', ephemeral=True)
             return
 
         channel_id = await self.bot.database.get_kv('channel_ids').get('withdrawal_channel')
         if channel_id is None:
-            await ctx.respond('Output channel has not been set! Aborting...')
-            return None
+            await interaction.response.send_message('Output channel has not been set! Aborting...')
+            return
 
         resources = pnwutils.Resources(**rec['balance'])
         if not resources:
-            await ctx.respond('You do not have anything to withdraw! Aborting...', ephemeral=True)
+            await interaction.response.send_message('You do not have anything to withdraw! Aborting...', ephemeral=True)
             return
 
-        await ctx.respond('Please check your DMs!', ephemeral=True)
-        author = ctx.author
+        await interaction.response.send_message('Please check your DMs!', ephemeral=True)
+        user = interaction.user
 
-        await author.send('You current balance is:', embed=resources.create_balance_embed(author))
+        await user.send('You current balance is:', embed=resources.create_balance_embed(user))
 
-        res_select_view = financeutils.ResourceSelectView(author.id, resources.keys_nonzero())
-        await author.send('What resources do you wish to withdraw?', view=res_select_view)
+        res_select_view = financeutils.ResourceSelectView(user.id, resources.keys_nonzero())
+        await user.send('What resources do you wish to withdraw?', view=res_select_view)
 
-        msg_chk = discordutils.get_dm_msg_chk(author.id)
+        msg_chk = discordutils.get_dm_msg_chk(user.id)
         req_resources = pnwutils.Resources()
         try:
             res_names = await res_select_view.result()
         except asyncio.TimeoutError:
-            await author.send('You took too long to reply! Aborting.')
+            await user.send('You took too long to reply! Aborting.')
             return
 
         for res in res_names:
-            await author.send(f'How much {res} do you wish to withdraw?')
+            await user.send(f'How much {res} do you wish to withdraw?')
             while True:
                 try:
                     amt = (await self.bot.wait_for('message', check=msg_chk, timeout=config.timeout)
                            ).content
                 except asyncio.TimeoutError:
-                    await author.send('You took too long to reply! Aborting.')
+                    await user.send('You took too long to reply! Aborting.')
                     return
 
                 try:
                     amt = int(amt)
                 except ValueError:
-                    await author.send("That isn't a number! Please try again.")
+                    await user.send("That isn't a number! Please try again.")
                     continue
                 if amt <= 0:
-                    await author.send('You must withdraw at least 0 of this resource! Please try again.')
+                    await user.send('You must withdraw at least 0 of this resource! Please try again.')
                     continue
                 if amt > resources[res]:
-                    await author.send(f'You cannot withdraw that much {res}! You only have {resources[res]:,} {res}!')
+                    await user.send(f'You cannot withdraw that much {res}! You only have {resources[res]:,} {res}!')
                     continue
 
                 break
             req_resources[res] = amt
 
-        await author.send('What is the reason for this withdrawal?')
+        await user.send('What is the reason for this withdrawal?')
         try:
             reason = (await self.bot.wait_for('message', check=msg_chk, timeout=config.timeout)
                       ).content
         except asyncio.TimeoutError:
-            await author.send('You took too long to reply! Aborting.')
+            await user.send('You took too long to reply! Aborting.')
             return
 
         data = await nation_name_query.query(self.bot.session, nation_id=rec['nation_id'])
@@ -184,209 +196,211 @@ class BankCog(discordutils.CogBase):
 
         custom_id = await self.bot.get_custom_id()
         view = financeutils.WithdrawalView(
-            author.id, pnwutils.Withdrawal(req_resources, rec['nation_id'], note='Withdrawal from balance'),
+            user.id, pnwutils.Withdrawal(req_resources, rec['nation_id'], note='Withdrawal from balance'),
             custom_id=custom_id)
 
         msg = await self.bot.get_channel(channel_id).send(
-            f'Withdrawal Request from {author.mention}',
+            f'Withdrawal Request from {user.mention}',
             embed=financeutils.withdrawal_embed(name, rec['nation_id'], reason, req_resources),
             allowed_mentions=discord.AllowedMentions.none(),
             view=view)
         await self.bot.add_view(view, message_id=msg.id)
 
         new_bal_rec = await self.users_table.update(f'balance = balance - {req_resources.to_row()}').where(
-            discord_id=ctx.author.id).returning_val('balance')
+            discord_id=user.id).returning_val('balance')
         await asyncio.gather(
-            author.send('Your withdrawal request has been recorded. '
-                        'It will be sent to your nation soon.\n\nYour balance is now:',
-                        embed=pnwutils.Resources(**new_bal_rec).create_balance_embed(author)),
+            user.send('Your withdrawal request has been recorded. '
+                      'It will be sent to your nation soon.\n\nYour balance is now:',
+                      embed=pnwutils.Resources(**new_bal_rec).create_balance_embed(user)),
             self.bot.log(embeds=(
-                discordutils.create_embed(user=author, description=f'{author.mention} asked for a withdrawal'),
+                discordutils.create_embed(user=user, description=f'{user.mention} asked for a withdrawal'),
                 req_resources.create_embed(title='Requested Resources')
             ))
         )
 
     @deposit.error
     @withdraw.error
-    async def on_error(self, ctx: discord.ApplicationContext,
-                       error: discord.ApplicationCommandError) -> None:
-        if isinstance(error.__cause__, cmds.MaxConcurrencyReached):
-            await ctx.respond('You are already trying to withdraw/deposit!', ephemeral=True)
+    async def on_error(self, interaction: discord.Interaction,
+                       error: discord.app_commands.AppCommandError) -> None:
+        if isinstance(error.__cause__, commands.MaxConcurrencyReached):
+            await interaction.response.send_message('You are already trying to withdraw/deposit!', ephemeral=True)
             return
 
-        await self.bot.default_on_error(ctx, error)
+        await self.bot.default_on_error(interaction, error)
 
-    @bank.command(guild_ids=config.guild_ids)
-    async def transfer(self, ctx: discord.ApplicationContext, member: discord.Member):
+    @bank.command()
+    async def transfer(self, interaction: discord.Interaction, member: discord.Member):
         """Transfer some of your balance to someone else"""
-        if member == ctx.author:
-            await ctx.respond('You cannot transfer resources to yourself!', ephemeral=True)
+        if member == interaction.user:
+            await interaction.response.send_message('You cannot transfer resources to yourself!', ephemeral=True)
             return
-        sender_bal_rec = await self.users_table.select_val('balance').where(discord_id=ctx.author.id)
+        sender_bal_rec = await self.users_table.select_val('balance').where(discord_id=interaction.user.id)
         if sender_bal_rec is None:
-            await ctx.respond('Your nation id has not been set! Aborting...', ephemeral=True)
+            await interaction.response.send_message('Your nation id has not been set! Aborting...', ephemeral=True)
             return
         if not await self.users_table.exists(discord_id=member.id):
-            await ctx.respond("The recipient's nation id has not been set! Aborting...", ephemeral=True)
+            await interaction.response.send_message("The recipient's nation id has not been set! Aborting...",
+                                                    ephemeral=True)
             return
 
         sender_bal = pnwutils.Resources(**sender_bal_rec)
         if not sender_bal:
-            await ctx.respond('You do not have anything to transfer! Aborting...', ephemeral=True)
+            await interaction.response.send_message('You do not have anything to transfer! Aborting...', ephemeral=True)
             return
 
-        await ctx.respond('Please check your DMs!', ephemeral=True)
-        author = ctx.author
+        await interaction.response.send_message('Please check your DMs!', ephemeral=True)
+        user = interaction.user
 
-        res_select_view = financeutils.ResourceSelectView(author.id, sender_bal.keys_nonzero())
-        await author.send('What resources do you wish to transfer?', view=res_select_view)
+        res_select_view = financeutils.ResourceSelectView(user.id, sender_bal.keys_nonzero())
+        await user.send('What resources do you wish to transfer?', view=res_select_view)
 
-        msg_chk = discordutils.get_dm_msg_chk(author.id)
+        msg_chk = discordutils.get_dm_msg_chk(user.id)
         t_resources = pnwutils.Resources()
         try:
             res_names = await res_select_view.result()
         except asyncio.TimeoutError:
-            await author.send('You took too long to reply! Aborting.')
+            await user.send('You took too long to reply! Aborting.')
             return
 
         for res in res_names:
-            await author.send(f'How much {res} do you wish to transfer?')
+            await user.send(f'How much {res} do you wish to transfer?')
             while True:
                 try:
                     amt = (await self.bot.wait_for('message', check=msg_chk, timeout=config.timeout)
                            ).content
                 except asyncio.TimeoutError:
-                    await author.send('You took too long to reply! Aborting.')
+                    await user.send('You took too long to reply! Aborting.')
                     return
 
                 try:
                     amt = int(amt)
                 except ValueError:
-                    await author.send("That isn't a number! Please try again.")
+                    await user.send("That isn't a number! Please try again.")
                     continue
                 if amt < 0:
-                    await author.send('You must transfer at least 0 of this resource! Please try again.')
+                    await user.send('You must transfer at least 0 of this resource! Please try again.')
                     continue
                 if amt > sender_bal[res]:
-                    await author.send(f'You cannot transfer that much {res}! You only have {sender_bal[res]:,} {res}!')
+                    await user.send(f'You cannot transfer that much {res}! You only have {sender_bal[res]:,} {res}!')
                     continue
 
                 break
             t_resources[res] = amt
         if not t_resources:
-            await author.send('You cannot transfer nothing! Aborting...')
+            await user.send('You cannot transfer nothing! Aborting...')
             return
         final_sender_bal = sender_bal - t_resources
-        await self.users_table.update(f'balance = {final_sender_bal.to_row()}').where(discord_id=author.id)
+        await self.users_table.update(f'balance = {final_sender_bal.to_row()}').where(discord_id=user.id)
         final_receiver_bal_rec = await self.users_table.update(
             f'balance = balance + {t_resources.to_row()}').where(discord_id=member.id).returning_val('balance')
         t_embed = t_resources.create_embed(title='Transferred Resources')
         await asyncio.gather(
-            author.send(f'You have sent {member.mention} the following resources:', embed=t_embed),
-            member.send(f'You have   been transferred the following resources from {author.mention}:', embed=t_embed))
+            user.send(f'You have sent {member.mention} the following resources:', embed=t_embed),
+            member.send(f'You have   been transferred the following resources from {user.mention}:', embed=t_embed))
         await asyncio.gather(
-            author.send('Your balance is now:', embed=final_sender_bal.create_balance_embed(author)),
+            user.send('Your balance is now:', embed=final_sender_bal.create_balance_embed(user)),
             member.send(f'Your balance is now:',
                         embed=pnwutils.Resources(**final_receiver_bal_rec).create_balance_embed(member)),
             self.bot.log(embeds=(
                 discordutils.create_embed(
-                    user=author, description=f'{author.mention} transferred resources to {member.mention}'),
+                    user=user, description=f'{user.mention} transferred resources to {member.mention}'),
                 t_embed
             )))
 
-    loan = bank.create_subgroup('loan', 'Commands related to loans')
+    loan = discord.app_commands.Group(name='loan', description='Commands related to loans', parent=bank)
     loan.guild_ids = config.guild_ids
 
-    @loan.command(name='return', guild_ids=config.guild_ids)
-    async def _return(self, ctx: discord.ApplicationContext):
+    @loan.command(name='return')
+    async def _return(self, interaction: discord.Interaction):
         """Return your loan using resources from your balance, if any"""
         rec = await self.bot.database.fetch_row(
             'SELECT balance, loaned FROM users INNER JOIN loans ON users.discord_id = loans.discord_id '
-            'WHERE users.discord_id = $1', ctx.author.id)
+            'WHERE users.discord_id = $1', interaction.user.id)
         if rec is None:
-            await ctx.respond("You don't have an active loan!", ephemeral=True)
+            await interaction.response.send_message("You don't have an active loan!", ephemeral=True)
             return
         res = pnwutils.Resources(**rec['balance'])
         loaned = pnwutils.Resources(**rec['loaned'])
         res -= loaned
         if res.all_positive():
             await asyncio.gather(
-                self.users_table.update(f'balance = {res.to_row()}').where(discord_id=ctx.author.id),
-                self.loans_table.delete().where(discord_id=ctx.author.id),
-                ctx.respond('Your loan has been successfully repaid!\n\nYour balance is now:',
-                            embed=res.create_balance_embed(ctx.author), ephemeral=True),
+                self.users_table.update(f'balance = {res.to_row()}').where(discord_id=interaction.user.id),
+                self.loans_table.delete().where(discord_id=interaction.user.id),
+                interaction.response.send_message('Your loan has been successfully repaid!\n\nYour balance is now:',
+                                                  embed=res.create_balance_embed(interaction.user), ephemeral=True),
                 self.bot.log(embeds=(
-                    discordutils.create_embed(user=ctx.author, description=f'{ctx.author.mention} repaid their loan'),
+                    discordutils.create_embed(user=interaction.user,
+                                              description=f'{interaction.user.mention} repaid their loan'),
                     loaned.create_embed(title='Loan Value')
                 )))
             return
-        await ctx.respond('You do not have enough resources to repay your loan.', ephemeral=True,
-                          embed=loaned.create_embed(title=f"Loaned Resources"))
+        await interaction.response.send_message('You do not have enough resources to repay your loan.', ephemeral=True,
+                                                embed=loaned.create_embed(title=f"Loaned Resources"))
 
-    @loan.command(guild_ids=config.guild_ids)
-    async def status(self, ctx: discord.ApplicationContext):
+    @loan.command()
+    async def status(self, interaction: discord.Interaction):
         """Check the current status of your loan, if any"""
 
-        loan = await self.loans_table.select_row('loaned', 'due_date').where(discord_id=ctx.author.id)
+        loan = await self.loans_table.select_row('loaned', 'due_date').where(discord_id=interaction.user.id)
         if loan is None:
-            await ctx.respond("You don't have an active loan!", ephemeral=True)
+            await interaction.response.send_message("You don't have an active loan!", ephemeral=True)
             return
-        await ctx.respond(embed=financeutils.LoanData(**loan).to_embed(), ephemeral=True)
+        await interaction.response.send_message(embed=financeutils.LoanData(**loan).to_embed(), ephemeral=True)
 
-    @commands.user_command(name='check balance', guild_ids=config.guild_ids)
-    @commands.default_permissions()
-    async def check_bal(self, ctx: discord.ApplicationContext, member: discord.Member):
+    @discord.app_commands.default_permissions()
+    async def check_bal(self, interaction: discord.Interaction, member: discord.Member):
         """Check the bank balance of this member"""
         bal_rec = await self.users_table.select_val('balance').where(discord_id=member.id)
         if bal_rec is None:
-            await ctx.respond('This user is not registered!')
+            await interaction.response.send_message('This user is not registered!')
             return
-        await ctx.respond(
+        await interaction.response.send_message(
             embed=pnwutils.Resources(**bal_rec).create_balance_embed(member),
             ephemeral=True
         )
 
-    @commands.user_command(name='check resources', guild_ids=config.guild_ids)
-    @commands.default_permissions()
-    async def check_res(self, ctx: discord.ApplicationContext, member: discord.Member):
+    @discord.app_commands.default_permissions()
+    async def check_res(self, interaction: discord.Interaction, member: discord.Member):
         """Check the resources this member has"""
         nation_id = await self.users_table.select_val('nation_id').where(discord_id=member.id)
         if nation_id is None:
-            await ctx.respond('This member has not registered their nation!', ephemeral=True)
+            await interaction.response.send_message('This member has not registered their nation!', ephemeral=True)
             return
 
         data = await nation_resources_query.query(self.bot.session, nation_id=nation_id)
         data = data['data'][0]
         if data['money'] is None:
-            await ctx.respond('That member is not part of the alliance!', ephemeral=True)
+            await interaction.response.send_message('That member is not part of the alliance!', ephemeral=True)
             return
         name = data['nation_name']
         del data['nation_name']
-        await ctx.respond(embed=pnwutils.Resources(**data).create_embed(title=f"{name}'s Resources"),
-                          ephemeral=True)
+        await interaction.response.send_message(
+            embed=pnwutils.Resources(**data).create_embed(title=f"{name}'s Resources"),
+            ephemeral=True)
 
-    _bank = commands.SlashCommandGroup('_bank', "Gov Bank Commands", guild_ids=config.guild_ids,
-                                       default_member_permissions=discord.Permissions())
+    _bank = discord.app_commands.Group(name='_bank', description="Gov Bank Commands",
+                                       default_permissions=None)
 
-    check = _bank.create_subgroup('check', "Commands for checking on members")
-    check.guild_ids = config.guild_ids
+    check = discord.app_commands.Group(name='check', description="Commands for checking on members", parent=_bank)
 
-    @check.command(name='balance', guild_ids=config.guild_ids)
-    @discord.option('ephemeral', bool, description='Whether to only allow you to see the message')
-    async def check_balance(self, ctx: discord.ApplicationContext, nation_id: int, ephemeral: bool = True):
+    @check.command(name='balance')
+    @discord.app_commands.describe(nation_id='ID of nation to check',
+                                   ephemeral='Whether to only allow you to see the message')
+    async def check_balance(self, interaction: discord.Interaction, nation_id: int, ephemeral: bool = True):
         """Check the bank balance of this nation"""
         bal_rec = await self.users_table.select_val('balance').where(nation_id=nation_id)
         if bal_rec is None:
-            await ctx.respond('This user is not registered!')
+            await interaction.response.send_message(f'No user with nation ID {nation_id} is registered!',
+                                                    ephemeral=ephemeral)
             return
-        await ctx.respond(
+        await interaction.response.send_message(
             embed=pnwutils.Resources(**bal_rec).create_balance_embed(None),
             ephemeral=ephemeral
         )
 
-    @_bank.command(guild_ids=config.guild_ids)
-    @discord.option('ephemeral', bool, description='Whether to only allow you to see the message')
-    async def loan_list(self, ctx: discord.ApplicationContext, ephemeral: bool = True):
+    @_bank.command()
+    @discord.app_commands.describe(ephemeral='Whether to only allow you to see the message')
+    async def loan_list(self, interaction: discord.Interaction, ephemeral: bool = True):
         """List all the loans that are currently active"""
         paginator_pages = []
         async with self.bot.database.acquire() as conn:
@@ -396,36 +410,46 @@ class BankCog(discordutils.CogBase):
                     embeds = []
                     for rec in chunk:
                         due_date = discord.utils.format_dt(rec['due_date'])
-                        m = ctx.guild.get_member(rec['discord_id'])
-                        embeds.append(pnwutils.Resources(**rec['loaned']).create_embed(
-                            title=f"{m.display_name}'s Loan due on {due_date}"))
+                        m = interaction.guild.get_member(rec['discord_id'])
+                        if m is None:
+                            embeds.append(pnwutils.Resources(**rec['loaned']).create_embed(
+                                title=f"{rec['discord_id']}'s Loan due on {due_date}"))
+                        else:
+                            embeds.append(pnwutils.Resources(**rec['loaned']).create_embed(
+                                title=f"{m.display_name}'s Loan due on {due_date}"))
                     paginator_pages.append(embeds)
         if paginator_pages:
-            paginator = pages.Paginator(paginator_pages, timeout=config.timeout)
-            await paginator.respond(ctx.interaction, ephemeral=ephemeral)
+            paginator = discordutils.Pager(paginator_pages)
+            await paginator.respond(interaction, ephemeral=ephemeral)
             return
-        await ctx.respond('There are no active loans!', ephemeral=ephemeral)
+        await interaction.response.send_message('There are no active loans!', ephemeral=ephemeral)
 
-    @_bank.command(guild_ids=config.guild_ids)
-    @discord.option('adjusted', bool, description='Whether to adjust for balances held by members')
-    @discord.option('total', bool, description='Whether to include offshore bank contents')
-    @discord.option('ephemeral', bool, description='Whether to only allow you to see the message')
-    async def contents(self, ctx: discord.ApplicationContext, adjusted: bool = False, total: bool = False,
+    @_bank.command()
+    @discord.app_commands.describe(
+        adjusted='Whether to adjust for balances held by members',
+        total='Whether to include offshore bank contents',
+        ephemeral='Whether to only allow you to see the message'
+    )
+    async def contents(self, interaction: discord.Interaction, adjusted: bool = False, total: bool = False,
                        ephemeral: bool = True):
         """Check the current contents of the bank"""
         data = await bank_info_query.query(self.bot.session, alliance_id=config.alliance_id)
         resources = pnwutils.Resources(**data['data'][0])
         if adjusted:
-            await ctx.defer(ephemeral=ephemeral)
+            await interaction.response.defer(ephemeral=ephemeral)
             resources -= await self.get_total_balances()
         if total:
             off_contents = await bank_info_query.query(self.bot.session, api_key=config.offshore_api_key,
                                                        alliance_id=await self.bot.get_offshore_id())
             resources += pnwutils.Resources(**off_contents['data'][0])
-        await ctx.respond(embed=resources.create_embed(title=f'{config.alliance_name} Bank'), ephemeral=ephemeral)
+        await discordutils.interaction_send(
+            interaction,
+            embed=resources.create_embed(title=f'{config.alliance_name} Bank'),
+            ephemeral=ephemeral
+        )
 
-    @_bank.command(guild_ids=config.guild_ids)
-    async def safekeep(self, ctx: discord.ApplicationContext):
+    @_bank.command()
+    async def safekeep(self, interaction: discord.Interaction):
         """Send the entire bank to the offshore for safekeeping"""
 
         data = await bank_info_query.query(self.bot.session, alliance_id=config.alliance_id)
@@ -434,9 +458,11 @@ class BankCog(discordutils.CogBase):
         withdrawal = pnwutils.Withdrawal(resources, await self.bot.get_offshore_id(),
                                          pnwutils.EntityType.ALLIANCE, 'Safekeeping')
         if await withdrawal.withdraw(self.bot.session) is pnwutils.WithdrawalResult.SUCCESS:
-            await ctx.respond('The bank contents have successfully been sent to the offshore!')
+            await interaction.response.send_message('The bank contents have successfully been sent to the offshore!')
             return
-        await ctx.respond('An unexpected error occurred: Bank does not have enough resources to send its contents.')
+        await interaction.response.send_message(
+            'An unexpected error occurred: Bank does not have enough resources to send its contents.'
+        )
 
     async def get_total_balances(self) -> pnwutils.Resources:
         async with self.bot.database.acquire() as conn:
@@ -446,19 +472,22 @@ class BankCog(discordutils.CogBase):
                     total += pnwutils.Resources(**bal['balance'])
                 return total
 
-    @_bank.command(guild_ids=config.guild_ids)
-    @discord.option('ephemeral', bool, description='Whether to only allow you to see the message')
-    async def total_balances(self, ctx: discord.ApplicationContext, ephemeral: bool = True):
+    @_bank.command()
+    @discord.app_commands.describe(ephemeral='Whether to only allow you to see the message')
+    async def total_balances(self, interaction: discord.Interaction, ephemeral: bool = True):
         """Find the total value of all balances"""
-        await ctx.defer(ephemeral=ephemeral)
+        await interaction.response.defer(ephemeral=ephemeral)
         total = await self.get_total_balances()
-        await ctx.respond(embed=total.create_embed(title=f'Total Value of all Balances'), ephemeral=ephemeral)
+        await interaction.followup.send(
+            embed=total.create_embed(title=f'Total Value of all Balances'),
+            ephemeral=ephemeral
+        )
 
-    @_bank.command(guild_ids=config.guild_ids)
-    @discord.option('ephemeral', bool, description='Whether to only allow you to see the message')
-    async def revenue(self, ctx: discord.ApplicationContext, ephemeral: bool = True):
+    @_bank.command()
+    @discord.app_commands.describe(ephemeral='Whether to only allow you to see the message')
+    async def revenue(self, interaction: discord.Interaction, ephemeral: bool = True):
         """Find the resources generated by taxes last turn"""
-        await ctx.defer(ephemeral=ephemeral)
+        await interaction.response.defer(ephemeral=ephemeral)
         data = await bank_revenue_query.query(self.bot.session, alliance_id=config.alliance_id)
         tax_records = data['data'][0]['taxrecs']
         first_date = datetime.datetime.fromisoformat(tax_records[0]['date']).replace(minute=0, second=0, microsecond=0)
@@ -467,41 +496,44 @@ class BankCog(discordutils.CogBase):
             if datetime.datetime.fromisoformat(tax_rec['date']) < first_date:
                 break
             total += pnwutils.Resources.from_dict(tax_rec)
-        await ctx.respond(embed=total.create_embed(title='Tax Revenue from Last Turn'), ephemeral=ephemeral)
+        await interaction.followup.send(
+            embed=total.create_embed(title='Tax Revenue from Last Turn'),
+            ephemeral=ephemeral
+        )
 
-    @_bank.command(guild_ids=config.guild_ids)
-    async def edit(self, ctx: discord.ApplicationContext, member: discord.Member):
+    @_bank.command()
+    async def edit(self, interaction: discord.Interaction, member: discord.Member):
         """Manually edit the resource values of someone's balance"""
         resources_rec = await self.users_table.select_val('balance').where(discord_id=member.id)
         if resources_rec is None:
-            await ctx.respond('This user has not been registered!', ephemeral=True)
+            await interaction.response.send_message('This user has not been registered!', ephemeral=True)
             return
         resources = pnwutils.Resources(**resources_rec)
 
-        await ctx.respond('Please check your DMs!', ephemeral=True)
+        await interaction.response.send_message('Please check your DMs!', ephemeral=True)
 
-        author = ctx.author
-        res_select_view = financeutils.ResourceSelectView(author.id)
+        user = interaction.user
+        res_select_view = financeutils.ResourceSelectView(user.id)
         kind_view = discordutils.Choices('Set', 'Adjust')
-        await author.send('Do you wish to set or adjust the balance?', view=kind_view)
+        await user.send('Do you wish to set or adjust the balance?', view=kind_view)
         adjust = await kind_view.result() == 'Adjust'
         text = 'adjust' if adjust else 'set'
-        msg_chk = discordutils.get_dm_msg_chk(author.id)
-        await author.send(f'What resources would you like to {text}?', view=res_select_view)
+        msg_chk = discordutils.get_dm_msg_chk(user.id)
+        await user.send(f'What resources would you like to {text}?', view=res_select_view)
         last = 'by' if adjust else 'to'
         for res in await res_select_view.result():
-            await author.send(f'What would you like to {text} {res} {last}?')
+            await user.send(f'What would you like to {text} {res} {last}?')
             while True:
                 try:
                     amt = (await self.bot.wait_for('message', check=msg_chk, timeout=config.timeout)
                            ).content
                 except asyncio.TimeoutError:
-                    await author.send('You took too long to reply! Aborting.')
+                    await user.send('You took too long to reply! Aborting.')
                     return
                 try:
                     amt = int(amt)
                 except ValueError:
-                    await author.send("That isn't a number! Please try again.")
+                    await user.send("That isn't a number! Please try again.")
                     continue
                 break
             if adjust:
@@ -511,12 +543,12 @@ class BankCog(discordutils.CogBase):
 
         await asyncio.gather(
             self.users_table.update(f'balance = {resources.to_row()}').where(discord_id=member.id),
-            author.send(f'The balance of {member.mention} has been modified!',
-                        embed=resources.create_balance_embed(member),
-                        allowed_mentions=discord.AllowedMentions.none()),
+            user.send(f'The balance of {member.mention} has been modified!',
+                      embed=resources.create_balance_embed(member),
+                      allowed_mentions=discord.AllowedMentions.none()),
             self.bot.log(embeds=(
                 discordutils.create_embed(
-                    user=member, description=f'{member.mention} had their balance modified by {author.mention}'),
+                    user=member, description=f'{member.mention} had their balance modified by {user.mention}'),
                 resources.create_embed(title='Balance after modification')
             )))
 
@@ -527,5 +559,5 @@ class DepositView(discordutils.Choices):
         self.add_item(discordutils.LinkButton(label, url))
 
 
-def setup(bot: dbbot.DBBot):
-    bot.add_cog(BankCog(bot))
+async def setup(bot: dbbot.DBBot):
+    await bot.add_cog(BankCog(bot))

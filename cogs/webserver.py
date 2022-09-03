@@ -34,5 +34,5 @@ class Webserver(discordutils.CogBase):
         await self.runner.cleanup()
 
 
-def setup(bot: dbbot.DBBot) -> None:
-    bot.add_cog(Webserver(bot))
+async def setup(bot: dbbot.DBBot) -> None:
+    await bot.add_cog(Webserver(bot))
