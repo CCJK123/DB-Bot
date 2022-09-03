@@ -252,7 +252,7 @@ class UtilCog(discordutils.CogBase):
         await interaction.response.send_message('Not Implemented!', ephemeral=True)
 
     async def nation_info_embed(self, nation_id: int,
-                                member: 'discord.Member | discord.User | None' = None) -> 'discord.Embed | None':
+                                member: 'discord.Member | None' = None) -> 'discord.Embed | None':
         data = await nation_info_query.query(self.bot.session, nation_id=nation_id)
         if not data['data']:
             return None
@@ -276,7 +276,7 @@ class UtilCog(discordutils.CogBase):
             embed.add_field(name='Current Wars', value=s)
         return embed
 
-    async def nation(self, interaction: discord.Interaction, member: discord.Member | discord.User):
+    async def nation(self, interaction: discord.Interaction, member: discord.Member):
         """Get the nation of this member"""
         nation_id = await self.users_table.select_val('nation_id').where(discord_id=member.id)
         if nation_id is None:
