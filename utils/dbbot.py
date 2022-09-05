@@ -155,7 +155,8 @@ class DBBot(commands.Bot):
     @staticmethod
     async def default_on_error(interaction: discord.Interaction, exception: discord.app_commands.AppCommandError):
         try:
-            await interaction.response.send_message(
+            await discordutils.interaction_send(
+                interaction,
                 f'Sorry, an exception occurred in the command `{interaction.command}`.')
 
             s = ''
