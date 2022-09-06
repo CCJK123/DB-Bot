@@ -509,16 +509,24 @@ class BankCog(discordutils.CogBase):
             await interaction.response.send_message('This user has not been registered!', ephemeral=True)
             return
         resources = pnwutils.Resources(**resources_rec)
+        before = resources.copy()
 
         await interaction.response.send_message('Please check your DMs!', ephemeral=True)
 
         user = interaction.user
-        res_select_view = financeutils.ResourceSelectView(user.id)
+        await user.send('Why is this balance being edited?')
+        try:
+            msg = await self.bot.wait_for('message', check=discordutils.get_dm_msg_chk(user.id), timeout=config.timeout)
+        except asyncio.TimeoutError:
+            await user.send('You took too long to respond! Aborting...')
+            return
+
         kind_view = discordutils.Choices('Set', 'Adjust')
         await user.send('Do you wish to set or adjust the balance?', view=kind_view)
         adjust = await kind_view.result() == 'Adjust'
         text = 'adjust' if adjust else 'set'
         msg_chk = discordutils.get_dm_msg_chk(user.id)
+        res_select_view = financeutils.ResourceSelectView(user.id)
         await user.send(f'What resources would you like to {text}?', view=res_select_view)
         last = 'by' if adjust else 'to'
         for res in await res_select_view.result():
@@ -548,7 +556,10 @@ class BankCog(discordutils.CogBase):
                       allowed_mentions=discord.AllowedMentions.none()),
             self.bot.log(embeds=(
                 discordutils.create_embed(
-                    user=member, description=f'{member.mention} had their balance modified by {user.mention}'),
+                    user=member,
+                    description=f'{member.mention} had their balance modified by {user.mention} '
+                                f'for the reason of `{msg.content}`'),
+                before.create_embed(title='Balance before modification'),
                 resources.create_embed(title='Balance after modification')
             )))
 
