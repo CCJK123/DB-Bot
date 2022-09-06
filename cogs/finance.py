@@ -108,6 +108,9 @@ class FinanceCog(discordutils.CogBase):
                 req_data.reason = f'City {data["num_cities"] + 1}'
                 req_data.note = f'{req_data.reason} Grant'
                 req_data.additional_info = {'Projects': project_string, 'Domestic Policy': data['domestic_policy']}
+                req_data.presets = {
+                    'Half Amount': req_data.resources // 2
+                }
                 await self.on_request_fixed(req_data)
                 return
 
@@ -118,6 +121,7 @@ class FinanceCog(discordutils.CogBase):
                     'Propaganda Bureau': 'propaganda_bureau',
                     'Urban Planning': 'urban_planning',
                     'Advanced Urban Planning': 'advanced_urban_planning',
+                    # 'Metropolitan Planning': 'metropolitan_planning',
                     'Other': 'other'
                 }
                 data['other'] = None
@@ -125,6 +129,12 @@ class FinanceCog(discordutils.CogBase):
                 for label, field in project_field_names.items():
                     if data[field]:
                         disabled.add(label)
+                if data['num_cities'] < 11:
+                    disabled.add('Urban Planning')
+                if data['num_cities'] < 16 or not data['urban_planning']:
+                    disabled.add('Advanced Urban Planning')
+                if data['num_cities'] < 21 or not data['advanced_urban_planning']:
+                    disabled.add('Metropolitan Planning')
                 project_choice = discordutils.Choices(*project_field_names.keys(), disabled=disabled)
                 await user.send('Which project do you want?', view=project_choice)
 
@@ -138,37 +148,7 @@ class FinanceCog(discordutils.CogBase):
                 if project == 'Other':
                     await user.send('Other projects are not eligible for grants. Kindly request for a loan.')
                     return
-                elif project == 'Urban Planning' and data['num_cities'] < 11:
-                    await user.send(
-                        'The Urban Planning project requires 11 cities to build, however you only have '
-                        f'{data["num_cities"]} cities. Please try again next time.'
-                    )
-                    return
-                elif project == 'Advanced Urban Planning':
-                    if not data['urban_planning']:
-                        await user.send(
-                            'You have not built the Urban Planning project, which is needed to build the Advanced '
-                            'Urban Planning project. Please try again next time.'
-                        )
-                        return
-                    elif data['num_cities'] < 16:
-                        await user.send(
-                            'The Advanced Urban Planning project requires 16 cities to build, however you only have '
-                            f'{data["num_cities"]} cities. Please try again next time.'
-                        )
-                        return
-                presets = {
-                    'center_for_civil_engineering': {},
-                    'central_intelligence_agency': {},
-                    'propaganda_bureau': {},
-                    'urban_planning': {
-                        'All Except Half Food': pnwutils.Resources(
-                            coal=10000, oil=10000, aluminum=20000, munitions=10000, gasoline=10000, food=500_000)
-                    },
-                    'advanced_urban_planning': {'All Except Half Food': pnwutils.Resources(
-                        uranium=10000, aluminum=40000, steel=20000, munitions=20000, food=1_250_000)
-                    }
-                }
+
                 project_field_name = project_field_names[project]
                 req_data.resources = pnwutils.constants.project_costs[project_field_name]
                 if data['government_support_agency']:
@@ -177,6 +157,21 @@ class FinanceCog(discordutils.CogBase):
                 else:
                     req_data.resources //= 20
                     req_data.resources *= 19
+                half = req_data.resources // 2
+                presets = {
+                    'center_for_civil_engineering': {},
+                    'central_intelligence_agency': {},
+                    'propaganda_bureau': {},
+                    'urban_planning': {
+                        'Half Everything': half
+                    },
+                    'advanced_urban_planning': {
+                        'Half Everything': half
+                    },
+                    'metropolitan_planning': {
+                        'Half Everything': half
+                    }
+                }
 
                 req_data.presets = presets[project_field_name]
                 req_data.reason = project

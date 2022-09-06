@@ -67,6 +67,10 @@ class Resources:
     def to_row(self) -> str:
         return f'ROW({",".join(map(str, self.values()))})'
 
+    def update(self, **kwargs):
+        for k, v in kwargs.items():
+            self[k] = v
+
     def create_embed(self, **kwargs: object) -> discord.Embed:
         embed = discordutils.create_embed(**kwargs)
         for name, amt in self:
