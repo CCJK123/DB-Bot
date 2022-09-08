@@ -82,7 +82,7 @@ class DBBot(commands.Bot):
 
         discordutils.PersistentView.bot = self
 
-        self.prepared = False
+        self.tree.on_error = self.on_app_command_error
 
     async def setup_hook(self) -> None:
         await self.load_cogs('cogs')
@@ -137,16 +137,15 @@ class DBBot(commands.Bot):
             self.on_ready_func()
         print('Ready!')
 
-    async def on_application_command_error(self, interaction: discord.Interaction,
-                                           exception: discord.app_commands.AppCommandError):
+    async def on_app_command_error(self, interaction: discord.Interaction,
+                                   exception: discord.app_commands.AppCommandError):
         command = interaction.command
         if command and command.has_error_handler():
+            print(command, type(command))
             return
 
         ignored = (
-            cmds.CommandNotFound,
-            cmds.MissingRole,
-            cmds.MissingRequiredArgument
+
         )
 
         if not isinstance(exception, ignored):
