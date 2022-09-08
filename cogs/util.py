@@ -6,6 +6,7 @@ import itertools
 import operator
 import re
 
+import asyncpg
 import discord
 import matplotlib.pyplot as plt
 import numpy as np
@@ -129,7 +130,11 @@ class UtilCog(discordutils.CogBase):
                             count += 1
                             tasks.append(asyncio.create_task(
                                 self.users_table.insert(discord_id=member.id, nation_id=nation_id)))
-        await asyncio.gather(*tasks)
+        for t in asyncio.as_completed(tasks):
+            try:
+                await t
+            except asyncpg.UniqueViolationError as e:
+                await interaction.followup.send(f'An error occurred: {e}')
         await interaction.followup.send(f'{count} members have been added to the database.')
 
     @_register.command(name='other')
@@ -164,6 +169,14 @@ class UtilCog(discordutils.CogBase):
         await interaction.response.send_message(f'{member.mention} has been registered to our database!',
                                                 ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
         return
+
+    @_register.command(name='unregister')
+    async def register_unregister(self, interaction: discord.Interaction, member: discord.Member):
+        m = await self.users_table.delete().where(discord_id=member.id)
+        await interaction.response.send_message(
+            'This member has been successfully unregistered.'
+            if m[-1] == '1' else
+            'This member is not registered!')
 
     @_register.command(name='purge')
     async def register_purge(self, interaction: discord.Interaction):
