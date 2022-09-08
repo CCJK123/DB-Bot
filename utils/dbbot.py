@@ -82,7 +82,7 @@ class DBBot(commands.Bot):
 
         discordutils.PersistentView.bot = self
 
-        self.tree.on_error = self.on_app_command_error
+        self.tree.error(self.on_app_command_error)
 
     async def setup_hook(self) -> None:
         await self.load_cogs('cogs')
@@ -140,8 +140,7 @@ class DBBot(commands.Bot):
     async def on_app_command_error(self, interaction: discord.Interaction,
                                    exception: discord.app_commands.AppCommandError):
         command = interaction.command
-        if command and command.has_error_handler():
-            print(command, type(command))
+        if command is not None and command._has_any_error_handlers():
             return
 
         ignored = (
