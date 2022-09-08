@@ -121,7 +121,7 @@ class FinanceCog(discordutils.CogBase):
                     'Propaganda Bureau': 'propaganda_bureau',
                     'Urban Planning': 'urban_planning',
                     'Advanced Urban Planning': 'advanced_urban_planning',
-                    # 'Metropolitan Planning': 'metropolitan_planning',
+                    'Metropolitan Planning': 'metropolitan_planning',
                     'Other': 'other'
                 }
                 data['other'] = None
