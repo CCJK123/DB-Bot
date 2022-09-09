@@ -116,7 +116,6 @@ class UtilCog(discordutils.CogBase):
         """Update registry using the / separated nation ids in nicknames"""
         count = 0
         await interaction.response.defer()
-        tasks = []
         async with self.bot.database.acquire() as conn:
             async with conn.transaction():
                 nation_ids = [rec['nation_id'] async for rec in self.users_table.select('nation_id').cursor(conn)]
@@ -128,13 +127,10 @@ class UtilCog(discordutils.CogBase):
                             continue
                         if nation_id not in nation_ids:
                             count += 1
-                            tasks.append(asyncio.create_task(
-                                self.users_table.insert(discord_id=member.id, nation_id=nation_id)))
-        for t in asyncio.as_completed(tasks):
-            try:
-                await t
-            except asyncpg.UniqueViolationError as e:
-                await interaction.followup.send(f'An error occurred: {e}')
+                            try:
+                                await self.users_table.insert(discord_id=member.id, nation_id=nation_id)
+                            except asyncpg.UniqueViolationError as e:
+                                await interaction.followup.send(f'An error occurred: {e}')
         await interaction.followup.send(f'{count} members have been added to the database.')
 
     @_register.command(name='other')
