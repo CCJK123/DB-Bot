@@ -137,7 +137,7 @@ class Query(Awaitable[T]):
         return self
 
     def where_or(self, **conditions):
-        self.query += ' OR '.join((f'{k} = {v}' for k, v in conditions.items()))
+        self.query += ' WHERE ' + ' OR '.join((f'{k} = {v}' for k, v in conditions.items()))
         return self
 
 
