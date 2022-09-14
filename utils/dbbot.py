@@ -9,7 +9,7 @@ from collections.abc import Awaitable, Callable, Sequence
 import aiohttp
 import discord
 import pnwkit
-from discord.ext import tasks, commands as cmds, commands
+from discord.ext import tasks, commands
 
 from utils import discordutils, databases, config
 from utils.queries import offshore_info_query
@@ -143,6 +143,10 @@ class DBBot(commands.Bot):
         if command is not None and command._has_any_error_handlers():
             return
 
+        if isinstance(exception.__cause__, discord.NotFound):
+            await interaction.channel.send('Sorry, please rerun your command.')
+            return
+
         ignored = (
 
         )
@@ -167,7 +171,7 @@ class DBBot(commands.Bot):
             await interaction.followup.send(f'```{s}```')
         except discord.HTTPException as e:
             print('Responding failed! Exc Type: ', type(e))
-            await interaction.channel.send('Sorry, an exception occurred.')
+            await interaction.channel.send(f'Sorry, an exception occurred in the command `{interaction.command}`.')
 
             s = ''
             for ex in traceback.format_exception(type(exception), exception, exception.__traceback__):
