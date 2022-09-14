@@ -1,3 +1,5 @@
+import asyncio
+
 import discord
 
 from utils import discordutils, config, dbbot
@@ -11,6 +13,12 @@ class DebugCog(discordutils.CogBase):
     @discord.app_commands.default_permissions()
     async def a(self, interaction: discord.Interaction):
         raise ValueError
+
+    @discord.app_commands.command()
+    @discord.app_commands.default_permissions()
+    async def b(self, interaction: discord.Interaction):
+        await asyncio.sleep(4)
+        await interaction.response.send_message('Interaction not found!')
 
 
 async def setup(bot: dbbot.DBBot):
