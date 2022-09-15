@@ -19,11 +19,6 @@ class Choice(discord.ui.Button['Choices']):
         super().__init__(disabled=disabled, label=label)
 
     async def callback(self, interaction: discord.Interaction) -> None:
-        if self.view.user_id is not None and self.view.user_id != interaction.user.id:
-            await interaction.channel.send('You are not the intended recipient of this component, '
-                                           f'{interaction.user.mention}',
-                                           allowed_mentions=discord.AllowedMentions.none())
-            return
         self.view.set_result(self.label)
         self.style = discord.ButtonStyle.success
         disable_all(self.view)
@@ -32,11 +27,10 @@ class Choice(discord.ui.Button['Choices']):
 
 
 class Choices(discord.ui.View):
-    def __init__(self, *choices: str, user_id: int | None = None, disabled: set[str] | None = None):
+    def __init__(self, *choices: str, disabled: set[str] | None = None):
         super().__init__()
         if disabled is None:
             disabled = set()
-        self.user_id = user_id
         self._fut = asyncio.get_event_loop().create_future()
         for c in choices:
             self.add_item(Choice(c, c in disabled))
@@ -48,7 +42,6 @@ class Choices(discord.ui.View):
         return self._fut
 
     async def on_timeout(self):
-
         self._fut.set_exception(asyncio.TimeoutError())
 
 
