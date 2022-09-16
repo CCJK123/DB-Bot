@@ -16,10 +16,10 @@ __all__ = ('Choices', 'LinkButton', 'LinkView', 'MultiLinkView', 'PersistentView
 # noinspection PyAttributeOutsideInit
 class Choice(discord.ui.Button['Choices']):
     def __init__(self, label: str, disabled: bool = False):
-        super().__init__(disabled=disabled, label=label)
+        super().__init__(label=label, disabled=disabled)
 
     async def callback(self, interaction: discord.Interaction) -> None:
-        self.view.set_result(self.label)
+        self.view.future.set_result(self.label)
         self.style = discord.ButtonStyle.success
         disable_all(self.view)
         self.view.stop()
@@ -31,18 +31,15 @@ class Choices(discord.ui.View):
         super().__init__()
         if disabled is None:
             disabled = set()
-        self._fut = asyncio.get_event_loop().create_future()
+        self.future = asyncio.get_event_loop().create_future()
         for c in choices:
             self.add_item(Choice(c, c in disabled))
 
-    def set_result(self, r: str) -> None:
-        self._fut.set_result(r)
-
     def result(self) -> Awaitable[str]:
-        return self._fut
+        return self.future
 
     async def on_timeout(self):
-        self._fut.set_exception(asyncio.TimeoutError())
+        self.future.set_exception(asyncio.TimeoutError())
 
 
 class LinkButton(discord.ui.Button):
@@ -131,14 +128,14 @@ def persistent_button(**kwargs) -> Callable[[WrappedCallback], WrappedCallback]:
 class SingleModal(discord.ui.Modal):
     def __init__(self, title: str):
         super().__init__(title=title)
-        self._fut = asyncio.get_event_loop().create_future()
+        self.future = asyncio.get_event_loop().create_future()
         self.interaction: discord.Interaction | None = None
 
     def result(self) -> Awaitable[str]:
-        return self._fut
+        return self.future
 
     async def on_timeout(self) -> None:
-        self._fut.set_result(asyncio.TimeoutError())
+        self.future.set_result(asyncio.TimeoutError())
 
 
 @functools.cache
@@ -150,7 +147,7 @@ def single_modal(title: str, label: str, style=discord.TextStyle.short) -> Singl
         )
 
         async def on_submit(self, interaction: discord.Interaction) -> None:
-            self._fut.set_result(self.input_box.value)
+            self.future.set_result(self.input_box.value)
             self.interaction = interaction
 
     return _Modal(title)

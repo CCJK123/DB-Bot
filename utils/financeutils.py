@@ -135,7 +135,7 @@ class ResourceSelector(discord.ui.Select['ResourceSelectView']):
                                            f'{interaction.user.mention}',
                                            allowed_mentions=discord.AllowedMentions.none())
             return
-        self.view.set_result(self.values)
+        self.view.future.set_result(self.values)
         self.disabled = True
         await interaction.response.edit_message(view=self.view)
 
@@ -150,19 +150,16 @@ class ResourceSelectView(discord.ui.View):
             assert res <= set(pnwutils.Resources.all_res)
         else:
             res = pnwutils.Resources.all_res
-        self._fut = asyncio.get_event_loop().create_future()
+        self.future = asyncio.get_event_loop().create_future()
         self.user_id = user_id
         self.add_item(ResourceSelector(res))
 
-    def set_result(self, r: list[str]) -> None:
-        self._fut.set_result(r)
-
     def result(self) -> Awaitable[list[str]]:
-        return self._fut
+        return self.future
 
     async def on_timeout(self):
-        if not self._fut.done():
-            self._fut.set_exception(asyncio.TimeoutError())
+        if not self.future.done():
+            self.future.set_exception(asyncio.TimeoutError())
 
 
 class RequestButtonsView(discordutils.PersistentView):
@@ -328,7 +325,7 @@ class RequestButtonsView(discordutils.PersistentView):
             user.send('How would you like to modify this grant request?', view=preset_view))
 
         try:
-            reason = await preset_view.complete
+            reason = await preset_view.future
         except (asyncio.TimeoutError, asyncio.CancelledError) as e:
             await user.send('You took too long to respond! Aborting...'
                             if isinstance(e, asyncio.TimeoutError) else
@@ -373,10 +370,13 @@ class PresetView(discord.ui.View):
             self.add_item(b)
         self.add_item(CancelButton())
         self.reason: str | None = None
-        self.complete: asyncio.Future[str] = asyncio.get_event_loop().create_future()
+        self.future: asyncio.Future[str] = asyncio.get_event_loop().create_future()
+
+    def result(self) -> Awaitable[str]:
+        return self.future
 
     async def on_timeout(self) -> None:
-        self.complete.set_exception(asyncio.TimeoutError())
+        self.future.set_exception(asyncio.TimeoutError())
 
 
 class CancelButton(discord.ui.Button[PresetView]):
@@ -388,7 +388,7 @@ class CancelButton(discord.ui.Button[PresetView]):
         discordutils.disable_all(self.view)
         self.view.stop()
         await interaction.response.edit_message(view=self.view)
-        self.view.complete.set_exception(asyncio.CancelledError())
+        self.view.future.set_exception(asyncio.CancelledError())
 
 
 class PresetButton(discord.ui.Button[PresetView]):
@@ -411,7 +411,7 @@ class PresetButton(discord.ui.Button[PresetView]):
             interaction.response.send_modal(reason_modal))
         self.view.stop()
         self.view.parent_view.data.resources = self.resources
-        self.view.complete.set_result(await reason_modal.result())
+        self.view.future.set_result(await reason_modal.result())
 
 
 class CustomPresetButton(discord.ui.Button[PresetView]):
@@ -424,7 +424,7 @@ class CustomPresetButton(discord.ui.Button[PresetView]):
         self.view.stop()
         modal = CustomModificationModal(self.view.parent_view)
         await interaction.response.send_modal(modal)
-        self.view.complete.set_result(await modal.complete)
+        self.view.future.set_result(await modal.future)
         await interaction.edit_original_response(view=self.view)
 
 
@@ -432,7 +432,7 @@ class CustomModificationModal(discord.ui.Modal):
     def __init__(self, view: RequestButtonsView):
         super().__init__(title='How would you like to modify this request?', timeout=config.timeout)
         self.view = view
-        self.complete: asyncio.Future[str] = asyncio.get_event_loop().create_future()
+        self.future: asyncio.Future[str] = asyncio.get_event_loop().create_future()
         self.res_input = []
 
         self.reason_input = discord.ui.TextInput(
@@ -451,7 +451,7 @@ class CustomModificationModal(discord.ui.Modal):
         for res_name, input_text in zip(self.view.data.resources.keys_nonzero(), self.res_input):
             if input_text.value is not None:
                 self.view.data.resources[res_name] = int(input_text.value)
-        self.complete.set_result(self.reason_input.value)
+        self.future.set_result(self.reason_input.value)
         await interaction.response.send_message('The request has been updated!', embed=self.view.data.create_embed())
 
 
