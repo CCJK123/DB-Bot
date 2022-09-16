@@ -168,6 +168,7 @@ class UtilCog(discordutils.CogBase):
 
     @_register.command(name='unregister')
     async def register_unregister(self, interaction: discord.Interaction, member: discord.Member):
+        """Unregister an account from the database"""
         m = await self.users_table.delete().where(discord_id=member.id)
         await interaction.response.send_message(
             'This member has been successfully unregistered.'
