@@ -49,7 +49,7 @@ class DBBot(commands.Bot):
         intents = discord.Intents(guilds=True, messages=True, message_content=True, members=True)
         super().__init__(intents=intents, command_prefix='`!')
         self.session = session
-        self.excluded = {'debug', 'open_slots_detector', 'new_war_detector', 'market', 'applications'}
+        self.excluded = {'debug', 'open_slots_detector', 'market', 'applications'}
         self.kit = pnwkit.QueryKit(config.api_key)
 
         self.database: databases.Database = databases.PGDatabase(db_url)
@@ -143,10 +143,6 @@ class DBBot(commands.Bot):
         if command is not None and command._has_any_error_handlers():
             return
 
-        if isinstance(exception.__cause__, discord.NotFound):
-            await interaction.channel.send('Sorry, please rerun your command.')
-            return
-
         ignored = (
 
         )
@@ -156,6 +152,9 @@ class DBBot(commands.Bot):
 
     @staticmethod
     async def default_on_error(interaction: discord.Interaction, exception: discord.app_commands.AppCommandError):
+        if isinstance(exception.__cause__, discord.NotFound):
+            await interaction.channel.send('Sorry, please rerun your command.')
+            return
         try:
             await discordutils.interaction_send(
                 interaction,
