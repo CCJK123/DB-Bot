@@ -49,7 +49,7 @@ class DBBot(commands.Bot):
         intents = discord.Intents(guilds=True, messages=True, message_content=True, members=True)
         super().__init__(intents=intents, command_prefix='`!')
         self.session = session
-        self.excluded = {'debug', 'open_slots_detector', 'market', 'applications'}
+        self.excluded = {'debug', 'new_war_detector', 'open_slots_detector', 'market', 'applications'}
         self.kit = pnwkit.QueryKit(config.api_key)
 
         self.database: databases.Database = databases.PGDatabase(db_url)
