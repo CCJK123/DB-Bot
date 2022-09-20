@@ -42,7 +42,7 @@ def get_bar(resist: int):
 
 def war_description(w: dict[str, Any]) -> str:
     s = f'[War Page]({link.war(w["id"])})\n{w["war_type"].capitalize()} War\n\n'
-    end_attack = discord.utils.find(lambda attack: attack['type'] in ('VICTORY', 'PEACE'), w['attacks'])
+    end_attack: dict | None = discord.utils.find(lambda attack: attack['type'] in ('VICTORY', 'PEACE'), w['attacks'])
     if end_attack is None and w['turns_left'] > 0:
         # ongoing war
         for k in WarType.ATT, WarType.DEF:

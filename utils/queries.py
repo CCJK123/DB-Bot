@@ -332,9 +332,48 @@ fragment nation_data on Nation {
 }
 '''
 
-alliance_wars_query_text = '''
-query alliance_wars($alliance_id: [Int]) {
-    wars(alliance_id: $alliance_id, first: 1000) {
+new_war_query_text = '''
+query new_war($war_id: [Int]) {
+    wars(id: $war_id, first: 1) {
+        data {
+            id
+            turns_left
+            war_type
+            att_id
+            def_id
+            attacker {
+                ...new_war_nation_data
+            }
+            defender {
+                ...new_war_nation_data
+            }
+        }
+    }
+}
+
+fragment new_war_nation_data on Nation {
+    nation_name
+    score
+    num_cities
+    war_policy
+    soldiers
+    tanks
+    aircraft
+    ships
+    missiles
+    nukes
+    alliance_position
+    alliance {
+        id
+        name
+    }
+}
+'''
+new_war_query = APIQuery(new_war_query_text, war_id=int)
+
+update_war_query_text = '''
+query update_war($war_id: [Int]) {
+    wars(id: $war_id, first: 1) {
         data {
             id
             date
@@ -361,7 +400,7 @@ query alliance_wars($alliance_id: [Int]) {
     }
 }
 ''' + nation_war_data_fragment
-alliance_wars_query = APIQuery(alliance_wars_query_text, alliance_id=int)
+update_war_query = APIQuery(update_war_query_text, alliance_id=int)
 
 individual_war_query_text = '''
 query individual_war($war_id: [Int]) {

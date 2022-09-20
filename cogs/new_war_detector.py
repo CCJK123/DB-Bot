@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import traceback
 from typing import Any
 
 import discord
 import pnwkit
 
 from utils import discordutils, pnwutils, config, dbbot
-from utils.queries import alliance_wars_query
+from utils.queries import new_war_query, update_war_query
 
 
 class NewWarDetectorCog(discordutils.LoopedCogBase):
@@ -17,63 +18,102 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
         self.channels = {pnwutils.WarType.ATT: 'offensive_channel', pnwutils.WarType.DEF: 'defensive_channel',
                          None: 'updates_channel'}
 
-        self.monitor_subscription: pnwkit.Subscription | None = None
+        self.new_war_subscription: pnwkit.Subscription | None = None
+        self.update_war_subscription: pnwkit.Subscription | None = None
         self.subscribed = False
-
-    async def subscribe(self):
-        self.monitor_subscription = await pnwkit.Subscription.subscribe(
-            self.bot.kit,
-            'war', 'create',
-            {'alliance_id': config.alliance_id} and {},
-            self.on_new_war
-        )
-        self.subscribed = True
 
     async def on_ready(self):
         if not self.subscribed:
-            await self.subscribe()
+            self.new_war_subscription = await pnwkit.Subscription.subscribe(
+                self.bot.kit,
+                'war', 'create',
+                {'alliance_id': config.alliance_id},
+                self.on_new_war
+            )
+            self.update_war_subscription = await pnwkit.Subscription.subscribe(
+                self.bot.kit,
+                'war', 'update',
+                {'alliance_id': config.alliance_id},
+                self.on_war_update
+            )
+            self.subscribed = True
 
     async def on_cleanup(self):
-        if self.monitor_subscription is not None:
-            await self.monitor_subscription.unsubscribe()
+        if self.subscribed:
+            await asyncio.gather(
+                self.new_war_subscription.unsubscribe(),
+                self.update_war_subscription.unsubscribe()
+            )
 
-    async def on_new_war(self, war):
-        print('New War:')
-        print(war)
-        if (att_aa := war.attacker.alliance) and att_aa.id == config.alliance_id:
+    async def on_new_war(self, war: pnwkit.War):
+        if war.att_alliance_id == config.alliance_id:
             kind = pnwutils.WarType.ATT
-        else:
+        elif war.def_alliance_id == config.alliance_id:
             kind = pnwutils.WarType.DEF
-        channel = await self.bot.database.get_kv('channel_ids').get(self.channels[kind])
-        await channel.send(embed=await self.new_war_embed(war, kind))
+        else:
+            kind = None
+        data = await new_war_query.query(self.bot.session, war_id=war.id)
+        data = data['data'][0]
+        channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[kind]))
+        await channel.send(embed=await self.new_war_embed(data, kind))
 
     @staticmethod
-    async def new_war_embed(data: pnwkit.War, kind: pnwutils.WarType) -> discord.Embed:
+    async def new_war_embed(data: dict[str, Any], kind: pnwutils.WarType | None) -> discord.Embed:
         if kind == pnwutils.WarType.ATT:
-            title = f'New Offensive {data.war_type.title()} War'
+            title = f'New Offensive {data["war_type"].title()} War'
         elif kind == pnwutils.WarType.DEF:
-            title = f'New Defensive {data.war_type.title()} War'
+            title = f'New Defensive {data["war_type"].title()} War'
         else:
-            title = f'Losing {data.war_type.title()} War!'
+            title = f'New {data["war_type"].title()} War!'
 
         embed = discord.Embed(title=title, description=f'[War Page]({pnwutils.link.war(data["id"])})')
         for t in pnwutils.WarType.ATT, pnwutils.WarType.DEF:
-            nation: pnwkit.Nation = getattr(data, t.string)
+            nation = data[t.string]
             embed.add_field(
                 name=t.string.capitalize(),
-                value=f'[{nation.nation_name}]({pnwutils.link.nation(getattr(data, f"{t.string_short}id"))})',
+                value=f'[{nation["nation_name"]}]({pnwutils.link.nation(data[f"{t.string_short}_id"])})',
                 inline=False)
-            a = nation.alliance
-            aa_text = 'None' if a is None else f'[{a.name}]({pnwutils.link.alliance(a.id)})'
+            a = nation['alliance']
+            aa_text = 'None' if a is None else f'[{a["name"]}]({pnwutils.link.alliance(a["id"])})'
             embed.add_field(name='Alliance', value=aa_text, inline=False)
-            embed.add_field(name='Score', value=str(nation.score))
-            r = pnwutils.formulas.war_range(nation.score)
+            embed.add_field(name='Score', value=str(nation["score"]))
+            r = pnwutils.formulas.war_range(nation["score"])
             embed.add_field(name='Range', value=f'{r[0]:.2f}-{r[1]:.2f}')
-            embed.add_field(name='Cities', value=str(nation.num_cities), inline=False)
-            embed.add_field(name='War Policy', value=nation.warpolicy, inline=False)
+            embed.add_field(name='Cities', value=str(nation["num_cities"]), inline=False)
+            embed.add_field(name='War Policy', value=nation["war_policy"], inline=False)
             embed.add_field(name='Military', value=pnwutils.mil_text(nation))
         return embed
 
+    async def on_war_update(self, war: pnwkit.War):
+        if war.att_alliance_id == config.alliance_id:
+            kind = pnwutils.WarType.ATT
+        else:
+            kind = pnwutils.WarType.DEF
+        if getattr(war, f'{kind.string_short}_resistance') < 50:
+            try:
+                channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[None]))
+                data = await update_war_query.query(self.bot.session)
+                embed = discord.Embed(title='Low Resistance War!')
+                embed.add_field(name='War', value=pnwutils.war_description(data['data'][0]))
+                await channel.send(embed=embed)
+            except BaseException as e:
+                await self.on_error(e)
+
+    async def on_error(self, exception: BaseException):
+        channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[None]))
+        await channel.send(f'Sorry, an exception occurred in the command `{interaction.command}`.')
+
+        s = ''
+        for ex in traceback.format_exception(type(exception), exception, exception.__traceback__):
+            if ex == '\nThe above exception was the direct cause of the following exception:\n\n':
+                await channel.send(f'```{s}```')
+                s = ex
+            else:
+                s += ex
+        await channel.send(f'```{s}```')
+
+
+'''
     async def task(self) -> None:
         data = await alliance_wars_query.query(self.bot.session, alliance_id=config.alliance_id)
         data = data['data']
@@ -171,8 +211,9 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
                 c += 1
 
         await interaction.response.send_message(f'Complete! {c} wars added.')
+    '''
 
 
 # Setup War Detector Cog as an extension
-def setup(bot: dbbot.DBBot) -> None:
-    bot.add_cog(NewWarDetectorCog(bot))
+async def setup(bot: dbbot.DBBot) -> None:
+    await bot.add_cog(NewWarDetectorCog(bot))
