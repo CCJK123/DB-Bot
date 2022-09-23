@@ -344,7 +344,7 @@ class RequestButtonsView(discordutils.PersistentView):
         response_view = ModificationResponseView(self.data, user.id, reason, interaction, custom_id)
         updated_res_embed = self.data.resources.create_embed(title='Updated Resources')
         embed.description = f'Modified by {user.mention}'
-        embed.colour = discord.Colour.green()
+        embed.colour = discord.Colour.orange()
         embed.add_field(name='Updated Resources', value=self.data.resources)
         embed.add_field(name='Modification Reason', value=reason)
         await asyncio.gather(
