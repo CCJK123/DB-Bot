@@ -405,10 +405,10 @@ class PresetButton(discord.ui.Button[PresetView]):
         discordutils.disable_all(self.view)
         reason_modal = discordutils.single_modal(
             'Why is this request being modified?', 'Modification Reason', discord.TextStyle.paragraph)
-        await discordutils.respond_to_interaction(reason_modal.interaction)
         await asyncio.gather(
             interaction.edit_original_response(view=self.view),
             interaction.response.send_modal(reason_modal))
+        await discordutils.respond_to_interaction(reason_modal.interaction)
         self.view.stop()
         self.view.parent_view.data.resources = self.resources
         self.view.future.set_result(await reason_modal.result())
