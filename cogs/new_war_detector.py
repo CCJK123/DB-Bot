@@ -101,7 +101,7 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
 
     async def on_error(self, exception: BaseException):
         channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[None]))
-        await channel.send(f'Sorry, an exception occurred in the command `{interaction.command}`.')
+        await channel.send(f'Sorry, an exception occurred in the new war detector`.')
 
         s = ''
         for ex in traceback.format_exception(type(exception), exception, exception.__traceback__):
