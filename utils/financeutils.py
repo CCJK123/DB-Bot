@@ -341,15 +341,17 @@ class RequestButtonsView(discordutils.PersistentView):
         self.stop()
         await self.bot.remove_view(self)
         custom_id = await self.bot.get_custom_id()
-        response_view = ModificationResponseView(self.data, user.id, reason, interaction, custom_id)
+        content = f'Modified {self.data.kind} Request from {self.data.requester.mention}'
+        response_view = ModificationResponseView(self.data, user.id, reason, content, interaction, custom_id)
         updated_res_embed = self.data.resources.create_embed(title='Updated Resources')
         embed.description = f'Modified by {user.mention}'
         embed.colour = discord.Colour.orange()
         embed.add_field(name='Updated Resources', value=self.data.resources)
         embed.add_field(name='Modification Reason', value=reason)
+
         await asyncio.gather(
             interaction.edit_original_response(
-                content=f'Modified {self.data.kind} Request from {self.data.requester.mention}',
+                content=content,
                 embed=embed, view=self,
                 allowed_mentions=discord.AllowedMentions.none(),
             ),
@@ -463,11 +465,12 @@ class CustomModificationModal(discord.ui.Modal):
 
 class ModificationResponseView(discordutils.PersistentView):
     def __init__(self, data: RequestData, processor_id: int, reason: str,
-                 interaction: discord.Interaction, custom_id: int):
+                 header: str, interaction: discord.Interaction, custom_id: int):
         super().__init__(custom_id=custom_id)
         self.data = data
         self.processor_id = processor_id
         self.reason = reason
+        self.header = header
         self.m_interaction = interaction
 
     async def send_response(self):
@@ -486,11 +489,10 @@ class ModificationResponseView(discordutils.PersistentView):
 
         embed = self.data.resources.create_embed(title='Request Resources')
 
-        m_message = self.m_interaction.message
-        m_embed = m_message.embeds[0]
+        m_embed = self.m_interaction.message.embeds[0]
         m_embed.colour = discord.Colour.green()
         await asyncio.gather(
-            self.m_interaction.edit_original_response(content=f'Accepted {m_message.content}', embed=m_embed),
+            self.m_interaction.edit_original_response(content=f'Accepted {self.header}', embed=m_embed),
             interaction.response.edit_message(view=self, embed=embed),
             self.bot.log(embeds=(
                 discordutils.create_embed(
@@ -510,11 +512,10 @@ class ModificationResponseView(discordutils.PersistentView):
 
         embed = self.data.resources.create_embed(title='Request Resources')
 
-        m_message = self.m_interaction.message
-        m_embed = m_message.embeds[0]
+        m_embed = self.m_interaction.message.embeds[0]
         m_embed.colour = discord.Colour.red()
         await asyncio.gather(
-            self.m_interaction.edit_original_response(content=f'Rejected {m_message.content}', embed=m_embed),
+            self.m_interaction.edit_original_response(content=f'Rejected {self.header}', embed=m_embed),
             interaction.response.edit_message(view=self, embed=embed),
             self.bot.log(embeds=(
                 discordutils.create_embed(
