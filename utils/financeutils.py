@@ -267,7 +267,7 @@ class RequestButtonsView(discordutils.PersistentView):
             return
         # process other
         embed = interaction.message.embeds[0]
-        embed.colour = discord.Colour.
+        embed.colour = discord.Colour.green()
         # split things up in order to use allowed_mentions
         await asyncio.gather(
             interaction.response.edit_message(view=self, embed=embed),
