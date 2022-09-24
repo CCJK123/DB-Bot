@@ -4,7 +4,7 @@ import abc
 import asyncio
 import functools
 import pickle
-from typing import Awaitable, Callable, Mapping, TypeVar
+from typing import Awaitable, Callable, Mapping, TypeVar, Type
 
 import discord
 
@@ -139,7 +139,7 @@ class SingleModal(discord.ui.Modal):
 
 
 @functools.cache
-def single_modal(title: str, label: str, style=discord.TextStyle.short) -> SingleModal:
+def _single_modal_create(label: str, style: discord.TextStyle) -> Type[SingleModal]:
     class _Modal(SingleModal):
         input_box = discord.ui.TextInput(
             label=label,
@@ -150,7 +150,11 @@ def single_modal(title: str, label: str, style=discord.TextStyle.short) -> Singl
             self.future.set_result(self.input_box.value)
             self.interaction = interaction
 
-    return _Modal(title)
+    return _Modal
+
+
+def single_modal(title: str, label: str, style: discord.TextStyle = discord.TextStyle.short) -> SingleModal:
+    return _single_modal_create(label, style)(title)
 
 
 def disable_all(view: discord.ui.View):
