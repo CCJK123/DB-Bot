@@ -487,13 +487,14 @@ class ModificationResponseView(discordutils.PersistentView):
         discordutils.disable_all(self)
         self.stop()
 
-        embed = self.data.resources.create_embed(title='Request Resources')
+        embed = self.data.resources.create_embed(title='Accepted Modified Request Resources')
 
         m_embed = self.m_interaction.message.embeds[0]
         m_embed.colour = discord.Colour.green()
         await asyncio.gather(
             self.m_interaction.edit_original_response(content=f'Accepted {self.header}', embed=m_embed),
-            interaction.response.edit_message(view=self, embed=embed),
+            interaction.response.edit_message(content=f'Accepted modified request for `{self.data.reason}`',
+                                              view=self, embed=embed),
             self.bot.log(embeds=(
                 discordutils.create_embed(
                     user=self.data.requester,
@@ -510,13 +511,14 @@ class ModificationResponseView(discordutils.PersistentView):
         discordutils.disable_all(self)
         self.stop()
 
-        embed = self.data.resources.create_embed(title='Request Resources')
+        embed = self.data.resources.create_embed(title='Cancelled Modified Request Resources')
 
         m_embed = self.m_interaction.message.embeds[0]
         m_embed.colour = discord.Colour.red()
         await asyncio.gather(
             self.m_interaction.edit_original_response(content=f'Rejected {self.header}', embed=m_embed),
-            interaction.response.edit_message(view=self, embed=embed),
+            interaction.response.edit_message(content=f'Cancelled modified request for `{self.data.reason}`',
+                                              view=self, embed=embed),
             self.bot.log(embeds=(
                 discordutils.create_embed(
                     user=self.data.requester,
