@@ -492,7 +492,8 @@ class ModificationResponseView(discordutils.PersistentView):
         m_embed = self.m_interaction.message.embeds[0]
         m_embed.colour = discord.Colour.green()
         await asyncio.gather(
-            self.m_interaction.edit_original_response(content=f'Accepted {self.header}', embed=m_embed),
+            self.m_interaction.edit_original_response(content=f'Accepted {self.header}', embed=m_embed,
+                                                      allowed_mentions=discord.AllowedMentions.none()),
             interaction.response.edit_message(content=f'Accepted modified request for `{self.data.reason}`',
                                               view=self, embed=embed),
             self.bot.log(embeds=(
@@ -516,7 +517,8 @@ class ModificationResponseView(discordutils.PersistentView):
         m_embed = self.m_interaction.message.embeds[0]
         m_embed.colour = discord.Colour.red()
         await asyncio.gather(
-            self.m_interaction.edit_original_response(content=f'Rejected {self.header}', embed=m_embed),
+            self.m_interaction.edit_original_response(content=f'Rejected {self.header}', embed=m_embed,
+                                                      allowed_mentions=discord.AllowedMentions.none()),
             interaction.response.edit_message(content=f'Cancelled modified request for `{self.data.reason}`',
                                               view=self, embed=embed),
             self.bot.log(embeds=(
