@@ -568,7 +568,7 @@ class WithdrawalView(discordutils.PersistentView):
     @discordutils.persistent_button(label='Cancel')
     async def cancel(self, button: discordutils.PersistentButton, interaction: discord.Interaction):
         reason_modal = discordutils.single_modal(
-            f'Why is this withdrawal request being cancelled?', 'Cancellation Reason', discord.TextStyle.paragraph)
+            f'Why cancel this withdrawal request?', 'Cancellation Reason', discord.TextStyle.paragraph)
         await interaction.response.send_modal(reason_modal)
         cancel_reason = await reason_modal.result()
         # close modal
