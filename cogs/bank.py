@@ -105,11 +105,11 @@ class BankCog(discordutils.CogBase):
                             'Automatically checking for deposits...')
 
         # get transactions since start_time involving deposits by nation
-        dep_transactions = list(filter(
-            lambda t: t.time >= start_time,
-            await self.get_transactions(nation_id, pnwutils.EntityType.NATION, pnwutils.TransactionType.DEPOSIT)))
-        deposited = sum((transaction.resources.floor_values() for transaction in dep_transactions),
-                        pnwutils.Resources())
+        deposited = sum(
+            (transaction.resources.floor_values() for transaction in
+             await self.get_transactions(nation_id, pnwutils.EntityType.NATION, pnwutils.TransactionType.DEPOSIT)
+             if transaction.time >= start_time),
+            pnwutils.Resources())
         if deposited:
             new_bal_rec = await self.users_table.update(f'balance = balance + {deposited.to_row()}').where(
                 discord_id=user.id).returning_val('balance')
