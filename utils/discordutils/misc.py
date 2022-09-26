@@ -111,18 +111,20 @@ async def interaction_send(
 
 
 P = typing.ParamSpec('P')
-Command = Callable[typing.Concatenate[discord.Interaction, P], Awaitable[object]]
+Command = Callable[P, Awaitable[object]]
+sen = object()
 
 
 def max_one(func: Command) -> Command:
     @functools.wraps(func)
-    async def inner(interaction: discord.Interaction, *args: P.args, **kwargs: P.kwargs) -> object:
-        i = interaction.user.id
+    async def inner(a, b=sen, *args: P.args, **kwargs: P.kwargs) -> object:
+        i = a.user.id if isinstance(a, discord.Interaction) else b.user.id
         if i in inner.using:
             raise commands.MaxConcurrencyReached(1, commands.BucketType.user)
         inner.using.add(i)
-        r = await func(*args, **kwargs)
+        r = await (func(a, *args, **kwargs) if b is sen else func(a, b, *args, **kwargs))
         inner.using.remove(i)
         return r
+
     inner.using = set()
-    return inner
+    return inner  # type: ignore
