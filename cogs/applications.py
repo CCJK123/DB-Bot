@@ -17,7 +17,7 @@ class ApplicationCog(discordutils.CogBase):
 
     @discord.app_commands.command()
     @discord.app_commands.default_permissions()
-    @commands.max_concurrency(1, commands.BucketType.user)
+    @discordutils.max_one
     async def apply(self, interaction: discord.Interaction):
         """Apply to our alliance!"""
         nation_id = await self.users_table.select_val('nation_id').where(discord_id=interaction.user.id)

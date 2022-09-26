@@ -78,7 +78,7 @@ class BankCog(discordutils.CogBase):
             )
 
     @bank.command()
-    @commands.max_concurrency(1, commands.BucketType.user)
+    @discordutils.max_one
     async def deposit(self, interaction: discord.Interaction):
         """Deposit resources into your balance"""
         # various data access
@@ -124,7 +124,7 @@ class BankCog(discordutils.CogBase):
         await user.send('You did not deposit any resources! Aborting!')
 
     @bank.command()
-    @commands.max_concurrency(1, commands.BucketType.user)
+    @discordutils.max_one
     async def withdraw(self, interaction: discord.Interaction):
         """Withdraw resources from your balance"""
         rec = await self.users_table.select_row('nation_id', 'balance').where(discord_id=interaction.user.id)

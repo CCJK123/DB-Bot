@@ -1,15 +1,17 @@
 from __future__ import annotations
 
+import functools
 import itertools
 import typing
-from collections.abc import Sequence
-from typing import Callable, Iterable
+from collections.abc import Awaitable, Callable, Iterable, Sequence
 
 import discord
 
 # Setup what is exported by default
 __all__ = ('blank_colour', 'create_embed', 'get_msg_chk', 'get_dm_msg_chk',
-           'split_blocks', 'respond_to_interaction', 'make_choices', 'interaction_send')
+           'split_blocks', 'respond_to_interaction', 'make_choices', 'interaction_send', 'max_one')
+
+from discord.ext import commands
 
 blank_colour = 3092790
 
@@ -106,3 +108,21 @@ async def interaction_send(
         content, embed=embed, embeds=embeds, file=file, files=files, view=view, tts=tts,
         ephemeral=ephemeral, allowed_mentions=allowed_mentions, suppress_embeds=suppress_embeds
     )
+
+
+P = typing.ParamSpec('P')
+Command = Callable[typing.Concatenate[discord.Interaction, P], Awaitable[object]]
+
+
+def max_one(func: Command) -> Command:
+    @functools.wraps(func)
+    async def inner(interaction: discord.Interaction, *args: P.args, **kwargs: P.kwargs) -> object:
+        i = interaction.user.id
+        if i in inner.using:
+            raise commands.MaxConcurrencyReached(1, commands.BucketType.user)
+        inner.using.add(i)
+        r = await func(*args, **kwargs)
+        inner.using.remove(i)
+        return r
+    inner.using = set()
+    return inner

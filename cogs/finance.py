@@ -16,7 +16,7 @@ class FinanceCog(discordutils.CogBase):
 
     # Main request command
     @discord.app_commands.command()
-    @commands.max_concurrency(1, commands.BucketType.user)
+    @discordutils.max_one
     async def request(self, interaction: discord.Interaction) -> None:
         """Request for a grant, loan, or war aid (if enabled) from the bank"""
         # Command Run Validity Check -
