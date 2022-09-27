@@ -122,8 +122,10 @@ def max_one(func: Command) -> Command:
         if i in inner.using:
             raise commands.MaxConcurrencyReached(1, commands.BucketType.user)
         inner.using.add(i)
-        r = await (func(a, *args, **kwargs) if b is sen else func(a, b, *args, **kwargs))
-        inner.using.remove(i)
+        try:
+            r = await (func(a, *args, **kwargs) if b is sen else func(a, b, *args, **kwargs))
+        finally:
+            inner.using.remove(i)
         return r
 
     inner.using = set()
