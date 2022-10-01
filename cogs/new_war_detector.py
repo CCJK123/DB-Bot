@@ -89,7 +89,7 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
             kind = pnwutils.WarType.ATT
         else:
             kind = pnwutils.WarType.DEF
-        if getattr(war, f'{kind.string_short}_resistance') < 50:
+        if getattr(war, f'{kind.string_short}_resistance') < 90:
             try:
                 channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[None]))
                 data = await update_war_query.query(self.bot.session)
