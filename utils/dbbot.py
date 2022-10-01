@@ -12,7 +12,6 @@ import pnwkit
 from discord.ext import tasks, commands
 
 from utils import discordutils, databases, config
-from utils.queries import offshore_info_query
 
 
 async def database_initialisation(database):
