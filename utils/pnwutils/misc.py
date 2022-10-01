@@ -4,12 +4,18 @@ import datetime
 import enum
 from typing import Any, TypedDict
 
+import aiohttp
 import discord
 
 from . import link
+from .. import config
+
+from ..queries import offshore_info_query
+
 
 # Setup what is exported by default
-__all__ = ('WarType', 'get_bar', 'war_description', 'mil_text', 'time_after_turns')
+__all__ = ('WarType', 'get_bar', 'war_description', 'mil_text', 'time_after_turns', 'get_offshore_id')
+
 
 
 class WarType(enum.Enum):
@@ -99,3 +105,8 @@ def time_after_turns(turns):
     return discord.utils.format_dt(
         now.replace(minute=0, second=0, microsecond=0) + datetime.timedelta(hours=turns * 2 - now.hour % 2)
     )
+
+
+async def get_offshore_id(session: aiohttp.ClientSession):
+    data = await offshore_info_query.query(session, api_key=config.offshore_api_key)
+    return data['nation']['alliance_id']

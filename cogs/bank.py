@@ -440,7 +440,7 @@ class BankCog(discordutils.CogBase):
             resources -= await self.get_total_balances()
         if total:
             off_contents = await bank_info_query.query(self.bot.session, api_key=config.offshore_api_key,
-                                                       alliance_id=await self.bot.get_offshore_id())
+                                                       alliance_id=await pnwutils.get_offshore_id(self.bot.session))
             resources += pnwutils.Resources(**off_contents['data'][0])
         await discordutils.interaction_send(
             interaction,
@@ -455,7 +455,7 @@ class BankCog(discordutils.CogBase):
         data = await bank_info_query.query(self.bot.session, alliance_id=config.alliance_id)
         resources = pnwutils.Resources(**data['data'][0])
 
-        withdrawal = pnwutils.Withdrawal(resources, await self.bot.get_offshore_id(),
+        withdrawal = pnwutils.Withdrawal(resources, await pnwutils.get_offshore_id(self.bot.session),
                                          pnwutils.EntityType.ALLIANCE, 'Safekeeping')
         if await withdrawal.withdraw(self.bot.session) is pnwutils.WithdrawalResult.SUCCESS:
             await interaction.response.send_message('The bank contents have successfully been sent to the offshore!')

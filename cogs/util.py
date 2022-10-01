@@ -75,7 +75,7 @@ class UtilCog(discordutils.CogBase):
         data = data[0]
         # nation exists, is in one elem list
         if data['alliance_id'] != config.alliance_id:
-            off_id = await self.bot.get_offshore_id()
+            off_id = await pnwutils.get_offshore_id(self.bot.session)
             if data['alliance_id'] != off_id:
                 await interaction.response.send_message(f'This nation is not in {config.alliance_name}!')
                 return
@@ -149,7 +149,7 @@ class UtilCog(discordutils.CogBase):
         data = data[0]
         # nation exists, is in one elem list
         if data['alliance_id'] != config.alliance_id:
-            off_id = await self.bot.get_offshore_id()
+            off_id = await pnwutils.get_offshore_id(self.bot.session)
             if data['alliance_id'] != off_id:
                 await interaction.response.send_message(f'This nation is not in {config.alliance_name}!')
                 return

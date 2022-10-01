@@ -184,10 +184,6 @@ class DBBot(commands.Bot):
         # print the exception to stderr too
         traceback.print_exception(type(exception), exception, exception.__traceback__)
 
-    async def get_offshore_id(self):
-        data = await offshore_info_query.query(self.session, api_key=config.offshore_api_key)
-        return data['nation']['alliance_id']
-
     @staticmethod
     async def log(c: str | None = None, **kwargs):
         pass
