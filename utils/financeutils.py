@@ -541,6 +541,7 @@ class WithdrawalView(discordutils.PersistentView):
 
     @discordutils.persistent_button(label='Send')
     async def send(self, button: discordutils.PersistentButton, interaction: discord.Interaction):
+        await interaction.response.defer()
         result = await self.withdrawal.withdraw(self.bot.session)
         if result is pnwutils.WithdrawalResult.SUCCESS:
             button.style = discord.ButtonStyle.success
@@ -552,7 +553,7 @@ class WithdrawalView(discordutils.PersistentView):
             contents_embed = self.withdrawal.resources.create_embed(title='Withdrawal Contents')
             await asyncio.gather(
                 self.bot.remove_view(self),
-                interaction.response.edit_message(view=self, embed=embed),
+                interaction.edit_original_response(view=self, embed=embed),
                 member.send('Your withdrawal request for the following has been sent to your nation!',
                             embed=contents_embed),
                 self.bot.log(embeds=(
@@ -560,7 +561,7 @@ class WithdrawalView(discordutils.PersistentView):
                         user=member, description=f"{member.mention}'s withdrawal Sent by {interaction.user.mention}"),
                     contents_embed)))
             return
-        await interaction.response.send_message(
+        await interaction.followup.send(
             'The bank does not have enough on hand to fulfill this withdrawal!'
             if result is pnwutils.WithdrawalResult.LACK_RESOURCES else
             'The recipient is currently blockaded and cannot receive resources.')
