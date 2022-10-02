@@ -67,7 +67,7 @@ class MarketCog(discordutils.CogBase):
                 ephemeral=True)
             return
 
-        res = pnwutils.Resources(**await bal_rec)
+        res = pnwutils.Resources(**bal_rec)
         total_price = amt * rec['buy_price']
         if res.money < total_price:
             await interaction.response.send_message(f'You do not have enough money deposited to do that! '
@@ -75,11 +75,12 @@ class MarketCog(discordutils.CogBase):
                                                     ephemeral=True)
             return
         final_bal = pnwutils.Resources(
-            **await self.users_table.update(f'balance.money = balance.money - {total_price}, '
-                                            f'balance.{res_name} = balance.{res_name} + {amt}'
-                                            ).where(discord_id=interaction.user.id).returning_val('balance'))
-        await self.market_table.update(f'stock = stock - {amt}').where(resource=res_name)
+            **await self.users_table.update(
+                f'balance.money = (balance).money - {total_price}, '
+                f'balance.{res_name} = (balance).{res_name} + {amt}'
+            ).where(discord_id=interaction.user.id).returning_val('balance'))
         await asyncio.gather(
+            self.market_table.update(f'stock = stock - {amt}').where(resource=res_name),
             interaction.response.send_message(
                 'Transaction complete!', embed=final_bal.create_balance_embed(interaction.user),
                 ephemeral=True),
@@ -100,7 +101,8 @@ class MarketCog(discordutils.CogBase):
     async def sell(self, interaction: discord.Interaction,
                    res_name: str, amt: discord.app_commands.Range[int, 0, None]):
         """Sell some amount of a resource for money"""
-        bal_amount = await self.users_table.select_val(f'(balance).{res_name}').where(discord_id=interaction.user.id)
+        bal_amount = await self.users_table.select_val(f'(balance).{res_name}'
+                                                       ).where(discord_id=interaction.user.id)
         if bal_amount is None:
             await interaction.response.send_message('You have not been registered!')
             return
@@ -117,9 +119,10 @@ class MarketCog(discordutils.CogBase):
                                                     ephemeral=True)
             return
         final_bal = pnwutils.Resources(
-            **await self.users_table.update(f'balance.money = balance.money + {amt * price}, '
-                                            f'balance.{res_name} = balance.{res_name} - {amt}'
-                                            ).where(discord_id=interaction.user.id).returning_val('balance'))
+            **await self.users_table.update(
+                f'balance.money = (balance).money + {amt * price}, '
+                f'balance.{res_name} = (balance).{res_name} - {amt}'
+            ).where(discord_id=interaction.user.id).returning_val('balance'))
         await self.market_table.update(f'stock = stock + {amt}').where(resource=res_name)
         await asyncio.gather(
             interaction.response.send_message(

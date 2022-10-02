@@ -7,6 +7,7 @@ import traceback
 from collections.abc import Awaitable, Callable, Sequence
 
 import aiohttp
+import asyncpg
 import discord
 import pnwkit
 from discord.ext import tasks, commands
@@ -155,6 +156,8 @@ class DBBot(commands.Bot):
         if isinstance(exception.__cause__, discord.NotFound):
             await interaction.channel.send('Sorry, please rerun your command.')
             return
+        if isinstance(exception.__cause__, asyncpg.PostgresSyntaxError):
+            print(exception.__cause__.as_dict())
         try:
             await discordutils.interaction_send(
                 interaction,
