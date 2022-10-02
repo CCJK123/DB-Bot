@@ -140,6 +140,10 @@ class Query(Awaitable[T]):
         self.query += ' WHERE ' + ' OR '.join((f'{k} = {v}' for k, v in conditions.items()))
         return self
 
+    def order_by(self, *cond: str):
+        self.query += ' ORDER BY ' + ','.join(cond)
+        return self
+
 
 class Table:
     __slots__ = ('database', 'name', 'cols', 'additional')

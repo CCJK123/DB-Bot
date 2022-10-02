@@ -72,12 +72,18 @@ class OptionsCog(commands.GroupCog, discordutils.CogBase, group_name='_options')
     @discord.app_commands.choices(res_name=discordutils.make_choices(pnwutils.constants.market_res))
     async def set_price(self, interaction: discord.Interaction,
                         action: typing.Literal['buying', 'selling'],
-                        res_name: discord.app_commands.Choice[str],
+                        res_name: str,
                         price: discord.app_commands.Range[int, 0, None]):
         """Set the buying/selling price of a resource"""
         market_table = self.bot.database.get_table('market')
+        if price:
+            r = f'The {action} price of {res_name} has been set to {price} ppu.'
+        else:
+            price = 'null'
+            r = f'{action} {res_name} is now disabled!'
+
         await market_table.update(f'{action.removesuffix("ing")}_price = {price}').where(resource=res_name)
-        await interaction.response.send_message(f'The {action} price of {res_name} has been set to {price} ppu.')
+        await interaction.response.send_message(r)
 
     @market_options.command()
     @discord.app_commands.describe(
@@ -86,7 +92,7 @@ class OptionsCog(commands.GroupCog, discordutils.CogBase, group_name='_options')
     )
     @discord.app_commands.choices(res_name=discordutils.make_choices(pnwutils.constants.market_res))
     async def set_stock(self, interaction: discord.Interaction,
-                        res_name: discord.app_commands.Choice[str],
+                        res_name: str,
                         stock: discord.app_commands.Range[int, 0, None]):
         """Set the stocks of a resource"""
         market_table = self.bot.database.get_table('market')

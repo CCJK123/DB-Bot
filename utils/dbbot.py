@@ -48,7 +48,7 @@ class DBBot(commands.Bot):
         intents = discord.Intents(guilds=True, messages=True, message_content=True, members=True)
         super().__init__(intents=intents, command_prefix='`!')
         self.session = session
-        self.excluded = {'debug', 'open_slots_detector', 'market', 'applications'}
+        self.excluded = {'debug', 'open_slots_detector', 'applications'}
         self.kit = pnwkit.QueryKit(config.api_key)
 
         self.database: databases.Database = databases.PGDatabase(db_url)
@@ -64,8 +64,9 @@ class DBBot(commands.Bot):
             'applications', ',FOREIGN KEY(discord_id) REFERENCES users(discord_id)',
             application_id='SMALLINT GENERATED ALWAYS AS IDENTITY (MINVALUE 0 MAXVALUE 99 CYCLE)',
             discord_id='BIGINT UNIQUE NOT NULL', channel_id='INT PRIMARY KEY', status='BOOL DEFAULT NULL')
-        self.database.new_table('market', resource='TEXT PRIMARY KEY', buy_price='INT DEFAULT NULL',
-                                sell_price='INT DEFAULT NULL', stock='BIGINT DEFAULT 0 NOT NULL')
+        self.database.new_table('market', resource='TEXT PRIMARY KEY', ordering='SMALLINT UNIQUE NOT NULL',
+                                buy_price='INT DEFAULT NULL', sell_price='INT DEFAULT NULL',
+                                stock='BIGINT DEFAULT 0 NOT NULL')
 
         self.database.new_kv('channel_ids', 'BIGINT')
         self.database.new_kv('kv_bools', 'BOOL')
