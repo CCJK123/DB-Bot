@@ -27,7 +27,7 @@ class MarketCog(discordutils.CogBase):
         print(values)
         await interaction.response.send_message(embeds=(
             discordutils.create_embed(pnwutils.constants.market_res_cap, map(operator.itemgetter('buy_price'), values),
-                                      description='Buying Prices', title='Bank Trading Prices'),
+                                      description='Buying Prices', title='Market Trading Prices'),
             discordutils.create_embed(pnwutils.constants.market_res_cap, map(operator.itemgetter('sell_price'), values),
                                       description='Selling Prices')
         ))
@@ -38,7 +38,7 @@ class MarketCog(discordutils.CogBase):
         values = await self.market_table.select('ordering', 'stock').order_by('1')
         print(values)
         await interaction.response.send_message(embed=discordutils.create_embed(
-            pnwutils.constants.market_res_cap, map(operator.itemgetter('stock'), values), title='Bank Stocks'))
+            pnwutils.constants.market_res_cap, map(operator.itemgetter('stock'), values), title='Market Stocks'))
 
     @market.command()
     @discord.app_commands.describe(
