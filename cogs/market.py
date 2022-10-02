@@ -49,19 +49,20 @@ class MarketCog(discordutils.CogBase):
     async def buy(self, interaction: discord.Interaction,
                   res_name: str, amt: discord.app_commands.Range[int, 0, None]):
         """Purchase some amount of a resource for money"""
+        await interaction.response.defer()
         bal_rec = await self.users_table.select_val('balance').where(discord_id=interaction.user.id)
         if bal_rec is None:
-            await interaction.response.send_message('You have not been registered!')
+            await interaction.followup.send('You have not been registered!')
             return
 
         rec = await self.market_table.select_row('buy_price', 'stock').where(resource=res_name)
         if rec['buy_price'] is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f'{res_name.title()} is not available for purchase at this time!', ephemeral=True
             )
             return
         if rec['stock'] < amt:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f'The stocks are too low to buy that much {res_name}! '
                 f'(Requested to purchase {amt} out of {rec["stock"]} stock remaining))',
                 ephemeral=True)
@@ -70,7 +71,7 @@ class MarketCog(discordutils.CogBase):
         res = pnwutils.Resources(**bal_rec)
         total_price = amt * rec['buy_price']
         if res.money < total_price:
-            await interaction.response.send_message(f'You do not have enough money deposited to do that! '
+            await interaction.followup.send(f'You do not have enough money deposited to do that! '
                                                     f'(Trying to spend {total_price} out of {res.money} dollars)',
                                                     ephemeral=True)
             return
@@ -81,7 +82,7 @@ class MarketCog(discordutils.CogBase):
             ).where(discord_id=interaction.user.id).returning_val('balance'))
         await asyncio.gather(
             self.market_table.update(f'stock = stock - {amt}').where(resource=res_name),
-            interaction.response.send_message(
+            interaction.followup.send(
                 'Transaction complete!', embed=final_bal.create_balance_embed(interaction.user),
                 ephemeral=True),
             self.bot.log(embeds=(
@@ -101,20 +102,21 @@ class MarketCog(discordutils.CogBase):
     async def sell(self, interaction: discord.Interaction,
                    res_name: str, amt: discord.app_commands.Range[int, 0, None]):
         """Sell some amount of a resource for money"""
+        await interaction.response.defer()
         bal_amount = await self.users_table.select_val(f'(balance).{res_name}'
                                                        ).where(discord_id=interaction.user.id)
         if bal_amount is None:
-            await interaction.response.send_message('You have not been registered!')
+            await interaction.followup.send('You have not been registered!')
             return
         price = await self.market_table.select_val('sell_price').where(resource=res_name)
         print(price)
         if price is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f'{res_name.title()} is not available for selling at this time!', ephemeral=True
             )
             return
         if bal_amount < amt:
-            await interaction.response.send_message(f'You do not have enough {res_name} deposited to do that! '
+            await interaction.followup.send(f'You do not have enough {res_name} deposited to do that! '
                                                     f'(Trying to sell {amt} when balance only contains {bal_amount})',
                                                     ephemeral=True)
             return
@@ -125,7 +127,7 @@ class MarketCog(discordutils.CogBase):
             ).where(discord_id=interaction.user.id).returning_val('balance'))
         await self.market_table.update(f'stock = stock + {amt}').where(resource=res_name)
         await asyncio.gather(
-            interaction.response.send_message(
+            interaction.followup.send(
                 'Transaction complete!', embed=final_bal.create_balance_embed(interaction.user),
                 ephemeral=True),
             self.bot.log(embeds=(
