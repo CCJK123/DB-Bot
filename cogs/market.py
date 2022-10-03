@@ -63,7 +63,7 @@ class MarketCog(discordutils.CogBase):
         if rec['stock'] < amt:
             await interaction.followup.send(
                 f'The stocks are too low to buy that much {res_name}! '
-                f'(Trying to purchase {amt} tons out of {rec["stock"]} tons of stock remaining)',
+                f'(Trying to purchase {amt:,} tons out of {rec["stock"]:,} tons of stock remaining)',
                 ephemeral=True)
             return
 
@@ -71,7 +71,7 @@ class MarketCog(discordutils.CogBase):
         total_price = amt * rec['buy_price']
         if res.money < total_price:
             await interaction.followup.send(f'You do not have enough money deposited to do that! '
-                                            f'(Trying to spend {total_price} out of {res.money} dollars)',
+                                            f'(Trying to spend {total_price:,} out of {res.money:,} dollars)',
                                             ephemeral=True)
             return
         final_bal = pnwutils.Resources(
@@ -114,9 +114,10 @@ class MarketCog(discordutils.CogBase):
             )
             return
         if bal_amount < amt:
-            await interaction.followup.send(f'You do not have enough {res_name} deposited to do that! '
-                                            f'(Trying to sell {amt} when balance only contains {bal_amount})',
-                                            ephemeral=True)
+            await interaction.followup.send(
+                f'You do not have enough {res_name} deposited to do that! '
+                f'(Trying to sell {amt:,} tons when your balance only contains {bal_amount:,} tons)',
+                ephemeral=True)
             return
         final_bal = pnwutils.Resources(
             **await self.users_table.update(
