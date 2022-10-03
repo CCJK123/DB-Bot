@@ -27,16 +27,17 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
             self.new_war_subscription = await pnwkit.Subscription.subscribe(
                 self.bot.kit,
                 'war', 'create',
-                {'alliance_id': config.alliance_id},
+                {'alliance_id': int(config.alliance_id)},
                 self.on_new_war
             )
             self.update_war_subscription = await pnwkit.Subscription.subscribe(
                 self.bot.kit,
                 'war', 'update',
-                {'alliance_id': config.alliance_id},
+                {'alliance_id': int(config.alliance_id)},
                 self.on_war_update
             )
             self.subscribed = True
+            print('subscribed!')
 
     async def on_cleanup(self):
         if self.subscribed:
