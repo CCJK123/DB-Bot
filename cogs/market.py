@@ -46,9 +46,9 @@ class MarketCog(discordutils.CogBase):
     )
     @discord.app_commands.choices(res_name=discordutils.make_choices(pnwutils.constants.market_res))
     async def buy(self, interaction: discord.Interaction,
-                  res_name: str, amt: discord.app_commands.Range[int, 0, None]):
+                  res_name: str, amt: discord.app_commands.Range[int, 1, None]):
         """Purchase some amount of a resource for money"""
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
         bal_rec = await self.users_table.select_val('balance').where(discord_id=interaction.user.id)
         if bal_rec is None:
             await interaction.followup.send('You have not been registered!')
@@ -63,7 +63,7 @@ class MarketCog(discordutils.CogBase):
         if rec['stock'] < amt:
             await interaction.followup.send(
                 f'The stocks are too low to buy that much {res_name}! '
-                f'(Requested to purchase {amt} out of {rec["stock"]} stock remaining))',
+                f'(Trying to purchase {amt} tons out of {rec["stock"]} tons of stock remaining)',
                 ephemeral=True)
             return
 
@@ -98,9 +98,9 @@ class MarketCog(discordutils.CogBase):
     )
     @discord.app_commands.choices(res_name=discordutils.make_choices(pnwutils.constants.market_res))
     async def sell(self, interaction: discord.Interaction,
-                   res_name: str, amt: discord.app_commands.Range[int, 0, None]):
+                   res_name: str, amt: discord.app_commands.Range[int, 1, None]):
         """Sell some amount of a resource for money"""
-        await interaction.response.defer()
+        await interaction.response.defer(ephemeral=True)
         bal_amount = await self.users_table.select_val(f'(balance).{res_name}'
                                                        ).where(discord_id=interaction.user.id)
         if bal_amount is None:
