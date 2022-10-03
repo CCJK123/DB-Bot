@@ -1,5 +1,4 @@
 import asyncio
-import operator
 
 import discord
 
@@ -26,9 +25,9 @@ class MarketCog(discordutils.CogBase):
         values = await self.market_table.select('ordering', 'buy_price', 'sell_price').order_by('1')
         print(values)
         await interaction.response.send_message(embeds=(
-            discordutils.create_embed(pnwutils.constants.market_res_cap, map(operator.itemgetter('buy_price'), values),
+            discordutils.create_embed(pnwutils.constants.market_res_cap, map(lambda e: f"{e['buy_price']:,}", values),
                                       description='Buying Prices', title='Market Trading Prices'),
-            discordutils.create_embed(pnwutils.constants.market_res_cap, map(operator.itemgetter('sell_price'), values),
+            discordutils.create_embed(pnwutils.constants.market_res_cap, map(lambda e: f"{e['sell_price']:,}", values),
                                       description='Selling Prices')
         ))
 
@@ -38,7 +37,7 @@ class MarketCog(discordutils.CogBase):
         values = await self.market_table.select('ordering', 'stock').order_by('1')
         print(values)
         await interaction.response.send_message(embed=discordutils.create_embed(
-            pnwutils.constants.market_res_cap, map(operator.itemgetter('stock'), values), title='Market Stocks'))
+            pnwutils.constants.market_res_cap, map(lambda e: f"{e['stock']:,}", values), title='Market Stocks'))
 
     @market.command()
     @discord.app_commands.describe(
@@ -72,8 +71,8 @@ class MarketCog(discordutils.CogBase):
         total_price = amt * rec['buy_price']
         if res.money < total_price:
             await interaction.followup.send(f'You do not have enough money deposited to do that! '
-                                                    f'(Trying to spend {total_price} out of {res.money} dollars)',
-                                                    ephemeral=True)
+                                            f'(Trying to spend {total_price} out of {res.money} dollars)',
+                                            ephemeral=True)
             return
         final_bal = pnwutils.Resources(
             **await self.users_table.update(
@@ -85,11 +84,10 @@ class MarketCog(discordutils.CogBase):
             interaction.followup.send(
                 'Transaction complete!', embed=final_bal.create_balance_embed(interaction.user),
                 ephemeral=True),
-            self.bot.log(embeds=(
-                discordutils.create_embed(
-                    user=interaction.user,
-                    description=f"{interaction.user.mention} purchased {amt} tons of {res_name} for ${total_price}"),
-                final_bal.create_embed(title='Final Balance')))
+            self.bot.log(embed=discordutils.create_embed(
+                user=interaction.user,
+                description=f'{interaction.user.mention} purchased {amt:,} tons of {res_name} from the bank '
+                            f'at {rec["buy_price"]} ppu for ${total_price:,}'))
         )
         return
 
@@ -117,8 +115,8 @@ class MarketCog(discordutils.CogBase):
             return
         if bal_amount < amt:
             await interaction.followup.send(f'You do not have enough {res_name} deposited to do that! '
-                                                    f'(Trying to sell {amt} when balance only contains {bal_amount})',
-                                                    ephemeral=True)
+                                            f'(Trying to sell {amt} when balance only contains {bal_amount})',
+                                            ephemeral=True)
             return
         final_bal = pnwutils.Resources(
             **await self.users_table.update(
@@ -130,11 +128,10 @@ class MarketCog(discordutils.CogBase):
             interaction.followup.send(
                 'Transaction complete!', embed=final_bal.create_balance_embed(interaction.user),
                 ephemeral=True),
-            self.bot.log(embeds=(
-                discordutils.create_embed(
-                    user=interaction.user,
-                    description=f"{interaction.user.mention} sold {amt} tons of {res_name} for ${amt * price}"),
-                final_bal.create_embed(title='Final Balance')))
+            self.bot.log(embed=discordutils.create_embed(
+                user=interaction.user,
+                description=f'{interaction.user.mention} sold {amt:,} tons of {res_name} to the bank '
+                            f'at {price} ppu for ${amt * price:,}'))
         )
         return
 
