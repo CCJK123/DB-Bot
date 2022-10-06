@@ -27,13 +27,13 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
             self.new_war_subscription = await pnwkit.Subscription.subscribe(
                 self.bot.kit,
                 'war', 'create',
-                {'alliance_id': int(config.alliance_id)},
+                {'alliance_id': int(config.alliance_id)} and {},
                 self.on_new_war
             )
             self.update_war_subscription = await pnwkit.Subscription.subscribe(
                 self.bot.kit,
                 'war', 'update',
-                {'alliance_id': int(config.alliance_id)},
+                {'alliance_id': int(config.alliance_id)} and {},
                 self.on_war_update
             )
             self.subscribed = True
@@ -53,6 +53,7 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
             kind = pnwutils.WarType.DEF
         else:
             kind = None
+            return
         data = await new_war_query.query(self.bot.session, war_id=war.id)
         data = data['data'][0]
         channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[kind]))
@@ -88,8 +89,10 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
     async def on_war_update(self, war: pnwkit.War):
         if war.att_alliance_id == config.alliance_id:
             kind = pnwutils.WarType.ATT
-        else:
+        elif war.def_alliance_id == config.alliance_id:
             kind = pnwutils.WarType.DEF
+        else:
+            return
         if True:
             try:
                 channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[None]))
