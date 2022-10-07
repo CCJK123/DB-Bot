@@ -2,7 +2,7 @@ import asyncio
 
 import discord
 
-from utils import discordutils, pnwutils, dbbot
+from utils import discordutils, pnwutils, dbbot, config
 
 
 class MarketCog(discordutils.CogBase):
@@ -74,6 +74,41 @@ class MarketCog(discordutils.CogBase):
                                             f'(Trying to spend {total_price:,} out of {res.money:,} dollars)',
                                             ephemeral=True)
             return
+
+        agree_terms = discordutils.Choices('Yes', 'No')
+        await interaction.followup.send(
+            'We provide below-market prices to help sustain our internal economy, '
+            'so that all our members and the alliance as a whole can benefit. '
+            'Thus, if you attempt to turn a profit by selling alliance-bought goods on the open market, '
+            'you would be directly harming the alliance and your fellow assassins. '
+            'Do you promise to not resell alliance-bought goods on the open market for personal gain?',
+            view=agree_terms
+        )
+        try:
+            if await agree_terms.result() == 'No':
+                await interaction.followup.send('Exiting...')
+                return None
+        except asyncio.TimeoutError:
+            await interaction.followup.send('You took too long to respond! Exiting...')
+            return
+
+        embed = discord.Embed()
+        embed.add_field(name='Paying', value=f'{config.resource_emojis["money"]} {total_price}')
+        embed.add_field(name='Receiving', value=f'{config.resource_emojis[res_name]} {amt}')
+        embed.add_field(name='Price Per Unit', value=rec['buy_price'])
+        confirm = discordutils.Choices('Yes', 'No')
+        await interaction.followup.send(
+            'Please confirm your transaction.',
+            embed=embed, view=confirm, ephemeral=True
+        )
+        try:
+            rej = await confirm.result() == 'No'
+        except asyncio.TimeoutError:
+            await interaction.followup.send('You took too long to respond! Exiting...', ephemeral=True)
+            return
+        if rej:
+            await interaction.followup.send('Cancelling transaction and exiting...', ephemeral=True)
+            return
         final_bal = pnwutils.Resources(
             **await self.users_table.update(
                 f'balance.money = (balance).money - {total_price}, '
@@ -107,7 +142,6 @@ class MarketCog(discordutils.CogBase):
             await interaction.followup.send('You have not been registered!')
             return
         price = await self.market_table.select_val('sell_price').where(resource=res_name)
-        print(price)
         if price is None:
             await interaction.followup.send(
                 f'{res_name.title()} is not available for selling at this time!', ephemeral=True
@@ -119,9 +153,28 @@ class MarketCog(discordutils.CogBase):
                 f'(Trying to sell {amt:,} tons when your balance only contains {bal_amount:,} tons)',
                 ephemeral=True)
             return
+        total_price = amt * price
+        embed = discord.Embed()
+        embed.add_field(name='Paying', value=f'{config.resource_emojis[res_name]} {amt}')
+        embed.add_field(name='Receiving', value=f'{config.resource_emojis["money"]} {total_price}')
+        embed.add_field(name='Price Per Unit', value=price)
+        confirm = discordutils.Choices('Yes', 'No')
+        await interaction.followup.send(
+            'Please confirm your transaction.',
+            embed=embed, view=confirm, ephemeral=True
+        )
+        try:
+            rej = await confirm.result() == 'No'
+        except asyncio.TimeoutError:
+            await interaction.followup.send('You took too long to respond! Exiting...', ephemeral=True)
+            return
+        if rej:
+            await interaction.followup.send('Cancelling transaction and exiting...', ephemeral=True)
+            return
+
         final_bal = pnwutils.Resources(
             **await self.users_table.update(
-                f'balance.money = (balance).money + {amt * price}, '
+                f'balance.money = (balance).money + {total_price}, '
                 f'balance.{res_name} = (balance).{res_name} - {amt}'
             ).where(discord_id=interaction.user.id).returning_val('balance'))
         await self.market_table.update(f'stock = stock + {amt}').where(resource=res_name)
@@ -132,7 +185,7 @@ class MarketCog(discordutils.CogBase):
             self.bot.log(embed=discordutils.create_embed(
                 user=interaction.user,
                 description=f'{interaction.user.mention} sold {amt:,} tons of {res_name} to the bank '
-                            f'at {price} ppu for ${amt * price:,}'))
+                            f'at {price} ppu for ${total_price:,}'))
         )
         return
 
