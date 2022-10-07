@@ -37,7 +37,8 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
                 self.on_war_update
             )
             self.subscribed = True
-            print('subscribed!')
+            channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[None]))
+            await channel.send('subscribed!')
 
     async def on_cleanup(self):
         if self.subscribed:
@@ -47,16 +48,21 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
             )
 
     async def on_new_war(self, war: pnwkit.War):
+
         if war.att_alliance_id == config.alliance_id:
             kind = pnwutils.WarType.ATT
         elif war.def_alliance_id == config.alliance_id:
             kind = pnwutils.WarType.DEF
         else:
             kind = None
+
+        channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[kind]))
+        if kind is None:
+            await channel.send('new war not of alliance')
             return
         data = await new_war_query.query(self.bot.session, war_id=war.id)
         data = data['data'][0]
-        channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[kind]))
+
         await channel.send(embed=await self.new_war_embed(data, kind))
 
     @staticmethod
@@ -87,15 +93,17 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
         return embed
 
     async def on_war_update(self, war: pnwkit.War):
+        channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[None]))
         if war.att_alliance_id == config.alliance_id:
             kind = pnwutils.WarType.ATT
         elif war.def_alliance_id == config.alliance_id:
             kind = pnwutils.WarType.DEF
         else:
-            return
-        if True:
+            kind = None
+        await channel.send(f'war update event with kind {kind}')
+        if kind is not None:
             try:
-                channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[None]))
+
                 data = await update_war_query.query(self.bot.session)
                 embed = discord.Embed(
                     title='Low Resistance War!'
