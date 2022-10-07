@@ -58,7 +58,7 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
 
         channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[kind]))
         if kind is None:
-            await channel.send('new war not of alliance')
+            await channel.send(f'new war not of alliance: {pnwutils.link.war(war.id)}')
             return
         data = await new_war_query.query(self.bot.session, war_id=war.id)
         data = data['data'][0]
@@ -100,8 +100,8 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
             kind = pnwutils.WarType.DEF
         else:
             kind = None
-        await channel.send(f'war update event with kind {kind}')
         if kind is not None:
+            await channel.send(f'update of war {pnwutils.link.war(war.id)}')
             try:
 
                 data = await update_war_query.query(self.bot.session)
