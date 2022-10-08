@@ -27,13 +27,13 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
             self.new_war_subscription = await pnwkit.Subscription.subscribe(
                 self.bot.kit,
                 'war', 'create',
-                {'alliance_id': int(config.alliance_id)} and {},
+                {'alliance_id': int(config.alliance_id)},
                 self.on_new_war
             )
             self.update_war_subscription = await pnwkit.Subscription.subscribe(
                 self.bot.kit,
                 'war', 'update',
-                {'alliance_id': int(config.alliance_id)} and {},
+                {'alliance_id': int(config.alliance_id)},
                 self.on_war_update
             )
             self.subscribed = True
@@ -48,10 +48,9 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
             )
 
     async def on_new_war(self, war: pnwkit.War):
-
-        if war.att_alliance_id == config.alliance_id:
+        if str(war.att_alliance_id) == config.alliance_id:
             kind = pnwutils.WarType.ATT
-        elif war.def_alliance_id == config.alliance_id:
+        elif str(war.def_alliance_id) == config.alliance_id:
             kind = pnwutils.WarType.DEF
         else:
             kind = None
@@ -94,9 +93,9 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
 
     async def on_war_update(self, war: pnwkit.War):
         channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[None]))
-        if war.att_alliance_id == config.alliance_id:
+        if str(war.att_alliance_id) == config.alliance_id:
             kind = pnwutils.WarType.ATT
-        elif war.def_alliance_id == config.alliance_id:
+        elif str(war.def_alliance_id) == config.alliance_id:
             kind = pnwutils.WarType.DEF
         else:
             kind = None
