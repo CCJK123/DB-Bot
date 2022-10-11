@@ -63,7 +63,8 @@ class MarketCog(discordutils.CogBase):
         if rec['stock'] < amt:
             await interaction.followup.send(
                 f'The stocks are too low to buy that much {res_name}! '
-                f'(Trying to purchase {amt:,} tons out of {rec["stock"]:,} tons of stock remaining)',
+                f'(Trying to purchase {amt:,} ton{"s" * (amt != 1)} out of '
+                f'{rec["stock"]:,} ton{"s" * (amt != 1)} of stock remaining)',
                 ephemeral=True)
             return
 
@@ -121,8 +122,8 @@ class MarketCog(discordutils.CogBase):
                 ephemeral=True),
             self.bot.log(embed=discordutils.create_embed(
                 user=interaction.user,
-                description=f'{interaction.user.mention} purchased {amt:,} tons of {res_name} from the bank '
-                            f'at {rec["buy_price"]} ppu for ${total_price:,}'))
+                description=f'{interaction.user.mention} purchased {amt:,} ton{"s" * (amt != 1)} of {res_name} '
+                            f'from the bank at {rec["buy_price"]} ppu for ${total_price:,}'))
         )
         return
 
@@ -144,13 +145,14 @@ class MarketCog(discordutils.CogBase):
         price = await self.market_table.select_val('sell_price').where(resource=res_name)
         if price is None:
             await interaction.followup.send(
-                f'{res_name.title()} is not available for selling at this time!', ephemeral=True
+                f'{res_name.title()} is cannot be sold at this time!', ephemeral=True
             )
             return
         if bal_amount < amt:
             await interaction.followup.send(
                 f'You do not have enough {res_name} deposited to do that! '
-                f'(Trying to sell {amt:,} tons when your balance only contains {bal_amount:,} tons)',
+                f'(Trying to sell {amt:,} ton{"s" * (amt != 1)} when your balance only contains '
+                f'{bal_amount:,} ton{"s" * (bal_amount != 1)})',
                 ephemeral=True)
             return
         total_price = amt * price
@@ -184,7 +186,7 @@ class MarketCog(discordutils.CogBase):
                 ephemeral=True),
             self.bot.log(embed=discordutils.create_embed(
                 user=interaction.user,
-                description=f'{interaction.user.mention} sold {amt:,} tons of {res_name} to the bank '
+                description=f'{interaction.user.mention} sold {amt:,} ton{"s" * (amt != 1)} of {res_name} to the bank '
                             f'at {price} ppu for ${total_price:,}'))
         )
         return
