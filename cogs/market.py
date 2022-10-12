@@ -87,10 +87,10 @@ class MarketCog(discordutils.CogBase):
         )
         try:
             if await agree_terms.result() == 'No':
-                await interaction.followup.send('Exiting...')
+                await interaction.followup.send('Exiting...', ephemeral=True)
                 return None
         except asyncio.TimeoutError:
-            await interaction.followup.send('You took too long to respond! Exiting...')
+            await interaction.followup.send('You took too long to respond! Exiting...', ephemeral=True)
             return
 
         embed = discord.Embed()
