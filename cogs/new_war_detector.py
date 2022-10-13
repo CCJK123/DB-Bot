@@ -24,16 +24,19 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
 
     async def on_ready(self):
         if not self.subscribed:
+            # note: filtering by alliance_id does not work
+            # as filters only work on models which has them as one of the fields
+            # wars do not define an alliance_id field, only att_alliance_id and def_alliance_id
             self.new_war_subscription = await pnwkit.Subscription.subscribe(
                 self.bot.kit,
                 'war', 'create',
-                {'alliance_id': int(config.alliance_id)},
+                {},
                 self.on_new_war
             )
             self.update_war_subscription = await pnwkit.Subscription.subscribe(
                 self.bot.kit,
                 'war', 'update',
-                {'alliance_id': int(config.alliance_id)},
+                {},
                 self.on_war_update
             )
             self.subscribed = True
@@ -48,17 +51,15 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
             )
 
     async def on_new_war(self, war: pnwkit.War):
+        print(war.att_alliance_id, type(war.att_alliance_id))
         if str(war.att_alliance_id) == config.alliance_id:
             kind = pnwutils.WarType.ATT
         elif str(war.def_alliance_id) == config.alliance_id:
             kind = pnwutils.WarType.DEF
         else:
-            kind = None
+            return
 
         channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[kind]))
-        if kind is None:
-            await channel.send(f'new war not of alliance: {pnwutils.link.war(war.id)}')
-            return
         data = await new_war_query.query(self.bot.session, war_id=war.id)
         data = data['data'][0]
 
@@ -98,15 +99,12 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
         elif str(war.def_alliance_id) == config.alliance_id:
             kind = pnwutils.WarType.DEF
         else:
-            kind = None
-        if kind is not None:
-            await channel.send(f'update of war {pnwutils.link.war(war.id)}')
-            try:
+            return
 
+        if getattr(war, f'{kind.string_short}_resistance') < 90:
+            try:
                 data = await update_war_query.query(self.bot.session)
-                embed = discord.Embed(
-                    title='Low Resistance War!'
-                    if getattr(war, f'{kind.string_short}_resistance') < 90 else 'War update!')
+                embed = discord.Embed(title='Low Resistance War!')
                 embed.add_field(name='War', value=pnwutils.war_description(data['data'][0]))
                 await channel.send(embed=embed)
             except BaseException as e:
