@@ -12,7 +12,7 @@ def nation(nation_id: str | int) -> str:
     return f'{constants.base_url}nation/id={nation_id}'
 
 
-def alliance(alliance_id: str | int | None = None) -> str:
+def alliance(alliance_id: int | None = None) -> str:
     """Creates link to an alliance given its ID."""
     if alliance_id is None:
         alliance_id = config.alliance_id

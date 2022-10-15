@@ -35,7 +35,7 @@ class Transaction:
         res = resources.Resources.from_dict(data)
         t = datetime.datetime.fromisoformat(data['date'])
 
-        if data['sender_type'] == 2 and data['sender_id'] == config.alliance_id:
+        if data['sender_type'] == 2 and data['sender_id'] == str(config.alliance_id):
             # sender is our alliance
             e_type = EntityType.NATION if data['recipient_type'] == 1 else EntityType.ALLIANCE
             return cls(res, t, TransactionType.WITHDRAW, e_type, int(data['recipient_id']))

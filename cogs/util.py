@@ -74,7 +74,7 @@ class UtilCog(discordutils.CogBase):
             return
         data = data[0]
         # nation exists, is in one elem list
-        if data['alliance_id'] != config.alliance_id:
+        if data['alliance_id'] != str(config.alliance_id):
             off_id = await pnwutils.get_offshore_id(self.bot.session)
             if data['alliance_id'] != off_id:
                 await interaction.response.send_message(f'This nation is not in {config.alliance_name}!')
@@ -148,7 +148,7 @@ class UtilCog(discordutils.CogBase):
             return
         data = data[0]
         # nation exists, is in one elem list
-        if data['alliance_id'] != config.alliance_id:
+        if data['alliance_id'] != str(config.alliance_id):
             off_id = await pnwutils.get_offshore_id(self.bot.session)
             if data['alliance_id'] != off_id:
                 await interaction.response.send_message(f'This nation is not in {config.alliance_name}!')
@@ -352,7 +352,7 @@ class UtilCog(discordutils.CogBase):
         alliances='Comma separated string of alliance ids'
     )
     async def alliance_tiers(self, interaction: discord.Interaction,
-                             alliances: str = config.alliance_id):
+                             alliances: str = str(config.alliance_id)):
         """Create a plot of the tiers of some alliances"""
         try:
             alliance_ids = map(int, alliances.split(','))

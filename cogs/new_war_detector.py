@@ -51,10 +51,9 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
             )
 
     async def on_new_war(self, war: pnwkit.War):
-        print(war.att_alliance_id, type(war.att_alliance_id))
-        if str(war.att_alliance_id) == config.alliance_id:
+        if war.att_alliance_id == config.alliance_id:
             kind = pnwutils.WarType.ATT
-        elif str(war.def_alliance_id) == config.alliance_id:
+        elif war.def_alliance_id == config.alliance_id:
             kind = pnwutils.WarType.DEF
         else:
             return
@@ -94,9 +93,9 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
 
     async def on_war_update(self, war: pnwkit.War):
         channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[None]))
-        if str(war.att_alliance_id) == config.alliance_id:
+        if war.att_alliance_id == config.alliance_id:
             kind = pnwutils.WarType.ATT
-        elif str(war.def_alliance_id) == config.alliance_id:
+        elif war.def_alliance_id == config.alliance_id:
             kind = pnwutils.WarType.DEF
         else:
             return
