@@ -150,7 +150,7 @@ class ResourceSelectView(discord.ui.View):
             assert res <= set(pnwutils.Resources.all_res)
         else:
             res = pnwutils.Resources.all_res
-        self.future = asyncio.get_event_loop().create_future()
+        self.future: asyncio.Future[list[str]] = asyncio.get_event_loop().create_future()
         self.user_id = user_id
         self.add_item(ResourceSelector(res))
 

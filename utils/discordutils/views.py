@@ -31,7 +31,7 @@ class Choices(discord.ui.View):
         super().__init__()
         if disabled is None:
             disabled = set()
-        self.future = asyncio.get_event_loop().create_future()
+        self.future: asyncio.Future[str] = asyncio.get_event_loop().create_future()
         for c in choices:
             self.add_item(Choice(c, c in disabled))
 
@@ -128,14 +128,14 @@ def persistent_button(**kwargs) -> Callable[[WrappedCallback], WrappedCallback]:
 class SingleModal(discord.ui.Modal):
     def __init__(self, title: str):
         super().__init__(title=title)
-        self.future = asyncio.get_event_loop().create_future()
+        self.future: asyncio.Future[str] = asyncio.get_event_loop().create_future()
         self.interaction: discord.Interaction | None = None
 
     def result(self) -> Awaitable[str]:
         return self.future
 
     async def on_timeout(self) -> None:
-        self.future.set_result(asyncio.TimeoutError())
+        self.future.set_exception(asyncio.TimeoutError())
 
 
 @functools.cache
