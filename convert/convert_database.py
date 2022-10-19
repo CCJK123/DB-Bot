@@ -19,7 +19,7 @@ async def main():
         for d_id, n_id in nations.items():
             if bal := balances.get(d_id):
                 res = pnwutils.Resources(**bal)
-                print(d_id, res.to_string(','))
+                print(d_id, res.to_display_string(','))
                 tasks.append(asyncio.create_task(db.execute(
                     f'INSERT INTO users(discord_id, nation_id, balance) VALUES ($1, $2, {res.to_row()}) '
                     f'ON CONFLICT (discord_id) DO UPDATE SET nation_id = $2, balance = {res.to_row()}',
