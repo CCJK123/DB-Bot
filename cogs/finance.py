@@ -150,7 +150,7 @@ class FinanceCog(discordutils.CogBase):
                     return
 
                 project_field_name = project_field_names[project]
-                req_data.resources = pnwutils.constants.project_costs[project_field_name]
+                req_data.resources = pnwutils.constants.project_costs[project_field_name].copy()
                 if data['government_support_agency']:
                     req_data.resources //= 40
                     req_data.resources *= 37
