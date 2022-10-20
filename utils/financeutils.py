@@ -116,7 +116,7 @@ def withdrawal_embed(name: str, nation_id: str | int, reason: str, resources: pn
     embed = discord.Embed(colour=discord.Colour.blue(), **kwargs)
     embed.add_field(name='Nation', value=f'[{name}]({pnwutils.link.nation(nation_id)})')
     embed.add_field(name='Reason', value=reason)
-    embed.add_field(name='Requested Resources', value=str(resources))
+    embed.add_field(name='Requested Resources', value=resources.to_display_string())
     return embed
 
 
