@@ -14,9 +14,7 @@ def nation(nation_id: str | int) -> str:
 
 def alliance(alliance_id: int | None = None) -> str:
     """Creates link to an alliance given its ID."""
-    if alliance_id is None:
-        alliance_id = config.alliance_id
-    return f'{constants.base_url}alliance/id={alliance_id}'
+    return f'{constants.base_url}alliance/id={config.alliance_id if alliance_id is None else alliance_id}'
 
 
 def bank(kind: Literal['w', 'd', 'wa'], res: Resources | None = None,

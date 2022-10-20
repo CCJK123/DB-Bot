@@ -31,7 +31,7 @@ api_key: str = os.environ['MYSQLCONNSTR_API_KEY']
 api_key_mut: str = os.environ['MYSQLCONNSTR_API_KEY_MUT']
 offshore_api_key = os.environ['MYSQLCONNSTR_OFFSHORE_API_KEY']
 database_url: str = os.environ['MYSQLCONNSTR_DB_URL']
-alliance_id: str = 4221
+alliance_id: int = 4221
 alliance_name: str = 'Dark Brotherhood'
 
 interviewer_role_id = 331571201686372356

@@ -2,7 +2,7 @@ import asyncio
 
 import discord
 
-from utils import discordutils, config, dbbot
+from utils import discordutils, dbbot
 
 
 class DebugCog(discordutils.CogBase):

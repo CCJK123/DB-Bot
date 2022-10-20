@@ -12,10 +12,8 @@ from .. import config
 
 from ..queries import offshore_info_query
 
-
 # Setup what is exported by default
 __all__ = ('WarType', 'get_bar', 'war_description', 'mil_text', 'time_after_turns', 'get_offshore_id')
-
 
 
 class WarType(enum.Enum):
