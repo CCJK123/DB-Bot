@@ -108,6 +108,8 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
                 await channel.send(embed=embed)
             except BaseException as e:
                 await self.on_error(e)
+        else:
+            await channel.send(f'update on war of alliance {pnwutils.link.war(war.id)}')
 
     async def on_error(self, exception: BaseException):
         channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[None]))
