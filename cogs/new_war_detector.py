@@ -93,6 +93,8 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
 
     async def on_war_update(self, war: pnwkit.War):
         channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[None]))
+        await channel.send(f'data: {war.att_alliance_id} ({type(war.att_alliance_id)}), '
+                           f'{war.def_alliance_id} ({type(war.def_alliance_id)}\n\n{war.to_dict()}')
         if war.att_alliance_id == config.alliance_id:
             kind = pnwutils.WarType.ATT
         elif war.def_alliance_id == config.alliance_id:
