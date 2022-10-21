@@ -119,7 +119,7 @@ class Resources:
             return
         raise KeyError(f'{key} is not a resource!')
 
-    def to_display_string(self, connector: str = '/n'):
+    def to_display_string(self, connector: str = '\n'):
         return connector.join(f'{config.resource_emojis[res_name]} {res_amt:,}' for res_name, res_amt in self)
 
     def __bool__(self) -> bool:
