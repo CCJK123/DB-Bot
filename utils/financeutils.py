@@ -42,7 +42,7 @@ class RequestData:
         embed.add_field(name='Nation', value=f'[{self.nation_name}]({self.nation_link})')
         embed.add_field(name='Request Type', value=self.kind)
         embed.add_field(name='Reason', value=self.reason)
-        embed.add_field(name='Requested Resources', value=self.resources.to_display_string('\n'))
+        embed.add_field(name='Requested Resources', value=self.resources.to_display_string())
         for n, v in self.additional_info.items():
             embed.add_field(name=n, value=v)
         return embed
@@ -346,7 +346,7 @@ class RequestButtonsView(discordutils.PersistentView):
         updated_res_embed = self.data.resources.create_embed(title='Updated Resources')
         embed.description = f'Modified by {user.mention}'
         embed.colour = discord.Colour.orange()
-        embed.add_field(name='Updated Resources', value=self.data.resources)
+        embed.add_field(name='Updated Resources', value=self.data.resources.to_display_string())
         embed.add_field(name='Modification Reason', value=reason)
 
         await asyncio.gather(
