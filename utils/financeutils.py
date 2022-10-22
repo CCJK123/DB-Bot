@@ -42,7 +42,7 @@ class RequestData:
         embed.add_field(name='Nation', value=f'[{self.nation_name}]({self.nation_link})')
         embed.add_field(name='Request Type', value=self.kind)
         embed.add_field(name='Reason', value=self.reason)
-        embed.add_field(name='Requested Resources', value=str(self.resources))
+        embed.add_field(name='Requested Resources', value=self.resources.to_display_string('\n'))
         for n, v in self.additional_info.items():
             embed.add_field(name=n, value=v)
         return embed
