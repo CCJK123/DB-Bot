@@ -400,7 +400,7 @@ query update_war($war_id: [Int]) {
     }
 }
 ''' + nation_war_data_fragment
-update_war_query = APIQuery(update_war_query_text, alliance_id=int)
+update_war_query = APIQuery(update_war_query_text, war_id=int)
 
 individual_war_query_text = '''
 query individual_war($war_id: [Int]) {
