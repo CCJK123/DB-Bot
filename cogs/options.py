@@ -11,7 +11,7 @@ class OptionsCog(commands.GroupCog, discordutils.CogBase, group_name='_options')
         super().__init__(bot, __name__)
         self.channel_ids = bot.database.get_kv('channel_ids')
 
-    async def on_ready(self):
+    async def cog_load(self) -> None:
         await self.bot.database.execute('INSERT INTO kv_bools(key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING',
                                         'has_war_aid', False)
 

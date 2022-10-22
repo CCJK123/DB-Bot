@@ -17,7 +17,7 @@ async def main():
 
         async with bot.database:
             async with bot:
-                print('Starting bot...')
+                print('Starting Bot')
                 await bot.start(config.token)
 
 

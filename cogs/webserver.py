@@ -22,13 +22,13 @@ class Webserver(discordutils.CogBase):
 
         self.runner = web.AppRunner(app)
 
-    async def on_ready(self):
+    async def cog_load(self) -> None:
         if self.start:
+            self.start = False
             await self.runner.setup()
             site = web.TCPSite(self.runner, '0.0.0.0', 8000)
-            print('starting site')
+            print('Starting Site')
             await site.start()
-            self.start = False
 
     async def on_cleanup(self):
         await self.runner.cleanup()

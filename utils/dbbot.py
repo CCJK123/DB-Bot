@@ -44,7 +44,7 @@ async def database_initialisation(database):
 
 
 class DBBot(commands.Bot):
-    def __init__(self, session: aiohttp.ClientSession, db_url: str, on_ready_func: Callable[[], None] | None = None,
+    def __init__(self, session: aiohttp.ClientSession, db_url: str,
                  possible_statuses: Sequence[discord.Activity] | None = None):
         intents = discord.Intents(guilds=True, messages=True, message_content=True, members=True)
         super().__init__(intents=intents, command_prefix='`!')
@@ -74,7 +74,6 @@ class DBBot(commands.Bot):
         self.view_table = databases.ViewTable(self.database, 'views')
         self.database.add_table(self.view_table)
 
-        self.on_ready_func = on_ready_func
         self.possible_statuses = possible_statuses if possible_statuses is not None else (
             *map(discord.Game, ("with Python", "with the P&W API")),
             discord.Activity(type=discord.ActivityType.listening, name="Spotify"),
@@ -86,32 +85,28 @@ class DBBot(commands.Bot):
         self.tree.error(self.on_app_command_error)
 
     async def setup_hook(self) -> None:
-        await self.load_cogs('cogs')
+        print('Loading Cogs')
+        asyncio.create_task(self.load_extensions('cogs', self.excluded))
         for guild in config.guild_ids:
             self.tree.copy_global_to(guild=discord.Object(id=guild))
 
-    async def load_cogs(self, directory: str) -> None:
+    async def load_extensions(self, directory: str, excluded: set[str]) -> None:
         """
         directory: str
         Name of directory where the cogs can be found.
 
         Loads extensions found in [directory] into the bot.
         """
-        cogs = {file.split('.')[0] for file in os.listdir(directory)
-                if file.endswith('.py') and not file.startswith('_')}
-        for ext in cogs - self.excluded:
-            await self.load_extension(f'{directory}.{ext}')
+        files = {file.split('.')[0] for file in os.listdir(directory)
+                 if file.endswith('.py') and not file.startswith('_')}
+        cog_tasks = [asyncio.create_task(self.load_extension(f'{directory}.{ext}')) for ext in files - excluded]
+        await asyncio.gather(*cog_tasks)
 
     async def __aenter__(self):
         self.kit.aiohttp_session = self.session
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         self.change_status.stop()
-
-        for cog in self.cogs.values():
-            if isinstance(cog, discordutils.CogBase):
-                await cog.on_cleanup()
-
         await asyncio.sleep(1)
 
     @tasks.loop(seconds=40)
@@ -127,15 +122,12 @@ class DBBot(commands.Bot):
 
     async def on_ready(self):
         self.change_status.start()
-        await asyncio.gather(*(cog.on_ready() for cog in self.cogs.values() if isinstance(cog, discordutils.CogBase)))
 
         # add views
         async for view in self.view_table.get_all():
             super().add_view(view)
             print(f'Adding a {type(view)} from storage!')
 
-        if self.on_ready_func is not None:
-            self.on_ready_func()
         print('Ready!')
 
     async def on_app_command_error(self, interaction: discord.Interaction,

@@ -11,8 +11,7 @@ class MarketCog(discordutils.CogBase):
         self.market_table = self.bot.database.get_table('market')
         self.users_table = self.bot.database.get_table('users')
 
-    async def on_ready(self):
-        pass
+    async def cog_load(self) -> None:
         # to initialise the market table at first
         await self.market_table.insert_many('ordering', 'resource', values=enumerate(pnwutils.constants.market_res)
                                             ).on_conflict('(resource)').action_nothing()

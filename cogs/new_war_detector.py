@@ -11,7 +11,7 @@ from utils import discordutils, pnwutils, config, dbbot
 from utils.queries import new_war_query, update_war_query
 
 
-class NewWarDetectorCog(discordutils.LoopedCogBase):
+class NewWarDetectorCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
         self.last_monitoring: list[tuple[dict[str, Any], pnwutils.WarType]] | None = None
@@ -22,7 +22,8 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
         self.update_war_subscription: pnwkit.Subscription | None = None
         self.subscribed = False
 
-    async def on_ready(self):
+    async def cog_load(self) -> None:
+        await self.bot.wait_until_ready()
         if not self.subscribed:
             # note: filtering by alliance_id does not work
             # as filters only work on models which has them as one of the fields
@@ -43,7 +44,7 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
             channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[None]))
             await channel.send('subscribed!')
 
-    async def on_cleanup(self):
+    async def cog_unload(self) -> None:
         if self.subscribed:
             await asyncio.gather(
                 self.new_war_subscription.unsubscribe(),
@@ -93,8 +94,6 @@ class NewWarDetectorCog(discordutils.LoopedCogBase):
 
     async def on_war_update(self, war: pnwkit.War):
         channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[None]))
-        await channel.send(f'data: {war.att_alliance_id} ({type(war.att_alliance_id)}), '
-                           f'{war.def_alliance_id} ({type(war.def_alliance_id)}\n\n{war.to_dict()}')
         if war.att_alliance_id == config.alliance_id:
             kind = pnwutils.WarType.ATT
         elif war.def_alliance_id == config.alliance_id:
