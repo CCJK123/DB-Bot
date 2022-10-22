@@ -107,7 +107,8 @@ class NewWarDetectorCog(discordutils.CogBase):
                 embed = discord.Embed(title='Low Resistance War!')
                 embed.add_field(name='War', value=pnwutils.war_description(data['data'][0]))
                 await channel.send(
-                    f'debug: {war.att_alliance_id}, {war.def_alliance_id}, {war.att_resistance}, {war.def_resistance}',
+                    f'debug: {war.id}, {war.turns_left}, '
+                    f'{war.att_alliance_id}, {war.def_alliance_id}, {war.att_resistance}, {war.def_resistance}',
                     embed=embed)
             except BaseException as e:
                 await self.on_error(e)
