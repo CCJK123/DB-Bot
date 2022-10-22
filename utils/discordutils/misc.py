@@ -118,6 +118,7 @@ sen = object()
 def max_one(func: Command) -> Command:
     @functools.wraps(func)
     async def inner(a, b=sen, *args, **kwargs) -> object:
+        # if `a` is not a discord.Interaction then `b` should be
         i = a.user.id if isinstance(a, discord.Interaction) else b.user.id  # type: ignore
         if i in inner.using:
             raise commands.MaxConcurrencyReached(1, commands.BucketType.user)
