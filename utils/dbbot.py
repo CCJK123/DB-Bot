@@ -102,11 +102,24 @@ class DBBot(commands.Bot):
         cog_tasks = [asyncio.create_task(self.load_extension(f'{directory}.{ext}')) for ext in files - excluded]
         await asyncio.gather(*cog_tasks)
 
+    async def unload_extensions(self, directory: str, excluded: set[str]) -> None:
+        """
+        directory: str
+        Name of directory where the cogs can be found.
+
+        Loads extensions found in [directory] into the bot.
+        """
+        files = {file.split('.')[0] for file in os.listdir(directory)
+                 if file.endswith('.py') and not file.startswith('_')}
+        cog_tasks = [asyncio.create_task(self.unload_extension(f'{directory}.{ext}')) for ext in files - excluded]
+        await asyncio.gather(*cog_tasks)
+
     async def __aenter__(self):
         self.kit.aiohttp_session = self.session
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         self.change_status.stop()
+        await self.unload_extensions('cogs', self.excluded)
         await asyncio.sleep(1)
 
     @tasks.loop(seconds=40)
