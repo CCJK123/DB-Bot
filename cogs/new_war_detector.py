@@ -101,15 +101,17 @@ class NewWarDetectorCog(discordutils.CogBase):
             return
 
         if getattr(war, f'{kind.string_short}_resistance') < 90:
+            channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[None]))
+            await channel.send(
+                f'debug: {war.id}, {war.turns_left}, '
+                f'{war.att_alliance_id}, {war.def_alliance_id}, {war.att_resistance}, {war.def_resistance}',
+            )
             try:
-                channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[None]))
                 data = await update_war_query.query(self.bot.session, war_id=war.id)
-                embed = discord.Embed(title='Low Resistance War!')
-                embed.add_field(name='War', value=pnwutils.war_description(data['data'][0]))
-                await channel.send(
-                    f'debug: {war.id}, {war.turns_left}, '
-                    f'{war.att_alliance_id}, {war.def_alliance_id}, {war.att_resistance}, {war.def_resistance}',
-                    embed=embed)
+                embed = discord.Embed(
+                    title='Low Resistance War!',
+                    description=pnwutils.war_description(data['data'][0]))
+                await channel.send(embed=embed)
             except BaseException as e:
                 await self.on_error(e)
 
