@@ -54,7 +54,8 @@ def war_description(w: dict[str, Any]) -> str:
             a = n['alliance']
             resist = w[f"{k.string_short}_resistance"]
             s += (f'{k.string.capitalize()}: [{n["nation_name"]}]({link.nation(n["id"])}) ({n["num_cities"]} 🏙)\n' +
-                  ('None\n' if a is None else f'[{a["name"]}]({link.alliance(a["id"])})\n') +
+                  ('None\n' if a is None else f'[{a["name"]}]({link.alliance(a["id"])}) ') +
+                  (f'(Applicant)\n' if n["alliance_position"] == 'APPLICANT' else '\n') +
                   f'War Policy: {n["war_policy"]}\n\n'
                   f'{get_bar(resist)} {resist:3d} Resistance\n\n'
                   f'{mil_text(n, w[f"{k.string_short}_points"])}\n\n')
