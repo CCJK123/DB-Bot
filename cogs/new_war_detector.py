@@ -42,7 +42,7 @@ class NewWarDetectorCog(discordutils.CogBase):
             )
             self.subscribed = True
             channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[None]))
-            await channel.send(f'subscribed!\n{self.bot.message}')
+            await channel.send(f'subscribed!')
 
     async def cog_unload(self) -> None:
         if self.subscribed:

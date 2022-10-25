@@ -87,14 +87,14 @@ class DBBot(commands.Bot):
     async def setup_hook(self) -> None:
         print('Loading Cogs')
         asyncio.create_task(self.load_extensions('cogs', self.excluded))
-        self.message = None
         for guild in map(discord.Object, config.guild_ids):
             self.tree.copy_global_to(guild=guild)
             try:
                 await self.tree.sync(guild=guild)
             except discord.Forbidden as e:
                 print(f'Failed to sync to guild with id {guild.id}: {e.text}')
-                self.message = e.text
+        self.tree.copy_global_to(guild=discord.Object(config.guild_id))
+        self.tree.sync(guild=discord.Object(config.guild_id))
 
     async def load_extensions(self, directory: str, excluded: set[str]) -> None:
         """
@@ -113,7 +113,7 @@ class DBBot(commands.Bot):
         directory: str
         Name of directory where the cogs can be found.
 
-        Loads extensions found in [directory] into the bot.
+        Unloads extensions found in [directory] from the bot.
         """
         files = {file.split('.')[0] for file in os.listdir(directory)
                  if file.endswith('.py') and not file.startswith('_')}
