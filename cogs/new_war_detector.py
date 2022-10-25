@@ -110,7 +110,7 @@ class NewWarDetectorCog(discordutils.CogBase):
             try:
                 data = await update_war_query.query(self.bot.session, war_id=war.id)
                 data = data['data']
-                if data and data[0][kind.string_short]['alliance_position'] != 'APPLICANT':
+                if data and data[0][kind.string]['alliance_position'] != 'APPLICANT':
                     embed = discord.Embed(
                         title='Low Resistance War!',
                         description=pnwutils.war_description(data[0]))
