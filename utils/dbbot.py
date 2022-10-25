@@ -92,7 +92,7 @@ class DBBot(commands.Bot):
             try:
                 await self.tree.sync(guild=guild)
             except discord.Forbidden as e:
-                print(f'Failed to sync to guild with id {guild.id}, {e.response}')
+                print(f'Failed to sync to guild with id {guild.id}: {e.response}')
 
     async def load_extensions(self, directory: str, excluded: set[str]) -> None:
         """
