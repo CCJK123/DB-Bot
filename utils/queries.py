@@ -308,6 +308,24 @@ query nation_discord($alliance_ids: [Int]) {
 '''
 alliance_tiers_query = APIQuery(alliance_tiers_query_text, alliance_ids=[int])
 
+global_trade_prices_query_text = '''
+query global_trade_prices {
+    trades(type: GLOBAL, accepted: false, first: 1000) {
+        data {
+            sender_id
+            receiver_id
+            offer_resource
+            buy_or_sell
+            price
+        }
+        paginatorInfo {
+            hasMorePages
+        }
+    }
+}
+'''
+global_trade_prices_query = APIQuery(global_trade_prices_query_text, True)
+
 # war related queries
 # both detector.py and war.py
 

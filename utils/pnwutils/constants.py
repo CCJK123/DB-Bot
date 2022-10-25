@@ -5,7 +5,7 @@ from .resources import Resources
 base_url: Final[str] = 'https://politicsandwar.com/'
 base_api_url: Final[str] = 'https://api.politicsandwar.com/graphql'
 market_res: Final[tuple[str, ...]] = Resources.all_res[1:]
-market_res_cap: Final[tuple[str, ...]] = tuple(res.title() for res in market_res)
+market_res_title: Final[tuple[str, ...]] = tuple(res.title() for res in market_res)
 
 project_costs = {
     'advanced_urban_planning': Resources(uranium=10000, aluminum=40000, steel=20000, munitions=20000, food=2_500_000),

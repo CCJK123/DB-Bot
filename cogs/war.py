@@ -21,12 +21,12 @@ class WarCog(discordutils.CogBase):
         war = war.removeprefix(f'{pnwutils.constants.base_url}nation/war/timeline/war=')
 
         try:
-            int(war)
+            war_id = int(war)
         except ValueError:
             await interaction.response.send_message("That isn't a number!")
             return
 
-        data = await individual_war_query.query(self.bot.session, war_id=war)
+        data = await individual_war_query.query(self.bot.session, war_id=war_id)
         if data['data']:
             data = data['data'][0]  # type: ignore
             await interaction.response.send_message(embed=discord.Embed(description=pnwutils.war_description(data)))

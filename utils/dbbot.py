@@ -49,7 +49,7 @@ class DBBot(commands.Bot):
         intents = discord.Intents(guilds=True, messages=True, message_content=True, members=True)
         super().__init__(intents=intents, command_prefix='`!')
         self.session = session
-        self.excluded = {'debug', 'open_slots_detector', 'applications'}
+        self.excluded = {'debug', 'new_war_detector', 'open_slots_detector', 'applications'}
         self.kit = pnwkit.QueryKit(config.api_key)
 
         self.database: databases.Database = databases.PGDatabase(db_url)
@@ -87,8 +87,12 @@ class DBBot(commands.Bot):
     async def setup_hook(self) -> None:
         print('Loading Cogs')
         asyncio.create_task(self.load_extensions('cogs', self.excluded))
-        for guild in config.guild_ids:
-            self.tree.copy_global_to(guild=discord.Object(id=guild))
+        for guild in map(discord.Object, config.guild_ids):
+            self.tree.copy_global_to(guild=guild)
+            try:
+                await self.tree.sync(guild=guild)
+            except discord.Forbidden:
+                pass
 
     async def load_extensions(self, directory: str, excluded: set[str]) -> None:
         """

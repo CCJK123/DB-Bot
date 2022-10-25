@@ -83,6 +83,8 @@ class NewWarDetectorCog(discordutils.CogBase):
                 inline=False)
             a = nation['alliance']
             aa_text = 'None' if a is None else f'[{a["name"]}]({pnwutils.link.alliance(a["id"])})'
+            if nation['alliance_position'] == 'APPLICANT':
+                aa_text += ' (Applicant)'
             embed.add_field(name='Alliance', value=aa_text, inline=False)
             embed.add_field(name='Score', value=str(nation["score"]))
             r = pnwutils.formulas.war_range(nation["score"])
@@ -99,8 +101,7 @@ class NewWarDetectorCog(discordutils.CogBase):
             kind = pnwutils.WarType.DEF
         else:
             return
-
-        if getattr(war, f'{kind.string_short}_resistance') < 90:
+        if getattr(war, f'{kind.string_short}_resistance') <= 90:
             channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[None]))
             await channel.send(
                 f'debug: {war.id}, {war.turns_left}, '
@@ -108,16 +109,20 @@ class NewWarDetectorCog(discordutils.CogBase):
             )
             try:
                 data = await update_war_query.query(self.bot.session, war_id=war.id)
-                embed = discord.Embed(
-                    title='Low Resistance War!',
-                    description=pnwutils.war_description(data['data'][0]))
-                await channel.send(embed=embed)
+                data = data['data']
+                if data and data[0][kind.string_short]['alliance_position'] != 'APPLICANT':
+                    embed = discord.Embed(
+                        title='Low Resistance War!',
+                        description=pnwutils.war_description(data[0]))
+                    await channel.send(embed=embed)
+                # if data is empty war has already ended, because query does not have 'active: false'
+                # otherwise low resistance is an applicant
             except BaseException as e:
                 await self.on_error(e)
 
     async def on_error(self, exception: BaseException):
         channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[None]))
-        await channel.send(f'Sorry, an exception occurred in the new war detector`.')
+        await channel.send(f'Sorry, an exception occurred in the new war detector.')
 
         s = ''
         for ex in traceback.format_exception(type(exception), exception, exception.__traceback__):

@@ -13,7 +13,7 @@ from discord.ext import commands
 
 from utils import discordutils, pnwutils, config, dbbot
 from utils.queries import (nation_register_query, alliance_member_res_query,
-                           alliance_activity_query, alliance_tiers_query, nation_info_query)
+                           alliance_activity_query, alliance_tiers_query, nation_info_query, global_trade_prices_query)
 
 
 class UtilCog(discordutils.CogBase):
@@ -230,8 +230,7 @@ class UtilCog(discordutils.CogBase):
     async def check_activity(self, interaction: discord.Interaction,
                              days: int = 3):
         """Lists nations that have not been active in the last n days (defaults to 3 days)"""
-        data = (await alliance_activity_query.query(self.bot.session, alliance_id=config.alliance_id))
-        data = data['data']
+        data = await alliance_activity_query.query(self.bot.session, alliance_id=config.alliance_id)
 
         inactives = set()
         nation_names = {}
@@ -289,6 +288,7 @@ class UtilCog(discordutils.CogBase):
             embed.add_field(name='Current Wars', value=s)
         return embed
 
+    # note: user command
     async def nation(self, interaction: discord.Interaction, member: discord.Member):
         """Get the nation of this member"""
         nation_id = await self.users_table.select_val('nation_id').where(discord_id=member.id)
@@ -327,6 +327,7 @@ class UtilCog(discordutils.CogBase):
         await interaction.response.send_message(f'<@{discord_id}> has nation ID {nation_id}.',
                                                 allowed_mentions=discord.AllowedMentions.none())
 
+    # note: message command
     async def discords(self, interaction: discord.Interaction, message: discord.Message):
         """Look for the discord accounts of the nation links in the message!"""
         nation_ids = ','.join(self.nation_link_pattern.findall(message.content))
@@ -392,10 +393,31 @@ class UtilCog(discordutils.CogBase):
     @discord.app_commands.describe(
         turns='Time in how many turns'
     )
-    async def time_in(self, interaction: discord.Interaction, turns: int):
+    async def time_in(self, interaction: discord.Interaction, turns: discord.app_commands.Range[int, 0, None]):
         """Express the time in n turns"""
         s = pnwutils.time_after_turns(turns)
         await interaction.response.send_message(f'It would be {s} (`{s}`) in {turns} turns.')
+
+    @discord.app_commands.command()
+    async def global_trade_prices(self, interaction: discord.Interaction):
+        """Find the lowest and highest buy and sell prices for each resource on the market"""
+        data = await global_trade_prices_query.query(self.bot.session)
+        buy_max = {k: 0 for k in pnwutils.constants.market_res}
+        buy_max['credits'] = 0
+        sell_min = {}
+        for trade in data:
+            if trade['buy_or_sell'] == 'sell':
+                if not (p := sell_min.get(trade['offer_resource'])) or p > trade['price']:
+                    sell_min[trade['offer_resource']] = trade['price']
+            else:
+                if buy_max[trade['offer_resource']] < trade['price']:
+                    buy_max[trade['offer_resource']] = trade['price']
+        embed = discord.Embed(title='Global Market Prices')
+        for res in (*pnwutils.constants.market_res, 'credits'):
+            embed.add_field(
+                name=f'{config.resource_emojis[res]} {res.title()}',
+                value=f'Buying: {buy_max[res]}\nSelling: {sell_min[res]}')
+        await interaction.response.send_message(embed=embed)
 
     @discord.app_commands.command(name='_reload')
     @discord.app_commands.default_permissions(manage_guild=True)
