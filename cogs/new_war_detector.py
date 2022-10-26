@@ -23,6 +23,9 @@ class NewWarDetectorCog(discordutils.CogBase):
         self.subscribed = False
 
     async def cog_load(self) -> None:
+        asyncio.create_task(self.subscribe())
+
+    async def subscribe(self):
         await self.bot.wait_until_ready()
         if not self.subscribed:
             # note: filtering by alliance_id does not work
