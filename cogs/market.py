@@ -24,10 +24,12 @@ class MarketCog(discordutils.CogBase):
         values = await self.market_table.select('ordering', 'buy_price', 'sell_price').order_by('1')
         print(values)
         await interaction.response.send_message(embeds=(
-            discordutils.create_embed(pnwutils.constants.market_res_title, map(lambda e: f"{e['buy_price']:,}", values),
-                                      description='Buying Prices', title='Market Trading Prices'),
-            discordutils.create_embed(pnwutils.constants.market_res_title, map(lambda e: f"{e['sell_price']:,}", values),
-                                      description='Selling Prices')
+            discordutils.create_embed(
+                pnwutils.constants.market_res_title, map(lambda e: f"{e['buy_price']:,}", values),
+                description='Buying Prices', title='Market Trading Prices'),
+            discordutils.create_embed(
+                pnwutils.constants.market_res_title, map(lambda e: f"{e['sell_price']:,}", values),
+                description='Selling Prices')
         ))
 
     @market.command()

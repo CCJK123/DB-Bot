@@ -119,11 +119,13 @@ class DBBot(commands.Bot):
         await asyncio.gather(*cog_tasks)
 
     async def __aenter__(self):
+        await super().__aenter__()
         self.kit.aiohttp_session = self.session
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         self.change_status.stop()
         await self.unload_extensions('cogs', self.excluded)
+        await super().__aexit__(exc_type, exc_val, exc_tb)
         await asyncio.sleep(1)
 
     @tasks.loop(seconds=40)
