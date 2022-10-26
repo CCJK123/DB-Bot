@@ -86,15 +86,13 @@ class DBBot(commands.Bot):
 
     async def setup_hook(self) -> None:
         print('Loading Cogs')
-        asyncio.create_task(self.load_extensions('cogs', self.excluded))
+        await self.load_extensions('cogs', self.excluded)
         for guild in map(discord.Object, config.guild_ids):
             self.tree.copy_global_to(guild=guild)
             try:
                 await self.tree.sync(guild=guild)
             except discord.Forbidden as e:
                 print(f'Failed to sync to guild with id {guild.id}: {e.text}')
-        self.tree.copy_global_to(guild=discord.Object(config.guild_id))
-        self.tree.sync(guild=discord.Object(config.guild_id))
 
     async def load_extensions(self, directory: str, excluded: set[str]) -> None:
         """
