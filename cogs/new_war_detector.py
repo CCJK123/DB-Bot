@@ -106,10 +106,6 @@ class NewWarDetectorCog(discordutils.CogBase):
             return
         if getattr(war, f'{kind.string_short}_resistance') <= 90:
             channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[None]))
-            await channel.send(
-                f'debug: {war.id}, {war.turns_left}, '
-                f'{war.att_alliance_id}, {war.def_alliance_id}, {war.att_resistance}, {war.def_resistance}',
-            )
             try:
                 data = await update_war_query.query(self.bot.session, war_id=war.id)
                 data = data['data']
@@ -121,10 +117,10 @@ class NewWarDetectorCog(discordutils.CogBase):
                 # if data is empty war has already ended, because query does not have 'active: false'
                 # otherwise low resistance is an applicant
             except BaseException as e:
-                await self.on_error(e)
+                await self.on_error(e, channel)
 
-    async def on_error(self, exception: BaseException):
-        channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[None]))
+    @staticmethod
+    async def on_error(exception: BaseException, channel: discord.TextChannel):
         await channel.send(f'Sorry, an exception occurred in the new war detector.')
 
         s = ''
