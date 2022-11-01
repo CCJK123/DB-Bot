@@ -26,13 +26,18 @@ class OddsInfoView(discord.ui.View):
         self.orig.set_footer(text='Note: assumes all soldiers have munitions')
         a = self.data['attacker']
         d = self.data['defender']
-        odds = [f'Utter Defeat: {t[0]}\nPyrrhic Victory: {t[1]}\nModerate Success: {t[2]}\nImmense Triumph" {t[3]}'
+        odds = [f'Utter Defeat: {t[0]:.2%}\nPyrrhic Victory: {t[1]:.2%}\n'
+                f'Moderate Success: {t[2]:.2%}\nImmense Triumph {t[3]:.2%}'
                 for t in pnwutils.formulas.odds(a, d)]
         a_link = f'[{a["nation_name"]}]({pnwutils.link.nation(a["id"])})'
         d_link = f'[{d["nation_name"]}]({pnwutils.link.nation(d["id"])})'
-        s = (f'{a_link} against {d_link}\nGround Battle\n{odds[0]}\nAirstrike\n{odds[1]}\nNaval Battle\n{odds[2]}\n\n'
-             f'{d_link} against {a_link}\nGround Battle\n{odds[3]}\nAirstrike\n{odds[4]}\nNaval Battle\n{odds[5]}')
-        self.orig.add_field(name='Battle Odds', value=s)
+        self.orig.description += (
+            '__**Battle Odds**__\n'
+            f'{a_link} against {d_link}\n**Ground Battle**\n{odds[0]}\n'
+            f'**Airstrike**\n{odds[1]}\n**Naval Battle**\n{odds[2]}\n\n'
+            f'{d_link} against {a_link}\n**Ground Battle**\n{odds[3]}\n'
+            f'**Airstrike**\n{odds[4]}\n**Naval Battle**\n{odds[5]}')
+
         await interaction.response.edit_message(view=self, embed=self.orig)
 
 

@@ -437,9 +437,11 @@ query individual_war($war_id: [Int]) {
             def_points
             attacker {
                 ...nation_data
+                population
             }
             defender {
                 ...nation_data
+                population
             }
             attacks(min_id: 0) {
                 type

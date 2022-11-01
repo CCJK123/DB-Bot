@@ -42,7 +42,7 @@ def mil_values(n: dict) -> tuple[float, float, float]:
 
 def round_odds(att_val: float, def_val: float) -> float:
     sample_space = att_val * def_val * .36
-    x, y = (att_val, def_val) if att_val > def_val else def_val, att_val
+    x, y = (att_val, def_val) if att_val > def_val else (def_val, att_val)
     overlap = y - x * .4
     p = (overlap * overlap * 0.5) / sample_space
     return 1 - p if att_val > def_val else p
@@ -69,7 +69,7 @@ def battle_odds(att_val: float, def_val: float) -> BattleOdds:
 def odds(a: dict, d: dict) -> tuple[BattleOdds, BattleOdds, BattleOdds, BattleOdds, BattleOdds, BattleOdds]:
     ag, aa, an = mil_values(a)
     dg, da, dn = mil_values(d)
-    return (battle_odds(ag, dg), battle_odds(aa, da), battle_odds(an, dn),
-            battle_odds(dg, ag), battle_odds(da, aa), battle_odds(ag, dg))
+    return (battle_odds(ag, dg + d['population'] / 400), battle_odds(aa, da), battle_odds(an, dn),
+            battle_odds(dg, ag + a['population'] / 400), battle_odds(da, aa), battle_odds(ag, dg))
 
 

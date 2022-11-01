@@ -421,14 +421,14 @@ class UtilCog(discordutils.CogBase):
 
     @discord.app_commands.command(name='_reload')
     @discord.app_commands.default_permissions(manage_guild=True)
-    async def reload(self, interaction: discord.Interaction, cog: str) -> None:
+    async def reload(self, interaction: discord.Interaction, extension: str) -> None:
         """Reload the given cog"""
         try:
-            await self.bot.reload_extension(f'cogs.{cog}')
+            await self.bot.reload_extension(f'cogs.{extension}')
         except commands.ExtensionNotLoaded:
-            await interaction.response.send_message(f'The cog `{cog}` was not previously loaded!')
+            await interaction.response.send_message(f'The extension `{extension}` was not previously loaded!')
             return
-        await interaction.response.send_message(f'The cog `{cog}` has been reloaded!')
+        await interaction.response.send_message(f'The extension `{extension}` has been reloaded!')
 
     @commands.command()
     @commands.has_guild_permissions(administrator=True)
