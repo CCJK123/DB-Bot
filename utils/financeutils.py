@@ -394,8 +394,8 @@ class CancelButton(discord.ui.Button[PresetView]):
         self.style = discord.ButtonStyle.success
         discordutils.disable_all(self.view)
         self.view.stop()
-        await interaction.response.edit_message(view=self.view)
         self.view.future.set_exception(asyncio.CancelledError())
+        await interaction.response.edit_message(view=self.view)
 
 
 class PresetButton(discord.ui.Button[PresetView]):
