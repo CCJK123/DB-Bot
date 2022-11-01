@@ -21,6 +21,7 @@ class NewWarDetectorCog(discordutils.CogBase):
         self.new_war_subscription: pnwkit.Subscription | None = None
         self.update_war_subscription: pnwkit.Subscription | None = None
         self.subscribed = False
+        self.breakpoints: dict[str, int] = {}
 
     async def cog_load(self) -> None:
         asyncio.create_task(self.subscribe())
@@ -104,7 +105,14 @@ class NewWarDetectorCog(discordutils.CogBase):
             kind = pnwutils.WarType.DEF
         else:
             return
-        if getattr(war, f'{kind.string_short}_resistance') <= 90:
+        if (res := getattr(war, f'{kind.string_short}_resistance')) <= 60:
+            if b := self.breakpoints.get(war.id):
+                if res > b:
+                    return
+                self.breakpoints[war.id] = b - 20
+            else:
+                self.breakpoints[war.id] = 40
+
             channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[None]))
             try:
                 data = await update_war_query.query(self.bot.session, war_id=war.id)
@@ -114,6 +122,8 @@ class NewWarDetectorCog(discordutils.CogBase):
                         title='Low Resistance War!',
                         description=pnwutils.war_description(data[0]))
                     await channel.send(embed=embed)
+                else:
+                    del self.breakpoints[war.id]
                 # if data is empty war has already ended, because query does not have 'active: false'
                 # otherwise low resistance is an applicant
             except BaseException as e:
