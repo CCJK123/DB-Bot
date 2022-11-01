@@ -13,7 +13,8 @@ from .. import config
 from ..queries import offshore_info_query
 
 # Setup what is exported by default
-__all__ = ('WarType', 'get_bar', 'war_description', 'mil_text', 'time_after_turns', 'get_offshore_id')
+__all__ = ('WarType', 'get_bar', 'find_end_attack', 'war_description', 'mil_text', 'time_after_turns',
+           'get_offshore_id')
 
 
 class WarType(enum.Enum):
@@ -44,9 +45,17 @@ def get_bar(resist: int):
     return '⬛' * 10
 
 
-def war_description(w: dict[str, Any]) -> str:
+def find_end_attack(w: dict[str, Any]) -> dict | None:
+    return discord.utils.find(lambda attack: attack['type'] in ('VICTORY', 'PEACE'), w['attacks'])
+
+
+sen = object
+
+
+def war_description(w: dict[str, Any], end_attack: dict | None | object = sen) -> str:
     s = f'[War Page]({link.war(w["id"])})\n{w["war_type"].capitalize()} War\n\n'
-    end_attack: dict | None = discord.utils.find(lambda attack: attack['type'] in ('VICTORY', 'PEACE'), w['attacks'])
+    if end_attack is sen:
+        end_attack = find_end_attack(w)
     if end_attack is None and w['turns_left'] > 0:
         # ongoing war
         for k in WarType.ATT, WarType.DEF:
@@ -59,24 +68,23 @@ def war_description(w: dict[str, Any]) -> str:
                   f'War Policy: {n["war_policy"]}\n\n'
                   f'{get_bar(resist)} {resist:3d} Resistance\n\n'
                   f'{mil_text(n, w[f"{k.string_short}_points"])}\n\n')
-    else:
-        for k in WarType.ATT, WarType.DEF:
-            n = w[k.string]
-            resist = w[f"{k.string_short}_resistance"]
-            s += (f'{k.string.capitalize()}: [{n["nation_name"]}]({link.nation(n["id"])})\n\n'
-                  f'{get_bar(resist)} {resist:3d} Resistance\n\n')
-        if end_attack is None:
-            # expired war
-            end_time = discord.utils.format_dt(datetime.datetime.fromisoformat(w['date']) +
-                                               datetime.timedelta(days=5))
-            s += f'The conflict expired at {end_time}.'
-        else:
-            end_time = discord.utils.format_dt(datetime.datetime.fromisoformat(end_attack['date']))
+        return s
 
-            if end_attack['type'] == 'PEACE':
-                s += f'Truce was agreed upon at {end_time}.'
-            else:
-                s += f'The war was won by the {"defender" if w["winner_id"] == n else "attacker"} at {end_time}.'
+    for k in WarType.ATT, WarType.DEF:
+        n = w[k.string]
+        resist = w[f"{k.string_short}_resistance"]
+        s += (f'{k.string.capitalize()}: [{n["nation_name"]}]({link.nation(n["id"])})\n\n'
+              f'{get_bar(resist)} {resist:3d} Resistance\n\n')
+    if end_attack is None:
+        # expired war
+        end_time = discord.utils.format_dt(datetime.datetime.fromisoformat(w['date']) +
+                                           datetime.timedelta(days=5))
+        s += f'The conflict expired at {end_time}.'
+    else:
+        end_time = discord.utils.format_dt(datetime.datetime.fromisoformat(end_attack['date']))
+
+        s += (f'Truce was agreed upon at {end_time}.' if end_attack['type'] == 'PEACE' else
+              f'The war was won by the {"defender" if w["winner_id"] == n else "attacker"} at {end_time}.')
     return s
 
 

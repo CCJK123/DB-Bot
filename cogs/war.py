@@ -8,40 +8,75 @@ from utils.queries import individual_war_query, nation_active_wars_query, find_s
     spy_sat_query
 
 
+class OddsInfoView(discord.ui.View):
+    def __init__(self, orig: discord.Embed, data: dict):
+        super().__init__(timeout=config.timeout)
+        self.orig = orig
+        self.data = data
+
+    async def on_timeout(self) -> None:
+        discordutils.disable_all(self)
+        self.stop()
+
+    @discord.ui.button(label='Battle Odds')
+    async def odds(self, interaction: discord.Interaction, button: discord.ui.Button):
+        button.style = discord.ButtonStyle.success
+        button.disabled = True
+        self.stop()
+        self.orig.set_footer(text='Note: assumes all soldiers have munitions')
+        a = self.data['attacker']
+        d = self.data['defender']
+        odds = [f'Utter Defeat: {t[0]}\nPyrrhic Victory: {t[1]}\nModerate Success: {t[2]}\nImmense Triumph" {t[3]}'
+                for t in pnwutils.formulas.odds(a, d)]
+        a_link = f'[{a["nation_name"]}]({pnwutils.link.nation(a["id"])})'
+        d_link = f'[{d["nation_name"]}]({pnwutils.link.nation(d["id"])})'
+        s = (f'{a_link} against {d_link}\nGround Battle\n{odds[0]}\nAirstrike\n{odds[1]}\nNaval Battle\n{odds[2]}\n\n'
+             f'{d_link} against {a_link}\nGround Battle\n{odds[3]}\nAirstrike\n{odds[4]}\nNaval Battle\n{odds[5]}')
+        self.orig.add_field(name='Battle Odds', value=s)
+        await interaction.edit_original_response(view=self, embed=self.orig)
+
+
 class WarCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
 
-    @discord.app_commands.command()
+    war = discord.app_commands.Group(name='war', description='War related commands!')
+
+    @war.command()
     @discord.app_commands.describe(
         war='War ID or link'
     )
-    async def war(self, interaction: discord.Interaction, war: str):
+    async def info(self, interaction: discord.Interaction, war: str):
         """Gives information on a war given an ID or link"""
         war = war.removeprefix(f'{pnwutils.constants.base_url}nation/war/timeline/war=')
 
         try:
             war_id = int(war)
         except ValueError:
-            await interaction.response.send_message("That isn't a number!")
+            await interaction.response.send_message("The ID given isn't a number!")
             return
 
-        data = await individual_war_query.query(self.bot.session, war_id=war_id)
-        if data['data']:
-            data = data['data'][0]  # type: ignore
-            await interaction.response.send_message(embed=discord.Embed(description=pnwutils.war_description(data)))
+        if data := (await individual_war_query.query(self.bot.session, war_id=war_id)).get('data'):
+            war_data = data[0]
+            end_attack = pnwutils.find_end_attack(war_data)
+            embed = discord.Embed(description=pnwutils.war_description(war_data, end_attack))
+            if end_attack is None and war_data['turns_left'] > 0:
+                await interaction.response.send_message(embed=embed, view=OddsInfoView(embed, war_data))
+                return
+            await interaction.response.send_message(embed=embed)
             return
 
         await interaction.response.send_message('No such war exists!')
 
-    @discord.app_commands.command()
+    @war.command()
     @discord.app_commands.describe(
         member='Member to check the wars of',
         nation_id='Nation ID of checked nation (overrides member)'
     )
-    async def wars(self, interaction: discord.Interaction,
-                   member: discord.Member = None,
-                   nation_id: str = None):
+    async def member_info(
+            self, interaction: discord.Interaction,
+            member: discord.Member = None,
+            nation_id: str = None):
         """Check the active wars of the given member/nation (default yourself)"""
         if member is None and nation_id is None:
             member = interaction.user
@@ -93,7 +128,7 @@ class WarCog(discordutils.CogBase):
             return
 
         found = collections.defaultdict(set)
-        for n in data['data']:
+        for n in data:
             if n['vacation_mode_turns'] > turns or n['alliance_position'] == 'APPLICANT' or n['beige_turns'] > turns:
                 continue
             def_war_turns = [w['turns_left'] for w in n['wars'] if w['def_id'] == n['id'] and w['turns_left'] > 0]

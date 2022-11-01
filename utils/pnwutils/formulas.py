@@ -1,5 +1,5 @@
 __all__ = ('war_range', 'inverse_war_range', 'spy_range', 'inverse_spy_range', 'infra_value', 'infra_price',
-           'battle_odds')
+           'mil_values', 'round_odds', 'battle_odds', 'odds')
 
 
 def war_range(score: float) -> tuple[float, float]:
@@ -36,7 +36,11 @@ def infra_price(start: float, end: float) -> float:
     return infra_value(start) * diff
 
 
-def round_odds(att_val: int, def_val: int) -> float:
+def mil_values(n: dict) -> tuple[float, float, float]:
+    return n['soldiers'] * 1.75 + n['tanks'] * 40, n['aircraft'] * 3, n['ships'] * 4
+
+
+def round_odds(att_val: float, def_val: float) -> float:
     sample_space = att_val * def_val * .36
     x, y = (att_val, def_val) if att_val > def_val else def_val, att_val
     overlap = y - x * .4
@@ -44,7 +48,10 @@ def round_odds(att_val: int, def_val: int) -> float:
     return 1 - p if att_val > def_val else p
 
 
-def battle_odds(att_val: int, def_val: int) -> tuple[float, float, float, float]:
+BattleOdds = tuple[float, float, float, float]
+
+
+def battle_odds(att_val: float, def_val: float) -> BattleOdds:
     # pnw runs 3 rounds
     # each side rolls between 0.4 - 1 times unit value
     # defender wins ties
@@ -58,5 +65,11 @@ def battle_odds(att_val: int, def_val: int) -> tuple[float, float, float, float]
     q = 1 - p
     return tuple(p ** k * q ** (3 - k) * (1 + 2 * (k == 1 or k == 2)) for k in range(4))  # type: ignore
 
+
+def odds(a: dict, d: dict) -> tuple[BattleOdds, BattleOdds, BattleOdds, BattleOdds, BattleOdds, BattleOdds]:
+    ag, aa, an = mil_values(a)
+    dg, da, dn = mil_values(d)
+    return (battle_odds(ag, dg), battle_odds(aa, da), battle_odds(an, dn),
+            battle_odds(dg, ag), battle_odds(da, aa), battle_odds(ag, dg))
 
 
