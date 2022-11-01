@@ -33,7 +33,7 @@ class OddsInfoView(discord.ui.View):
         s = (f'{a_link} against {d_link}\nGround Battle\n{odds[0]}\nAirstrike\n{odds[1]}\nNaval Battle\n{odds[2]}\n\n'
              f'{d_link} against {a_link}\nGround Battle\n{odds[3]}\nAirstrike\n{odds[4]}\nNaval Battle\n{odds[5]}')
         self.orig.add_field(name='Battle Odds', value=s)
-        await interaction.edit_original_response(view=self, embed=self.orig)
+        await interaction.response.edit_message(view=self, embed=self.orig)
 
 
 class WarCog(discordutils.CogBase):
