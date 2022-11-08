@@ -5,8 +5,11 @@ import asyncio
 import discord
 from discord.ext import commands
 
-from utils import discordutils, financeutils, pnwutils, config, dbbot
-from utils.queries import finance_nation_info_query
+from bot.utils import discordutils, pnwutils, config
+from ...utils import dbbot
+from bot.utils.queries import finance_nation_info_query
+
+from . import finance_views
 
 
 # Create Finance Cog to group finance related commands
@@ -45,7 +48,7 @@ class FinanceCog(discordutils.CogBase):
         if data:
             # Data contains a nation, hence nation with given id exists
             data = data.pop()
-            req_data = financeutils.RequestData(user, nation_id, data['nation_name'])
+            req_data = finance_views.RequestData(user, nation_id, data['nation_name'])
         else:
             # Data has no nation, hence no nation with given id exists
             await user.send(
@@ -197,7 +200,7 @@ class FinanceCog(discordutils.CogBase):
                 await user.send('You took too long to reply. Aborting request!')
                 return
 
-            res_select_view = financeutils.ResourceSelectView()
+            res_select_view = finance_views.ResourceSelectView()
             await user.send('What resources are you requesting?', view=res_select_view)
             try:
                 selected_res = await res_select_view.result()
@@ -372,7 +375,7 @@ class FinanceCog(discordutils.CogBase):
                     await user.send('You took too long to reply. Aborting request!')
                     return
 
-                res_select_view = financeutils.ResourceSelectView()
+                res_select_view = finance_views.ResourceSelectView()
                 await user.send('What resources are you requesting?', view=res_select_view)
                 try:
                     selected_res = await res_select_view.result()
@@ -411,7 +414,7 @@ class FinanceCog(discordutils.CogBase):
                     )
                     return
 
-    async def on_request_fixed(self, req_data: financeutils.RequestData) -> None:
+    async def on_request_fixed(self, req_data: finance_views.RequestData) -> None:
         author = req_data.requester
         assert author is not None
         agree_terms = discordutils.Choices('Yes', 'No')
@@ -440,13 +443,12 @@ class FinanceCog(discordutils.CogBase):
             )
             embed.title = None
             custom_id = await self.bot.get_custom_id()
-            process_view = financeutils.RequestButtonsView(req_data, custom_id=custom_id)
+            process_view = finance_views.RequestButtonsView(req_data, custom_id=custom_id)
 
             process_channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get('process_channel'))
             msg = await process_channel.send(
                 f'New {req_data.kind} Request from {author.mention}',
                 embed=embed,
-                allowed_mentions=discord.AllowedMentions.none(),
                 view=process_view
             )
             embed.title = 'Request Details'
@@ -471,8 +473,3 @@ class FinanceCog(discordutils.CogBase):
             return
 
         await self.bot.default_on_error(interaction, error)
-
-
-# Setup Finance Cog as an extension
-async def setup(bot: dbbot.DBBot) -> None:
-    await bot.add_cog(FinanceCog(bot))

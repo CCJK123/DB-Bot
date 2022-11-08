@@ -3,7 +3,7 @@ import asyncio
 
 import aiofiles
 
-from utils import databases, config, pnwutils
+from bot.utils import databases, config, pnwutils
 
 
 async def main():

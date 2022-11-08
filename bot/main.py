@@ -7,7 +7,7 @@ import discord.utils
 from utils import config, dbbot
 
 cog_logger = logging.getLogger('cogs')
-cog_logger.addHandler(logging.FileHandler('logs.txt'))
+cog_logger.addHandler(logging.FileHandler('../logs.txt'))
 
 
 async def main():

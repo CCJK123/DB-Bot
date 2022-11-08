@@ -5,7 +5,7 @@ from collections.abc import AsyncIterable, Awaitable
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from utils import discordutils
+    from bot.utils import discordutils
 
 from . import classes
 

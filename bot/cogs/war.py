@@ -3,8 +3,8 @@ import operator
 
 import discord
 
-from utils import discordutils, pnwutils, config, dbbot
-from utils.queries import individual_war_query, nation_active_wars_query, find_slots_query, nation_score_query, \
+from ..utils import discordutils, pnwutils, config,  dbbot
+from ..utils.queries import individual_war_query, nation_active_wars_query, find_slots_query, nation_score_query, \
     spy_sat_query
 
 
@@ -88,9 +88,8 @@ class WarCog(discordutils.CogBase):
         if member is not None:
             nation_id = await self.bot.database.get_table('users').select_val('nation_id').where(discord_id=member.id)
             if nation_id is None:
-                await interaction.response.send_message(
-                    f'{member.mention} does not have a nation registered!',
-                    allowed_mentions=discord.AllowedMentions.none(), ephemeral=True)
+                await interaction.response.send_message(f'{member.mention} does not have a nation registered!',
+                                                        ephemeral=True)
                 return
 
         data = await nation_active_wars_query.query(self.bot.session, nation_id=nation_id)
@@ -103,8 +102,7 @@ class WarCog(discordutils.CogBase):
             )
             return
         await interaction.response.send_message(
-            f'{nation_link if member is None else member.mention} does not have any active wars!',
-            allowed_mentions=discord.AllowedMentions.none())
+            f'{nation_link if member is None else member.mention} does not have any active wars!',)
 
     @discord.app_commands.command()
     @discord.app_commands.describe(

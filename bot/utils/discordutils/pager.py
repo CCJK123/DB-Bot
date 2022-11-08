@@ -4,7 +4,7 @@ from collections import abc
 
 import discord
 
-from utils import config, discordutils
+from bot.utils import config, discordutils
 
 __all__ = ('Pager',)
 

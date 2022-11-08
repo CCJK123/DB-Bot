@@ -2,7 +2,7 @@ import asyncio
 
 import discord
 
-from utils import discordutils, pnwutils, dbbot, config
+from ..utils import discordutils, pnwutils, config, dbbot
 
 
 class MarketCog(discordutils.CogBase):
@@ -13,7 +13,8 @@ class MarketCog(discordutils.CogBase):
 
     async def cog_load(self) -> None:
         # to initialise the market table at first
-        await self.market_table.insert_many('ordering', 'resource', values=enumerate(pnwutils.constants.market_res)
+        await self.market_table.insert_many('ordering', 'resource', values=enumerate(
+            pnwutils.constants.market_res)
                                             ).on_conflict('(resource)').action_nothing()
 
     market = discord.app_commands.Group(name='market', description='A market to buy and sell resources from the bank')

@@ -7,7 +7,7 @@ from typing import ClassVar, TypedDict
 
 import discord
 
-from utils import config, discordutils
+from bot.utils import config, discordutils
 
 __all__ = ('ResourceDict', 'Resources')
 

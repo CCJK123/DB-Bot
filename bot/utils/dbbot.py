@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-import os
 import random
 import traceback
-from collections.abc import Awaitable, Callable, Sequence
+import pkgutil
+from collections.abc import Awaitable, Sequence
 
 import aiohttp
 import asyncpg
@@ -12,7 +12,7 @@ import discord
 import pnwkit
 from discord.ext import tasks, commands
 
-from utils import discordutils, databases, config
+from bot.utils import discordutils, databases, config
 
 
 async def database_initialisation(database):
@@ -47,7 +47,7 @@ class DBBot(commands.Bot):
     def __init__(self, session: aiohttp.ClientSession, db_url: str,
                  possible_statuses: Sequence[discord.Activity] | None = None):
         intents = discord.Intents(guilds=True, messages=True, message_content=True, members=True)
-        super().__init__(intents=intents, command_prefix='`!')
+        super().__init__(intents=intents, command_prefix='`!', allowed_mentions=discord.AllowedMentions.none())
         self.session = session
         self.excluded = {'debug', 'open_slots_detector', 'applications'}
         self.kit = pnwkit.QueryKit(config.api_key)
@@ -94,28 +94,26 @@ class DBBot(commands.Bot):
             except discord.Forbidden as e:
                 print(f'Failed to sync to guild with id {guild.id}: {e.text}')
 
+    @staticmethod
+    def get_extensions(directory: str) -> set[str]:
+        return {m.name for m in pkgutil.iter_modules([directory])}
+
     async def load_extensions(self, directory: str, excluded: set[str]) -> None:
         """
-        directory: str
-        Name of directory where the cogs can be found.
-
         Loads extensions found in [directory] into the bot.
+        Excludes any found in [excluded]
         """
-        files = {file.split('.')[0] for file in os.listdir(directory)
-                 if file.endswith('.py') and not file.startswith('_')}
-        cog_tasks = [asyncio.create_task(self.load_extension(f'{directory}.{ext}')) for ext in files - excluded]
+        cog_tasks = (asyncio.create_task(self.load_extension(f'{directory}.{ext}'))
+                     for ext in self.get_extensions(directory) - excluded)
         await asyncio.gather(*cog_tasks)
 
     async def unload_extensions(self, directory: str, excluded: set[str]) -> None:
         """
-        directory: str
-        Name of directory where the cogs can be found.
-
-        Unloads extensions found in [directory] from the bot.
+        Unloads extensions found in [directory] into the bot.
+        Excludes any found in [excluded]
         """
-        files = {file.split('.')[0] for file in os.listdir(directory)
-                 if file.endswith('.py') and not file.startswith('_')}
-        cog_tasks = [asyncio.create_task(self.unload_extension(f'{directory}.{ext}')) for ext in files - excluded]
+        cog_tasks = (asyncio.create_task(self.unload_extension(f'{directory}.{ext}'))
+                     for ext in self.get_extensions(directory) - excluded)
         await asyncio.gather(*cog_tasks)
 
     async def __aenter__(self):

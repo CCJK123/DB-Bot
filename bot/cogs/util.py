@@ -11,9 +11,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from discord.ext import commands
 
-from utils import discordutils, pnwutils, config, dbbot
-from utils.queries import (nation_register_query, alliance_member_res_query,
-                           alliance_activity_query, alliance_tiers_query, nation_info_query, global_trade_prices_query)
+from ..utils import discordutils, pnwutils, config, dbbot
+from ..utils.queries import (nation_register_query, alliance_member_res_query, alliance_activity_query,
+                             alliance_tiers_query, nation_info_query, global_trade_prices_query)
 
 
 class UtilCog(discordutils.CogBase):
@@ -158,11 +158,11 @@ class UtilCog(discordutils.CogBase):
             await interaction.response.send_message(
                 "This nation's Discord Username is not set! "
                 f'Please ask {member.mention} to edit their nation and set their discord tag to {username}, '
-                'then try this command again.', ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
+                'then try this command again.', ephemeral=True)
             return
         await self.users_table.insert(discord_id=member.id, nation_id=nation_id)
         await interaction.response.send_message(f'{member.mention} has been registered to our database!',
-                                                ephemeral=True, allowed_mentions=discord.AllowedMentions.none())
+                                                ephemeral=True)
         return
 
     @_register.command(name='unregister')
@@ -253,7 +253,7 @@ class UtilCog(discordutils.CogBase):
         for m in discordutils.split_blocks('\n', itertools.chain(
                 (f'Inactive for {days} day{"s" if days != 1 else ""}:',),
                 (f'<@{d_id}>' for d_id in map_discord.values()))):
-            await discordutils.interaction_send(interaction, m)
+            await discordutils.interaction_send(interaction, m, allowed_mentions=discord.AllowedMentions())
         for m in discordutils.split_blocks('\n', (f'[{nation_names[n]}/{n}](<{pnwutils.link.nation(n)}>)'
                                                   for n in (inactives - map_discord.keys()))):
             await discordutils.interaction_send(interaction, m)
@@ -324,8 +324,7 @@ class UtilCog(discordutils.CogBase):
         if discord_id is None:
             await interaction.response.send_message('No user linked to that nation was found!')
             return
-        await interaction.response.send_message(f'<@{discord_id}> has nation ID {nation_id}.',
-                                                allowed_mentions=discord.AllowedMentions.none())
+        await interaction.response.send_message(f'<@{discord_id}> has nation ID {nation_id}.')
 
     # note: message command
     async def discords(self, interaction: discord.Interaction, message: discord.Message):
@@ -413,10 +412,13 @@ class UtilCog(discordutils.CogBase):
                 if buy_max[trade['offer_resource']] < trade['price']:
                     buy_max[trade['offer_resource']] = trade['price']
         embed = discord.Embed(title='Global Market Prices')
-        for res in (*pnwutils.constants.market_res, 'credits'):
+        for res in pnwutils.constants.market_res:
             embed.add_field(
                 name=f'{config.resource_emojis[res]} {res.title()}',
                 value=f'Buying: {buy_max[res]}\nSelling: {sell_min[res]}')
+        embed.add_field(
+            name=f'{config.resource_emojis["credits"]} Credits',
+            value=f'Buying: {buy_max["credits"]}\nSelling: {sell_min["credits"]}')
         await interaction.response.send_message(embed=embed)
 
     @discord.app_commands.command(name='_reload')

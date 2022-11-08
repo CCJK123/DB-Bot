@@ -8,7 +8,7 @@ from typing import Awaitable, Iterable, TypedDict
 
 import discord
 
-from . import pnwutils, config, discordutils
+from bot.utils import pnwutils, config, discordutils
 
 __all__ = ('RequestData', 'LoanData', 'withdrawal_embed', 'ResourceSelectView')
 
@@ -350,11 +350,7 @@ class RequestButtonsView(discordutils.PersistentView):
         embed.add_field(name='Modification Reason', value=reason)
 
         await asyncio.gather(
-            interaction.edit_original_response(
-                content=content,
-                embed=embed, view=self,
-                allowed_mentions=discord.AllowedMentions.none(),
-            ),
+            interaction.edit_original_response(content=content, embed=embed, view=self),
             self.bot.log(embeds=(
                 discordutils.create_embed(
                     user=self.data.requester,
@@ -517,8 +513,7 @@ class ModificationResponseView(discordutils.PersistentView):
         m_embed = self.m_interaction.message.embeds[0]
         m_embed.colour = discord.Colour.red()
         await asyncio.gather(
-            self.m_interaction.edit_original_response(content=f'Rejected {self.header}', embed=m_embed,
-                                                      allowed_mentions=discord.AllowedMentions.none()),
+            self.m_interaction.edit_original_response(content=f'Rejected {self.header}', embed=m_embed),
             interaction.response.edit_message(content=f'Cancelled modified request for `{self.data.reason}`',
                                               view=self, embed=embed),
             self.bot.log(embeds=(

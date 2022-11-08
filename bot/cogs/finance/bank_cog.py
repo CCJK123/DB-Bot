@@ -4,9 +4,11 @@ import datetime
 import discord
 from discord.ext import commands
 
-from utils import financeutils, discordutils, pnwutils, config, dbbot
-from utils.queries import (bank_transactions_query, bank_info_query, nation_name_query,
-                           nation_resources_query, bank_revenue_query)
+from bot.utils import discordutils, pnwutils, config
+from bot.utils import dbbot
+from bot.cogs.finance import finance_views
+from bot.utils.queries import (bank_transactions_query, bank_info_query, nation_name_query,
+                               nation_resources_query, bank_revenue_query)
 
 
 class BankCog(discordutils.CogBase):
@@ -67,7 +69,6 @@ class BankCog(discordutils.CogBase):
 
         await interaction.response.send_message(
             embed=pnwutils.Resources(**rec['balance']).create_balance_embed(interaction.user),
-            allowed_mentions=discord.AllowedMentions.none(),
             ephemeral=ephemeral
         )
         if (date := rec['due_date']) is not None:
@@ -147,7 +148,7 @@ class BankCog(discordutils.CogBase):
 
         await user.send('You current balance is:', embed=resources.create_balance_embed(user))
 
-        res_select_view = financeutils.ResourceSelectView(user.id, resources.keys_nonzero())
+        res_select_view = finance_views.ResourceSelectView(user.id, resources.keys_nonzero())
         await user.send('What resources do you wish to withdraw?', view=res_select_view)
 
         msg_chk = discordutils.get_dm_msg_chk(user.id)
@@ -195,14 +196,13 @@ class BankCog(discordutils.CogBase):
         name = data['data'][0]['nation_name']
 
         custom_id = await self.bot.get_custom_id()
-        view = financeutils.WithdrawalView(
+        view = finance_views.WithdrawalView(
             user.id, pnwutils.Withdrawal(req_resources, rec['nation_id'], note='Withdrawal from balance'),
             custom_id=custom_id)
 
         msg = await self.bot.get_channel(channel_id).send(
             f'Withdrawal Request from {user.mention}',
-            embed=financeutils.withdrawal_embed(name, rec['nation_id'], reason, req_resources),
-            allowed_mentions=discord.AllowedMentions.none(),
+            embed=finance_views.withdrawal_embed(name, rec['nation_id'], reason, req_resources),
             view=view)
         await self.bot.add_view(view, message_id=msg.id)
 
@@ -251,7 +251,7 @@ class BankCog(discordutils.CogBase):
         await interaction.response.send_message('Please check your DMs!', ephemeral=True)
         user = interaction.user
 
-        res_select_view = financeutils.ResourceSelectView(user.id, sender_bal.keys_nonzero())
+        res_select_view = finance_views.ResourceSelectView(user.id, sender_bal.keys_nonzero())
         await user.send('What resources do you wish to transfer?', view=res_select_view)
 
         msg_chk = discordutils.get_dm_msg_chk(user.id)
@@ -345,7 +345,7 @@ class BankCog(discordutils.CogBase):
         if loan is None:
             await interaction.response.send_message("You don't have an active loan!", ephemeral=True)
             return
-        await interaction.response.send_message(embed=financeutils.LoanData(**loan).to_embed(), ephemeral=True)
+        await interaction.response.send_message(embed=finance_views.LoanData(**loan).to_embed(), ephemeral=True)
 
     @discord.app_commands.default_permissions()
     async def check_bal(self, interaction: discord.Interaction, member: discord.Member):
@@ -526,7 +526,7 @@ class BankCog(discordutils.CogBase):
         adjust = await kind_view.result() == 'Adjust'
         text = 'adjust' if adjust else 'set'
         msg_chk = discordutils.get_dm_msg_chk(user.id)
-        res_select_view = financeutils.ResourceSelectView(user.id)
+        res_select_view = finance_views.ResourceSelectView(user.id)
         await user.send(f'What resources would you like to {text}?', view=res_select_view)
         last = 'by' if adjust else 'to'
         for res in await res_select_view.result():
@@ -552,8 +552,7 @@ class BankCog(discordutils.CogBase):
         await asyncio.gather(
             self.users_table.update(f'balance = {resources.to_row()}').where(discord_id=member.id),
             user.send(f'The balance of {member.mention} has been modified!',
-                      embed=resources.create_balance_embed(member),
-                      allowed_mentions=discord.AllowedMentions.none()),
+                      embed=resources.create_balance_embed(member)),
             self.bot.log(embeds=(
                 discordutils.create_embed(
                     user=member,
@@ -569,6 +568,3 @@ class DepositView(discordutils.Choices):
         super().__init__('Done!')
         self.add_item(discordutils.LinkButton(label, url))
 
-
-async def setup(bot: dbbot.DBBot):
-    await bot.add_cog(BankCog(bot))
