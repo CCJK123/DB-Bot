@@ -126,7 +126,7 @@ class DBBot(commands.Bot):
         await super().__aexit__(exc_type, exc_val, exc_tb)
         await asyncio.sleep(1)
 
-    @tasks.loop(seconds=40)
+    @tasks.loop(minutes=20)
     async def change_status(self):
         await self.change_presence(activity=random.choice(self.possible_statuses))
 
