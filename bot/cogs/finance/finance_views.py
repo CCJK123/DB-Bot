@@ -404,18 +404,20 @@ class PresetButton(discord.ui.Button[PresetView]):
         super().__init__(label=name)
 
     async def callback(self, interaction: discord.Interaction):
-        self.style = discord.ButtonStyle.success
-        discordutils.disable_all(self.view)
+
         reason_modal = discordutils.single_modal(
             'Why is this request being modified?', 'Modification Reason', discord.TextStyle.paragraph)
-        await asyncio.gather(
-            interaction.edit_original_response(view=self.view),
-            interaction.response.send_modal(reason_modal))
+        await interaction.response.send_modal(reason_modal)
 
+        self.style = discord.ButtonStyle.success
+        discordutils.disable_all(self.view)
+        result = await reason_modal.result()
         self.view.stop()
         self.view.parent_view.data.resources = self.resources
-        self.view.future.set_result(await reason_modal.result())
-        await discordutils.respond_to_interaction(reason_modal.interaction)
+        await asyncio.gather(
+            interaction.edit_original_response(view=self.view),
+            discordutils.respond_to_interaction(reason_modal.interaction))
+        self.view.future.set_result(result)
 
 
 class CustomPresetButton(discord.ui.Button[PresetView]):
@@ -423,13 +425,14 @@ class CustomPresetButton(discord.ui.Button[PresetView]):
         super().__init__(label='Custom Modification')
 
     async def callback(self, interaction: discord.Interaction):
+        modal = CustomModificationModal(self.view.parent_view)
+        await interaction.response.send_modal(modal)
+        result = await modal.future
         self.style = discord.ButtonStyle.success
         discordutils.disable_all(self.view)
         self.view.stop()
-        modal = CustomModificationModal(self.view.parent_view)
-        await interaction.response.send_modal(modal)
-        self.view.future.set_result(await modal.future)
         await interaction.edit_original_response(view=self.view)
+        self.view.future.set_result(result)
 
 
 class CustomModificationModal(discord.ui.Modal):
