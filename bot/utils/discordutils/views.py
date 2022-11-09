@@ -147,8 +147,15 @@ def _single_modal_create(label: str, style: discord.TextStyle) -> Type[SingleMod
         )
 
         async def on_submit(self, interaction: discord.Interaction) -> None:
-            self.future.set_result(self.input_box.value)
+            self.future.set_result(self.input_sobox.value)
             self.interaction = interaction
+
+        async def on_timeout(self) -> None:
+            self.future.set_exception(asyncio.TimeoutError())
+
+        async def on_error(self, interaction: discord.Interaction, error: Exception, /) -> None:
+            self.interaction = interaction
+            self.future.set_exception(error)
 
     return _Modal
 

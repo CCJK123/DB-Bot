@@ -111,7 +111,7 @@ class NewWarDetectorCog(discordutils.CogBase):
                     return
                 self.breakpoints[war.id] = b - 20
             else:
-                self.breakpoints[war.id] = 40
+                self.breakpoints[war.id] = 40 if res > 40 else 20
 
             channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[None]))
             try:
