@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import datetime
 
-from ..utils import discordutils, dbbot
+from ..utils import discordutils
+from .. import dbbot
 
 
 class UnnaturalSlotOpenDetectorCog(discordutils.CogBase):

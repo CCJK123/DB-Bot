@@ -3,7 +3,8 @@ import typing
 import discord
 from discord.ext import commands
 
-from ..utils import pnwutils, discordutils, config, dbbot
+from ..utils import pnwutils, discordutils, config
+from .. import dbbot
 
 
 class OptionsCog(commands.GroupCog, discordutils.CogBase, group_name='_options'):

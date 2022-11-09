@@ -2,8 +2,8 @@ import os
 
 from aiohttp import web
 
-from bot.utils import discordutils
-from bot.utils import dbbot
+from ..utils import discordutils
+from .. import dbbot
 
 
 class Webserver(discordutils.CogBase):

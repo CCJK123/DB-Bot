@@ -11,7 +11,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from discord.ext import commands
 
-from ..utils import discordutils, pnwutils, config, dbbot
+from ..utils import discordutils, pnwutils, config
+from .. import dbbot
 from ..utils.queries import (nation_register_query, alliance_member_res_query, alliance_activity_query,
                              alliance_tiers_query, nation_info_query, global_trade_prices_query)
 

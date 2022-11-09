@@ -2,7 +2,8 @@ import asyncio
 
 import discord
 
-from ..utils import discordutils, pnwutils, config, dbbot
+from ..utils import discordutils, pnwutils, config
+from .. import dbbot
 
 
 class MarketCog(discordutils.CogBase):

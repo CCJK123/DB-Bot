@@ -6,7 +6,7 @@ import discord
 from discord.ext import commands
 
 from bot.utils import discordutils, pnwutils, config
-from ...utils import dbbot
+from ... import dbbot
 from bot.utils.queries import finance_nation_info_query
 
 from . import finance_views

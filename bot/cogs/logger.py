@@ -1,4 +1,5 @@
-from ..utils import discordutils, dbbot
+from ..utils import discordutils
+from .. import dbbot
 
 
 class LoggingCog(discordutils.CogBase):

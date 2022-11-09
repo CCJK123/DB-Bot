@@ -1,4 +1,4 @@
-from ...utils import dbbot
+from ... import dbbot
 from .finance_cog import FinanceCog
 from .bank_cog import BankCog
 

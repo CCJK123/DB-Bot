@@ -12,7 +12,7 @@ import discord
 import pnwkit
 from discord.ext import tasks, commands
 
-from bot.utils import discordutils, databases, config
+from .utils import discordutils, databases, config
 
 
 async def database_initialisation(database):
@@ -86,7 +86,7 @@ class DBBot(commands.Bot):
 
     async def setup_hook(self) -> None:
         print('Loading Cogs')
-        await self.load_extensions('cogs', self.excluded)
+        await self.load_extensions('bot/cogs', self.excluded)
         for guild in map(discord.Object, config.guild_ids):
             self.tree.copy_global_to(guild=guild)
             try:
@@ -103,7 +103,7 @@ class DBBot(commands.Bot):
         Loads extensions found in [directory] into the bot.
         Excludes any found in [excluded]
         """
-        cog_tasks = (asyncio.create_task(self.load_extension(f'{directory}.{ext}'))
+        cog_tasks = (asyncio.create_task(self.load_extension(f'{directory.replace("/", ".")}.{ext}'))
                      for ext in self.get_extensions(directory) - excluded)
         await asyncio.gather(*cog_tasks)
 

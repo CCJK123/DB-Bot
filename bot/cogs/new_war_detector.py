@@ -7,7 +7,8 @@ from typing import Any
 import discord
 import pnwkit
 
-from ..utils import discordutils, pnwutils, config, dbbot
+from ..utils import discordutils, pnwutils, config
+from .. import dbbot
 from ..utils.queries import new_war_query, update_war_query
 
 

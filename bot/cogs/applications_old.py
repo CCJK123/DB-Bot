@@ -3,7 +3,8 @@ import asyncio
 import discord
 from discord.ext import commands
 
-from ..utils import config, discordutils, dbbot
+from ..utils import config, discordutils
+from .. import dbbot
 
 
 class OldApplicationCog(discordutils.CogBase):

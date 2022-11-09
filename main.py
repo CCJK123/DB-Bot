@@ -4,7 +4,8 @@ import logging
 import aiohttp
 import discord.utils
 
-from bot.utils import config, dbbot
+from bot import dbbot
+from bot.utils import config
 
 cog_logger = logging.getLogger('cogs')
 cog_logger.addHandler(logging.FileHandler('logs.txt'))

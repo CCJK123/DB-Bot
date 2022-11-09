@@ -3,9 +3,10 @@ import operator
 
 import discord
 
-from ..utils import discordutils, pnwutils, config,  dbbot
-from ..utils.queries import individual_war_query, nation_active_wars_query, find_slots_query, nation_score_query, \
-    spy_sat_query
+from ..utils import discordutils, pnwutils, config
+from .. import dbbot
+from ..utils.queries import (individual_war_query, nation_active_wars_query,
+                             find_slots_query, nation_score_query, spy_sat_query)
 
 
 class OddsInfoView(discord.ui.View):

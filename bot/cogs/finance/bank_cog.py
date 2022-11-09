@@ -5,7 +5,7 @@ import discord
 from discord.ext import commands
 
 from bot.utils import discordutils, pnwutils, config
-from bot.utils import dbbot
+from bot import dbbot
 from bot.cogs.finance import finance_views
 from bot.utils.queries import (bank_transactions_query, bank_info_query, nation_name_query,
                                nation_resources_query, bank_revenue_query)

@@ -5,7 +5,8 @@ import io
 import discord
 from discord.ext import commands
 
-from ..utils import discordutils, config, dbbot
+from ..utils import discordutils, config
+from .. import dbbot
 from ..utils.queries import acceptance_query
 
 
