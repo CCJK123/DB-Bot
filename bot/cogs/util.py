@@ -17,6 +17,26 @@ from ..utils.queries import (nation_register_query, alliance_member_res_query, a
                              alliance_tiers_query, nation_info_query, global_trade_prices_query)
 
 
+class ExtraInfoView(discord.ui.View):
+    def __init__(self, orig: discord.Embed, nation_id: int, data: dict):
+
+        super().__init__(timeout=config.timeout)
+        self.add_item(discordutils.LinkButton('Nation Link', pnwutils.link.nation(nation_id)))
+        self.orig = orig
+        self.data = data
+
+    async def on_timeout(self) -> None:
+        discordutils.disable_all(self)
+        self.stop()
+
+    @discord.ui.button(label='Military Info')
+    async def mil_info(self, interaction: discord.Interaction, button: discord.Button):
+        button.style = discord.ButtonStyle.success
+        button.disabled = True
+        self.orig.description += f'\n\n{pnwutils.mil_text(self.data)}'
+        await interaction.response.edit_message(embed=self.orig, view=self)
+
+
 class UtilCog(discordutils.CogBase):
     nation_link_pattern = re.compile(rf'{pnwutils.constants.base_url}nation/id=(\d+)')
 
@@ -264,10 +284,11 @@ class UtilCog(discordutils.CogBase):
         """Not implemented as of now. Check back soon!"""
         await interaction.response.send_message('Not Implemented!', ephemeral=True)
 
-    async def nation_info_embed(self, nation_id: int,
-                                member: 'discord.Member | None' = None) -> 'discord.Embed | None':
+    async def _nation_info(self, interaction: discord.Interaction, not_exist_msg: str, nation_id: int,
+                           member: 'discord.Member | None' = None, ) -> 'discord.Embed | None':
         data = await nation_info_query.query(self.bot.session, nation_id=nation_id)
         if not data['data']:
+            await interaction.response.send_message(not_exist_msg)
             return None
         data = data['data'][0]
         embed = discord.Embed(title=data['nation_name'],
@@ -287,7 +308,8 @@ class UtilCog(discordutils.CogBase):
             if block:
                 s += 'Currently under a naval blockade!'
             embed.add_field(name='Current Wars', value=s)
-        return embed
+        await interaction.response.send_message(
+            embed=embed, view=ExtraInfoView(embed, nation_id, data))
 
     # note: user command
     async def nation(self, interaction: discord.Interaction, member: discord.Member):
@@ -297,24 +319,14 @@ class UtilCog(discordutils.CogBase):
             await interaction.response.send_message('This user does not have their nation registered!')
             return
 
-        embed = await self.nation_info_embed(nation_id, member)
-        if embed is None:
-            await interaction.response.send_message("This member's registered nation does not exist! Aborting...")
-            return
-
-        await interaction.response.send_message(
-            embed=embed, view=discordutils.LinkView('Nation Link', pnwutils.link.nation(nation_id)))
+        await self._nation_info(interaction, "This member's registered nation does not exist! Aborting...",
+                                nation_id, member)
 
     @discord.app_commands.command(name='nation_info')
     async def nation_info(self, interaction: discord.Interaction, nation_id: int):
         """Get some basic information about a nation. 'nation' command equivalent for nation IDs"""
-        embed = await self.nation_info_embed(nation_id)
-        if embed is None:
-            await interaction.response.send_message("This member's registered nation does not exist! Aborting...")
-            return
-
-        await interaction.response.send_message(
-            embed=embed, view=discordutils.LinkView('Nation Link', pnwutils.link.nation(nation_id)))
+        await self._nation_info(interaction, 'This nation does not exist! Aborting...',
+                                nation_id)
 
     @discord.app_commands.command(name='discord')
     @discord.app_commands.describe(nation_id='Nation ID of the user you are trying to find!')

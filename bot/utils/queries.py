@@ -282,9 +282,15 @@ query nation_info_query($nation_id: [Int]) {
             war_policy
             domestic_policy
             score
+            soldiers
+            tanks
+            aircraft
+            ships
+            missiles
+            nukes
             wars {
                 att_id
-                naval_blockade
+                naval_blockade  
                 turns_left
             }
         }
