@@ -112,7 +112,7 @@ class NewWarDetectorCog(discordutils.CogBase):
                     return
                 self.breakpoints[war.id] = b - 20
             else:
-                self.breakpoints[war.id] = 40 if res > 40 else 20
+                self.breakpoints[war.id] = (res // 20) * 20
 
             channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[None]))
             try:
@@ -123,7 +123,7 @@ class NewWarDetectorCog(discordutils.CogBase):
                         title='Low Resistance War!',
                         description=pnwutils.war_description(data[0]))
                     await channel.send(embed=embed)
-                else:
+                elif war.id in self.breakpoints:
                     del self.breakpoints[war.id]
                 # if data is empty war has already ended, because query does not have 'active: false'
                 # otherwise low resistance is an applicant

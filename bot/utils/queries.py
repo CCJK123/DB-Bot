@@ -333,7 +333,7 @@ query global_trade_prices {
 global_trade_prices_query = APIQuery(global_trade_prices_query_text, True)
 
 # war related queries
-# both detector.py and war.py
+# both detector and war.py
 
 nation_war_data_fragment = '''
 fragment nation_data on Nation {
