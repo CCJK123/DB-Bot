@@ -20,7 +20,7 @@ resource_emojis = {
 }
 
 guild_id: int = 321984630720954379
-guild_ids: list[int] = [guild_id, 941590062540414987]
+guild_ids: list[int] = [941590062540414987, guild_id]
 member_role_id: int = 322071813469241344
 staff_role_id: int = 383815082473291778  # unused
 gov_role_id: int = 595155137274839040  # unused

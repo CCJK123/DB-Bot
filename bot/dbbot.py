@@ -49,7 +49,7 @@ class DBBot(commands.Bot):
         intents = discord.Intents(guilds=True, messages=True, message_content=True, members=True)
         super().__init__(intents=intents, command_prefix='`!', allowed_mentions=discord.AllowedMentions.none())
         self.session = session
-        self.excluded = {'debug', 'open_slots_detector', 'applications'}
+        self.excluded = {'open_slots_detector', 'applications'}
         self.kit = pnwkit.QueryKit(config.api_key)
 
         self.database: databases.Database = databases.PGDatabase(db_url)
@@ -83,6 +83,7 @@ class DBBot(commands.Bot):
         discordutils.PersistentView.bot = self
 
         self.tree.error(self.on_app_command_error)
+        self.command_ids: dict[str, int] = {}
 
     async def setup_hook(self) -> None:
         print('Loading Cogs')
@@ -90,7 +91,7 @@ class DBBot(commands.Bot):
         for guild in map(discord.Object, config.guild_ids):
             self.tree.copy_global_to(guild=guild)
             try:
-                await self.tree.sync(guild=guild)
+                self.command_ids = {c.name: c.id for c in await self.tree.sync(guild=guild)}
             except discord.Forbidden as e:
                 print(f'Failed to sync to guild with id {guild.id}: {e.text}')
 
@@ -160,10 +161,14 @@ class DBBot(commands.Bot):
         if not isinstance(exception, ignored):
             await self.default_on_error(interaction, exception)
 
-    @staticmethod
-    async def default_on_error(interaction: discord.Interaction, exception: discord.app_commands.AppCommandError):
+    async def default_on_error(self, interaction: discord.Interaction, exception: discord.app_commands.AppCommandError):
         if isinstance(exception.__cause__, discord.NotFound):
-            await interaction.channel.send('Sorry, please rerun your command.')
+            command = interaction.command
+            if isinstance(command, discord.app_commands.Command):
+                await interaction.channel.send(
+                    f'Sorry, please rerun your command: </{command.name}:{self.command_ids[command.name]}>')
+            else:
+                await interaction.channel.send(f'Sorry, please rerun your command.')
             return
         if isinstance(exception.__cause__, asyncpg.PostgresSyntaxError):
             print(exception.__cause__.as_dict())
