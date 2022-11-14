@@ -149,13 +149,14 @@ class WarCog(discordutils.CogBase):
             embed = discord.Embed(title='Nations with free slots in...')
 
             for t, nations in sorted(found.items(), key=operator.itemgetter(0)):
-                embed.add_field(name=f'{t} turn{"s" if t - 1 else ""} ({pnwutils.time_after_turns(t)})',
-                                value='\n'.join(map(pnwutils.link.nation, nations)))
+                embed.add_field(
+                    name=f'{t} turn{"s" if t - 1 else ""} ({pnwutils.time_after_turns(t)})',
+                    value='\n'.join(f'[{nation_id}]({pnwutils.link.nation(nation_id)})' for nation_id in nations))
             await interaction.response.send_message(embed=embed)
         else:
-            await interaction.response.send_message(embed=discord.Embed(title='Nations with free slots',
-                                                                        description='\n'.join(
-                                                                            map(pnwutils.link.nation, found[0]))))
+            await interaction.response.send_message(embed=discord.Embed(
+                title='Nations with free slots',
+                description='\n'.join(f'[{nation_id}]({pnwutils.link.nation(nation_id)})' for nation_id in found[0])))
 
     @discord.app_commands.command()
     async def find_spy_sat(self, interaction: discord.Interaction, target_score: int):
