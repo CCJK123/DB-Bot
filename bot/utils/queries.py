@@ -348,6 +348,7 @@ fragment nation_data on Nation {
     ships
     missiles
     nukes
+    beige_turns
     alliance_position
     alliance {
         id
