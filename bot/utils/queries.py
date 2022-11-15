@@ -378,6 +378,7 @@ query new_war($war_id: [Int]) {
 fragment new_war_nation_data on Nation {
     nation_name
     score
+    beige_turns
     num_cities
     war_policy
     soldiers
