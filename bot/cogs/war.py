@@ -153,8 +153,6 @@ class WarCog(discordutils.CogBase):
             await interaction.response.send_message('No defensive slots were found!')
         elif turns:
             embed = discord.Embed(title='Nations with free slots in...')
-            embeds = [embed]
-
             for t, nations in sorted(found.items(), key=operator.itemgetter(0)):
                 blocks = tuple(discordutils.split_blocks(
                     '\n',
@@ -169,16 +167,7 @@ class WarCog(discordutils.CogBase):
                         embed.add_field(
                             name=f'{t} turn{"s" if t - 1 else ""} ({pnwutils.time_after_turns(t)}) ({i})',
                             value=block)
-                if len(embed) > 6000:
-                    new_embed = discord.Embed()
-                    while len(embed) > 6000:
-                        field = embed.fields[-1]
-                        new_embed.add_field(name=field.name, value=field.value)
-                        embed.remove_field(-1)
-                    embed = new_embed
-                    embeds.append(embed)
-
-            await interaction.response.send_message(embeds=embeds)
+            await interaction.response.send_message(embed=embed)
         else:
             await interaction.response.send_message(embed=discord.Embed(
                 title='Nations with free slots',
