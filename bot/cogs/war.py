@@ -153,12 +153,32 @@ class WarCog(discordutils.CogBase):
             await interaction.response.send_message('No defensive slots were found!')
         elif turns:
             embed = discord.Embed(title='Nations with free slots in...')
+            embeds = [embed]
 
             for t, nations in sorted(found.items(), key=operator.itemgetter(0)):
-                embed.add_field(
-                    name=f'{t} turn{"s" if t - 1 else ""} ({pnwutils.time_after_turns(t)})',
-                    value='\n'.join(f'[{nation_id}]({pnwutils.link.nation(nation_id)})' for nation_id in nations))
-            await interaction.response.send_message(embed=embed)
+                blocks = tuple(discordutils.split_blocks(
+                    '\n',
+                    (f'[{nation_id}]({pnwutils.link.nation(nation_id)})' for nation_id in nations),
+                    limit=1024))
+                if len(blocks) == 1:
+                    embed.add_field(
+                        name=f'{t} turn{"s" if t - 1 else ""} ({pnwutils.time_after_turns(t)})',
+                        value=blocks[0])
+                else:
+                    for i, block in enumerate(blocks, 1):
+                        embed.add_field(
+                            name=f'{t} turn{"s" if t - 1 else ""} ({pnwutils.time_after_turns(t)}) ({i})',
+                            value=block)
+                if len(embed) > 6000:
+                    new_embed = discord.Embed()
+                    while len(embed) > 6000:
+                        field = embed.fields[-1]
+                        new_embed.add_field(name=field.name, value=field.value)
+                        embed.remove_field(-1)
+                    embed = new_embed
+                    embeds.append(embed)
+
+            await interaction.response.send_message(embeds=embeds)
         else:
             await interaction.response.send_message(embed=discord.Embed(
                 title='Nations with free slots',
