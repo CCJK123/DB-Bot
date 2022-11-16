@@ -5,12 +5,14 @@ import itertools
 import operator
 import re
 
+import aiohttp
 import asyncpg
 import discord
 import matplotlib.pyplot as plt
 import numpy as np
 from discord.ext import commands
 
+from .war import WarCog
 from ..utils import discordutils, pnwutils, config
 from .. import dbbot
 from ..utils.queries import (nation_register_query, alliance_member_res_query, alliance_activity_query,
@@ -18,11 +20,13 @@ from ..utils.queries import (nation_register_query, alliance_member_res_query, a
 
 
 class ExtraInfoView(discord.ui.View):
-    def __init__(self, orig: discord.Embed, nation_id: int, data: dict):
+    def __init__(self, orig: discord.Embed, nation_id: int, session: aiohttp.ClientSession, data: dict):
 
         super().__init__(timeout=config.timeout)
         self.add_item(discordutils.LinkButton('Nation Link', pnwutils.link.nation(nation_id)))
         self.orig = orig
+        self.nation_id = nation_id
+        self.session = session
         self.data = data
 
     async def on_timeout(self) -> None:
@@ -35,6 +39,14 @@ class ExtraInfoView(discord.ui.View):
         button.disabled = True
         self.orig.description += f'\n\n{pnwutils.mil_text(self.data)}'
         await interaction.response.edit_message(embed=self.orig, view=self)
+
+    @discord.ui.button(label='War Info')
+    async def war_info(self, interaction: discord.Interaction, button: discord.Button):
+        discordutils.disable_all(self)
+        button.style = discord.ButtonStyle.success
+        embeds = await WarCog.nation_get_war_embeds(self.session, self.nation_id)
+        embeds.insert(0, self.orig)
+        await interaction.response.edit_message(embeds=embeds, view=self)
 
 
 class UtilCog(discordutils.CogBase):
@@ -309,7 +321,7 @@ class UtilCog(discordutils.CogBase):
                 s += 'Currently under a naval blockade!'
             embed.add_field(name='Current Wars', value=s)
         await interaction.response.send_message(
-            embed=embed, view=ExtraInfoView(embed, nation_id, data))
+            embed=embed, view=ExtraInfoView(embed, nation_id, self.bot.session, data))
 
     # note: user command
     async def nation(self, interaction: discord.Interaction, member: discord.Member):

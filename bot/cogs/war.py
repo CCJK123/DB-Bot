@@ -1,6 +1,7 @@
 import collections
 import operator
 
+import aiohttp
 import discord
 
 from ..utils import discordutils, pnwutils, config
@@ -74,12 +75,17 @@ class WarCog(discordutils.CogBase):
 
         await interaction.response.send_message('No such war exists!')
 
+    @staticmethod
+    async def nation_get_war_embeds(session: aiohttp.ClientSession, nation_id: int):
+        data = (await nation_active_wars_query.query(session, nation_id=nation_id))['data']
+        return [discord.Embed(description=pnwutils.war_description(war)) for war in data] if data else []
+
     @war.command()
     @discord.app_commands.describe(
         member='Member to check the wars of',
         nation_id='Nation ID of checked nation (overrides member)'
     )
-    async def member_info(
+    async def nation_info(
             self, interaction: discord.Interaction,
             member: discord.Member = None,
             nation_id: str = None):
@@ -93,12 +99,12 @@ class WarCog(discordutils.CogBase):
                                                         ephemeral=True)
                 return
 
-        data = await nation_active_wars_query.query(self.bot.session, nation_id=nation_id)
+        embeds = await self.nation_get_war_embeds(self.bot.session, nation_id)
         nation_link = pnwutils.link.nation(nation_id)
-        if data['data']:
+        if embeds:
             await interaction.response.send_message(
                 f"{nation_link if member is None else member.mention}'s Active Wars",
-                embeds=[discord.Embed(description=pnwutils.war_description(war)) for war in data['data']],
+                embeds=embeds,
                 allowed_mentions=discord.AllowedMentions.none()
             )
             return
