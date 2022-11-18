@@ -169,7 +169,7 @@ leader_name_query_text = '''
 query nation_name($nation_id: [Int]) {
     nations(id: $nation_id, first: 1) {
         data {
-            nation_name
+            leader_name
         }
     }
 }
