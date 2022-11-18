@@ -130,18 +130,22 @@ class ResourceSelector(discord.ui.Select['ResourceSelectView']):
 
     async def callback(self, interaction: discord.Interaction):
         if self.view.user_id is not None and interaction.user.id != self.view.user_id:
-            await interaction.channel.send('You are not the intended recipient of this component, '
-                                           f'{interaction.user.mention}',
-                                           allowed_mentions=discord.AllowedMentions.none())
+            await interaction.channel.send(
+                f'{interaction.user.mention}, you are not the intended recipient of this component!',
+                allowed_mentions=discord.AllowedMentions.none())
             return
+        self.view.interaction = interaction
         self.view.future.set_result(self.values)
         self.disabled = True
-        await interaction.response.edit_message(view=self.view)
+        if self.view.keep_interaction:
+            await interaction.edit_original_response(view=self.view)
+        else:
+            await interaction.response.edit_message(view=self.view)
 
 
 class ResourceSelectView(discord.ui.View):
     def __init__(self, user_id: int | None = None, res: Iterable[str] | None = None,
-                 timeout: float = config.timeout):
+                 timeout: float = config.timeout, *, keep_interaction: bool = False):
         super().__init__(timeout=timeout)
 
         if res:
@@ -150,8 +154,10 @@ class ResourceSelectView(discord.ui.View):
         else:
             res = pnwutils.Resources.all_res
         self.future: asyncio.Future[list[str]] = asyncio.get_event_loop().create_future()
+        self.interaction: discord.Interaction | None = None
         self.user_id = user_id
         self.add_item(ResourceSelector(res))
+        self.keep_interaction = keep_interaction
 
     def result(self) -> Awaitable[list[str]]:
         return self.future
