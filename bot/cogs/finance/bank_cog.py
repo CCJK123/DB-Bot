@@ -588,7 +588,7 @@ class BankCog(discordutils.CogBase):
         await modal.interaction.response.send_message(view=discordutils.LinkView(
             'Withdrawal Link', pnwutils.link.bank(
                 'w', resources,
-                await leader_name_query.query(self.bot.session, nation_id=nation_id),
+                (await leader_name_query.query(self.bot.session, nation_id=nation_id))['data'][0]['leader_name'],
                 alliance_id=alliance_id
             )
         ))
