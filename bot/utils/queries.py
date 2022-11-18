@@ -165,6 +165,17 @@ query nation_name($nation_id: [Int]) {
 '''
 nation_name_query = APIQuery(nation_name_query_text, nation_id=int)
 
+leader_name_query_text = '''
+query nation_name($nation_id: [Int]) {
+    nations(id: $nation_id, first: 1) {
+        data {
+            nation_name
+        }
+    }
+}
+'''
+leader_name_query = APIQuery(leader_name_query_text, nation_id=int)
+
 bank_info_query_text = '''
 query bank_info($alliance_id: [Int]) {
     alliances(id: $alliance_id, first: 1) {

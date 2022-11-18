@@ -8,7 +8,7 @@ from bot.utils import discordutils, pnwutils, config
 from bot import dbbot
 from bot.cogs.finance import finance_views
 from bot.utils.queries import (bank_transactions_query, bank_info_query, nation_name_query,
-                               nation_resources_query, bank_revenue_query)
+                               nation_resources_query, bank_revenue_query, leader_name_query)
 
 
 class BankCog(discordutils.CogBase):
@@ -92,7 +92,7 @@ class BankCog(discordutils.CogBase):
         user = interaction.user
 
         # deposit check
-        view = DepositView('Deposit Link', pnwutils.link.bank('d', note='Deposit to balance'))
+        view = finance_views.DepositView('Deposit Link', pnwutils.link.bank('d', note='Deposit to balance'))
         start_time = datetime.datetime.now(tz=datetime.timezone.utc)
         await user.send(
             'You now have 5 minutes to deposit your resources into the bank. '
@@ -148,7 +148,7 @@ class BankCog(discordutils.CogBase):
 
         await user.send('You current balance is:', embed=resources.create_balance_embed(user))
 
-        res_select_view = finance_views.ResourceSelectView(user.id, resources.keys_nonzero())
+        res_select_view = finance_views.ResourceSelectView(res=resources.keys_nonzero())
         await user.send('What resources do you wish to withdraw?', view=res_select_view)
 
         msg_chk = discordutils.get_dm_msg_chk(user.id)
@@ -573,11 +573,25 @@ class BankCog(discordutils.CogBase):
 
         await interaction.followup.send(view=discordutils.LinkView(
             'Restock Link',
-            pnwutils.link.bank('wa', total, config.alliance_name, await pnwutils.get_offshore_id(self.bot.session))))
+            pnwutils.link.bank('wa', total, config.alliance_name,
+                               alliance_id=await pnwutils.get_offshore_id(self.bot.session))))
+
+    @_bank.command()
+    async def create_withdrawal_link(self, interaction: discord.Interaction,
+                                     nation_id: discord.app_commands.Range[int, 1, None],
+                                     alliance_id: discord.app_commands.Range[int, 1, None] = None):
+        res_select_view = finance_views.ResourceSelectView()
+        await interaction.response.send_message(view=res_select_view)
+        modal = finance_views.ResourceAmountModal('Withdrawal Link Resource Amounts', await res_select_view.result())
+        resources = await modal.result()
+        await modal.interaction.response.send_message(view=discordutils.LinkView(
+            'Withdrawal Link', pnwutils.link.bank(
+                'w', resources,
+                await leader_name_query.query(self.bot.session, nation_id=nation_id),
+                alliance_id=alliance_id
+            )
+        ))
 
 
-class DepositView(discordutils.Choices):
-    def __init__(self, label: str, url: str):
-        super().__init__('Done!')
-        self.add_item(discordutils.LinkButton(label, url))
+
 

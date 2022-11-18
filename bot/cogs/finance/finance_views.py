@@ -10,7 +10,7 @@ import discord
 
 from bot.utils import pnwutils, config, discordutils
 
-__all__ = ('RequestData', 'LoanData', 'withdrawal_embed', 'ResourceSelectView')
+__all__ = ('RequestData', 'LoanData', 'withdrawal_embed', 'ResourceSelectView', 'DepositView', 'WithdrawalView')
 
 
 @dataclass()
@@ -120,7 +120,6 @@ def withdrawal_embed(name: str, nation_id: str | int, reason: str, resources: pn
     return embed
 
 
-# noinspection PyAttributeOutsideInit
 class ResourceSelector(discord.ui.Select['ResourceSelectView']):
     def __init__(self, res: Iterable[str]):
         options = [discord.SelectOption(label=s, emoji=config.resource_emojis[s]) for s in res]
@@ -528,6 +527,12 @@ class ModificationResponseView(discordutils.PersistentView):
             )))
 
 
+class DepositView(discordutils.Choices):
+    def __init__(self, label: str, url: str):
+        super().__init__('Done!')
+        self.add_item(discordutils.LinkButton(label, url))
+
+
 class WithdrawalView(discordutils.PersistentView):
     def __init__(self, receiver_id: int, withdrawal: pnwutils.Withdrawal, *, custom_id: int):
         self.receiver_id = receiver_id
@@ -596,3 +601,31 @@ class WithdrawalView(discordutils.PersistentView):
                                 f'by {interaction.user.mention} for reason of `{cancel_reason}`'),
                 contents_embed
             )))
+
+
+class ResourceAmountModal(discord.ui.Modal):
+    def __init__(self, title: str, resource_types: list[str]):
+        super().__init__(title=title, timeout=config.timeout)
+        self.resource_types = resource_types
+        self.future: asyncio.Future[pnwutils.Resources] = asyncio.get_event_loop().create_future()
+        self.res_input = []
+        self.interaction: discord.Interaction | None = None
+
+        for res_name, amt in resource_types:
+            text_input = discord.ui.TextInput(
+                label=f'How much {res_name} should this request be for?',
+                placeholder=str(amt),
+                required=False)
+            self.add_item(text_input)
+            self.res_input.append(text_input)
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        resources = pnwutils.Resources()
+        for res_name, input_text in zip(self.resource_types, self.res_input):
+            if input_text.value is not None:
+                resources[res_name] = int(input_text.value)
+        self.interaction = interaction
+        self.future.set_result(resources)
+
+    def result(self) -> Awaitable[pnwutils.Resources]:
+        return self.future
