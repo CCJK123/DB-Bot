@@ -611,19 +611,15 @@ class ResourceAmountModal(discord.ui.Modal):
         self.res_input = []
         self.interaction: discord.Interaction | None = None
 
-        for res_name, amt in resource_types:
-            text_input = discord.ui.TextInput(
-                label=f'How much {res_name} should this request be for?',
-                placeholder=str(amt),
-                required=False)
+        for res_name in resource_types:
+            text_input = discord.ui.TextInput(label=f'How much {res_name} should this request be for?')
             self.add_item(text_input)
             self.res_input.append(text_input)
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         resources = pnwutils.Resources()
         for res_name, input_text in zip(self.resource_types, self.res_input):
-            if input_text.value is not None:
-                resources[res_name] = int(input_text.value)
+            resources[res_name] = int(input_text.value)
         self.interaction = interaction
         self.future.set_result(resources)
 
