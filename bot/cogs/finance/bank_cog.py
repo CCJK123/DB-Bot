@@ -564,7 +564,7 @@ class BankCog(discordutils.CogBase):
 
     @_bank.command()
     async def pending_resources(self, interaction: discord.Interaction):
-        """Create a restock link for all the resources that are waiting to be withdrawn"""
+        """Create a restocking link for all the resources that are waiting to be withdrawn"""
         await interaction.response.defer()
         total = pnwutils.Resources()
         async for view in self.bot.view_table.get_all():
@@ -577,9 +577,13 @@ class BankCog(discordutils.CogBase):
                                alliance_id=await pnwutils.get_offshore_id(self.bot.session))))
 
     @_bank.command()
+    @discord.app_commands.describe(
+        nation_id='Nation the withdrawal link is for',
+        alliance_id='Alliance to withdraw from, the alliance by default')
     async def create_withdrawal_link(self, interaction: discord.Interaction,
                                      nation_id: discord.app_commands.Range[int, 1, None],
                                      alliance_id: discord.app_commands.Range[int, 1, None] = None):
+        """Make a withdrawal link for withdrawing some amount of resources"""
         res_select_view = finance_views.ResourceSelectView(keep_interaction=True)
         await interaction.response.send_message(view=res_select_view, ephemeral=True)
         modal = finance_views.ResourceAmountModal('Withdrawal Link Resource Amounts', await res_select_view.result())
