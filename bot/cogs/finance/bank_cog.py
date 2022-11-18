@@ -581,7 +581,7 @@ class BankCog(discordutils.CogBase):
                                      nation_id: discord.app_commands.Range[int, 1, None],
                                      alliance_id: discord.app_commands.Range[int, 1, None] = None):
         res_select_view = finance_views.ResourceSelectView(keep_interaction=True)
-        await interaction.response.send_message(view=res_select_view)
+        await interaction.response.send_message(view=res_select_view, ephemeral=True)
         modal = finance_views.ResourceAmountModal('Withdrawal Link Resource Amounts', await res_select_view.result())
         await res_select_view.interaction.response.send_modal(modal)
         resources = await modal.result()
