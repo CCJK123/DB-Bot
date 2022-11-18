@@ -453,7 +453,7 @@ class CustomModificationModal(discord.ui.Modal):
         self.add_item(self.reason_input)
         for res_name, amt in view.data.resources.items_nonzero():
             text_input = discord.ui.TextInput(
-                label=f'How much {res_name} should this request be for?',
+                label=f'How much {res_name} should the request be for?',
                 placeholder=str(amt),
                 required=False)
             self.add_item(text_input)
@@ -618,7 +618,7 @@ class ResourceAmountModal(discord.ui.Modal):
         self.interaction: discord.Interaction | None = None
 
         for res_name in resource_types:
-            text_input = discord.ui.TextInput(label=f'How much {res_name} should this request be for?')
+            text_input = discord.ui.TextInput(label=f'How much {res_name} should be withdrawn?')
             self.add_item(text_input)
             self.res_input.append(text_input)
 
