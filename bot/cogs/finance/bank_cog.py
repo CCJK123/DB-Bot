@@ -564,8 +564,11 @@ class BankCog(discordutils.CogBase):
 
     @_bank.command()
     async def pending_resources(self, interaction: discord.Interaction):
-        total = sum((view.withdrawal.resources async for view in self.bot.view_table.get_all()
-                     if isinstance(view, finance_views.WithdrawalView)), pnwutils.Resources())
+        total = pnwutils.Resources()
+        async for view in self.bot.view_table.get_all():
+            if isinstance(view, finance_views.WithdrawalView):
+                total += view.withdrawal.resources
+
         await interaction.response.send_message(view=discordutils.LinkView(
             'Restock Link',
             pnwutils.link.bank('wa', total, config.alliance_name, await pnwutils.get_offshore_id(self.bot.session))))
