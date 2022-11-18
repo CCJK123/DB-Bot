@@ -562,6 +562,14 @@ class BankCog(discordutils.CogBase):
                 resources.create_embed(title='Balance after modification')
             )))
 
+    @_bank.command()
+    async def pending_resources(self, interaction: discord.Interaction):
+        total = sum((view.withdrawal.resources async for view in self.bot.view_table.get_all()
+                     if isinstance(view, finance_views.WithdrawalView)), pnwutils.Resources())
+        await interaction.response.send_message(view=discordutils.LinkView(
+            'Restock Link',
+            pnwutils.link.bank('wa', total, config.alliance_name, await pnwutils.get_offshore_id(self.bot.session))))
+
 
 class DepositView(discordutils.Choices):
     def __init__(self, label: str, url: str):

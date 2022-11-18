@@ -14,9 +14,9 @@ class MarketCog(discordutils.CogBase):
 
     async def cog_load(self) -> None:
         # to initialise the market table at first
-        await self.market_table.insert_many('ordering', 'resource', values=enumerate(
-            pnwutils.constants.market_res)
-                                            ).on_conflict('(resource)').action_nothing()
+        await self.market_table.insert_many(
+            'ordering', 'resource', values=enumerate(pnwutils.constants.market_res)
+        ).on_conflict('(resource)').action_nothing()
 
     market = discord.app_commands.Group(name='market', description='A market to buy and sell resources from the bank')
 
@@ -24,13 +24,12 @@ class MarketCog(discordutils.CogBase):
     async def prices(self, interaction: discord.Interaction):
         """List out the prices of resources in the market"""
         values = await self.market_table.select('ordering', 'buy_price', 'sell_price').order_by('1')
-        print(values)
         await interaction.response.send_message(embeds=(
             discordutils.create_embed(
-                pnwutils.constants.market_res_title, map(lambda e: f"{e['buy_price']:,}", values),
+                pnwutils.constants.market_res_title, (f"{e['buy_price']:,}" for e in values),
                 description='Buying Prices', title='Market Trading Prices'),
             discordutils.create_embed(
-                pnwutils.constants.market_res_title, map(lambda e: f"{e['sell_price']:,}", values),
+                pnwutils.constants.market_res_title, (f"{e['sell_price']:,}" for e in values),
                 description='Selling Prices')
         ))
 
@@ -38,9 +37,8 @@ class MarketCog(discordutils.CogBase):
     async def stocks(self, interaction: discord.Interaction):
         """List out the stocks of resources in the market"""
         values = await self.market_table.select('ordering', 'stock').order_by('1')
-        print(values)
         await interaction.response.send_message(embed=discordutils.create_embed(
-            pnwutils.constants.market_res_title, map(lambda e: f"{e['stock']:,}", values), title='Market Stocks'))
+            pnwutils.constants.market_res_title, (f"{e['stock']:,}" for e in values), title='Market Stocks'))
 
     @market.command()
     @discord.app_commands.describe(

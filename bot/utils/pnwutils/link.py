@@ -18,13 +18,13 @@ def alliance(alliance_id: int | None = None) -> str:
 
 
 def bank(kind: Literal['w', 'd', 'wa'], res: Resources | None = None,
-         recipient: str | None = None, note: str | None = None) -> str:
-    """Creates a link to the bank page of our alliance."""
+         recipient: str | None = None, note: str | None = None, alliance_id: int | None = None) -> str:
+    """Creates a link to the bank page of an alliance."""
     if kind == 'd' and recipient is not None:
         raise ValueError('Do not provide recipient for deposits!')
 
     # Add parameters to withdrawal / deposit url
-    link = f'{alliance()}&display=bank'
+    link = f'{alliance(alliance_id)}&display=bank'
     if note is not None:
         link += f'&{kind[0]}_note={note.replace(" ", "%20")}'
     if kind == 'wa':
