@@ -201,7 +201,7 @@ class BankCog(discordutils.CogBase):
             custom_id=custom_id)
 
         msg = await self.bot.get_channel(channel_id).send(
-            f'Withdrawal Request from {user.mention}',
+            f'Withdrawal Request from balance for {user.mention}',
             embed=finance_views.withdrawal_embed(name, rec['nation_id'], reason, req_resources),
             view=view)
         await self.bot.add_view(view, message_id=msg.id)
