@@ -160,12 +160,12 @@ class WarCog(discordutils.CogBase):
                     limit=1024))
                 if len(blocks) == 1:
                     embed.add_field(
-                        name=f'{t} turn{"s" if t - 1 else ""} ({pnwutils.time_after_turns(t)})',
+                        name=f'{t} turn{"s" * (t != 1)} ({pnwutils.time_after_turns(t)})',
                         value=blocks[0])
                 else:
                     for i, block in enumerate(blocks, 1):
                         embed.add_field(
-                            name=f'{t} turn{"s" if t - 1 else ""} ({pnwutils.time_after_turns(t)}) ({i})',
+                            name=f'{t} turn{"s" * (t != 1)} ({pnwutils.time_after_turns(t)}) ({i})',
                             value=block)
             await interaction.response.send_message(embed=embed)
         else:

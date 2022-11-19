@@ -66,7 +66,7 @@ def war_description(w: dict[str, Any], end_attack: dict | None | object = sen) -
             s += (f'{k.string.capitalize()}: [{n["nation_name"]}]({link.nation(n["id"])}) ({n["num_cities"]} 🏙)\n' +
                   ('None\n' if a is None else f'[{a["name"]}]({link.alliance(a["id"])}) ') +
                   (f'(Applicant)\n' if n["alliance_position"] == 'APPLICANT' else '\n') +
-                  (f'In beige for {bt} turn{"s" * (bt == 1)}\n' if bt else '') +
+                  (f'In beige for {bt} turn{"s" * (bt != 1)}\n' if bt else '') +
                   f'War Policy: {n["war_policy"]}\n\n'
                   f'{get_bar(resist)} {resist:3d} Resistance\n\n'
                   f'{mil_text(n, w[f"{k.string_short}_points"])}\n\n')
