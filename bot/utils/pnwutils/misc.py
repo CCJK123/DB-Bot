@@ -100,9 +100,9 @@ class MilDict(TypedDict):
 
 
 def mil_text(nation: MilDict, action_points: int | None = None) -> str:
-    a = '' if action_points is None else f'{action_points} ⚔️'
+    a = '' if action_points is None else f'{action_points}⚔️'
     return (
-        f'```{a}'
+        f'```{a} '
         f'{nation["soldiers"]}💂 '
         f'{nation["tanks"]}🚚 '
         f'{nation["aircraft"]}✈️ '
