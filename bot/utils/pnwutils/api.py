@@ -37,7 +37,11 @@ class APIQuery:
         headers = {'X-Bot-Key': config.api_key_mut, 'X-Api-Key': config.api_key} if self.bot_headers else {}
         async with session.post(constants.base_api_url, params={'api_key': api_key},
                                 json=self.get_query(variables), headers=headers) as response:
-            data = await response.json()
+            try:
+                data = await response.json()
+            except aiohttp.ContentTypeError:
+                raise APIError(f'Response received was of type {response.content_type}\n'
+                               f' content: {await response.text()}')
 
         try:
             data = data['data']
