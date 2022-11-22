@@ -162,8 +162,8 @@ class DBBot(commands.Bot):
             await self.default_on_error(interaction, exception)
 
     async def default_on_error(self, interaction: discord.Interaction, exception: discord.app_commands.AppCommandError):
+        command = interaction.command
         if isinstance(exception.__cause__, discord.NotFound):
-            command = interaction.command
             if isinstance(command, discord.app_commands.Command):
                 await interaction.channel.send(
                     f'Sorry, please rerun your command: </{command.name}:{self.command_ids[command.name]}>')
@@ -175,7 +175,7 @@ class DBBot(commands.Bot):
         try:
             await discordutils.interaction_send(
                 interaction,
-                f'Sorry, an exception occurred in the command `{interaction.command}`.')
+                f'Sorry, an exception occurred in the command </{command.name}:{self.command_ids[command.name]}>`.')
 
             s = ''
             for ex in traceback.format_exception(type(exception), exception, exception.__traceback__):
