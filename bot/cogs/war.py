@@ -120,11 +120,13 @@ class WarCog(discordutils.CogBase):
     async def find_slots(self, interaction: discord.Interaction,
                          ids: str = '0', turns: int = 0, user: discord.Member = None):
         """Looks for nations in the given alliances that have empty defensive slots"""
+
         user = user if user else interaction.user
         nation_id = await self.bot.database.get_table('users').select_val('nation_id').where(discord_id=user.id)
         if nation_id is None:
             await interaction.response.send_message('This user does not have a nation registered!')
             return
+        await interaction.response.defer()
         score_data = await nation_score_query.query(self.bot.session, nation_id=nation_id)
         mi, ma = pnwutils.formulas.war_range(score_data['data'][0]['score'])
         try:
@@ -133,7 +135,7 @@ class WarCog(discordutils.CogBase):
             # data = await find_slots_query.query(self.bot.session, alliance_id=ids.split(','))
         except ValueError:
             # error in converting to int list
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 'Incorrect format for ids! Please provide a comma separated ID list, like `4221,1224`')
             return
 
@@ -150,7 +152,7 @@ class WarCog(discordutils.CogBase):
                 found[max(n['beige_turns'], n['vacation_mode_turns'], min_turns)].add(n['id'])
 
         if not found:
-            await interaction.response.send_message('No defensive slots were found!')
+            await interaction.followup.send('No defensive slots were found!')
         elif turns:
             embed = discord.Embed(title='Nations with free slots in...')
             for t, nations in sorted(found.items(), key=operator.itemgetter(0)):
@@ -167,9 +169,9 @@ class WarCog(discordutils.CogBase):
                         embed.add_field(
                             name=f'{t} turn{"s" * (t != 1)} ({pnwutils.time_after_turns(t)}) ({i})',
                             value=block)
-            await interaction.response.send_message(embed=embed)
+            await interaction.followup.send(embed=embed)
         else:
-            await interaction.response.send_message(embed=discord.Embed(
+            await interaction.followup.send(embed=discord.Embed(
                 title='Nations with free slots',
                 description='\n'.join(f'[{nation_id}]({pnwutils.link.nation(nation_id)})' for nation_id in found[0])))
 
