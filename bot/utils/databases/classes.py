@@ -31,7 +31,9 @@ class Database(abc.ABC, Generic[R]):
 
     async def initialise(self) -> None:
         await asyncio.gather(*self.on_init)
-        await asyncio.gather(*(table.create() for table in self.tables.values()))
+        # must be done in order to deal with relations
+        for table in self.tables.values():
+            await table.create()
 
     @abc.abstractmethod
     async def __aenter__(self):
