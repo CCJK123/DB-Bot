@@ -49,7 +49,7 @@ class DBBot(commands.Bot):
         intents = discord.Intents(guilds=True, messages=True, message_content=True, members=True)
         super().__init__(intents=intents, command_prefix='`!', allowed_mentions=discord.AllowedMentions.none())
         self.session = session
-        self.excluded = {'open_slots_detector', 'applications'}
+        self.excluded = {'debug', 'open_slots_detector', 'applications'}
         self.kit = pnwkit.QueryKit(config.api_key)
 
         self.database: databases.Database = databases.PGDatabase(db_url)
@@ -172,33 +172,27 @@ class DBBot(commands.Bot):
             return
         if isinstance(exception.__cause__, asyncpg.PostgresSyntaxError):
             print(exception.__cause__.as_dict())
-        name = (f'</{command.name}:{self.command_ids[command.name]}>.'
+        name = (f'</{command.name}:{self.command_ids[command.name]}>'
                 if isinstance(command, discord.app_commands.Command) else f'`{command.name}`')
         try:
             await discordutils.interaction_send(
                 interaction,
                 f'Sorry, an exception occurred in the command {name}.')
-
-            s = ''
-            for ex in traceback.format_exception(type(exception), exception, exception.__traceback__):
-                if ex == '\nThe above exception was the direct cause of the following exception:\n\n':
-                    await interaction.followup.send(f'```{s}```')
-                    s = ex
-                else:
-                    s += ex
-            await interaction.followup.send(f'```{s}```')
         except discord.HTTPException as e:
             print('Responding failed! Exc Type: ', type(e))
             await interaction.channel.send(f'Sorry, an exception occurred in the command {name}.')
-
-            s = ''
-            for ex in traceback.format_exception(type(exception), exception, exception.__traceback__):
-                if ex == '\nThe above exception was the direct cause of the following exception:\n\n':
-                    await interaction.channel.send(f'```{s}```')
-                    s = ex
-                else:
-                    s += ex
-            await interaction.channel.send(f'```{s}```')
+        channel: discord.TextChannel
+        await self.log(f'An exception occurred when {interaction.user.mention} was running the command {name} '
+                       f'in {interaction.channel.mention}.')
+        await self.log(f'Interaction Data: {interaction.data}')
+        s = ''
+        for ex in traceback.format_exception(type(exception), exception, exception.__traceback__):
+            if ex == '\nThe above exception was the direct cause of the following exception:\n\n':
+                await self.log(f'```{s}```')
+                s = ex
+            else:
+                s += ex
+        await self.log(f'```{s}```')
 
         # print the exception to stderr too
         traceback.print_exception(type(exception), exception, exception.__traceback__)
