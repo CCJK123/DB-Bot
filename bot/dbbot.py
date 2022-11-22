@@ -172,10 +172,12 @@ class DBBot(commands.Bot):
             return
         if isinstance(exception.__cause__, asyncpg.PostgresSyntaxError):
             print(exception.__cause__.as_dict())
+        name = (f'</{command.name}:{self.command_ids[command.name]}>.'
+                if isinstance(command, discord.app_commands.Command) else f'`{command.name}`')
         try:
             await discordutils.interaction_send(
                 interaction,
-                f'Sorry, an exception occurred in the command </{command.name}:{self.command_ids[command.name]}>`.')
+                f'Sorry, an exception occurred in the command {name}.')
 
             s = ''
             for ex in traceback.format_exception(type(exception), exception, exception.__traceback__):
@@ -187,7 +189,7 @@ class DBBot(commands.Bot):
             await interaction.followup.send(f'```{s}```')
         except discord.HTTPException as e:
             print('Responding failed! Exc Type: ', type(e))
-            await interaction.channel.send(f'Sorry, an exception occurred in the command `{interaction.command}`.')
+            await interaction.channel.send(f'Sorry, an exception occurred in the command {name}.')
 
             s = ''
             for ex in traceback.format_exception(type(exception), exception, exception.__traceback__):
