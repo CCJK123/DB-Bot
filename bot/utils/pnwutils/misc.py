@@ -117,7 +117,6 @@ def time_after_turns(turns: int, start: datetime.datetime | None = None) -> date
     return start.replace(minute=0, second=0, microsecond=0) + datetime.timedelta(hours=turns * 2 - start.hour % 2)
 
 
-
 async def get_offshore_id(session: aiohttp.ClientSession):
     data = await offshore_info_query.query(session, api_key=config.offshore_api_key)
     return data['nation']['alliance_id']

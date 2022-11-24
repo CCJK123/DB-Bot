@@ -164,26 +164,41 @@ class DBBot(commands.Bot):
     async def default_on_error(self, interaction: discord.Interaction, exception: discord.app_commands.AppCommandError):
         command = interaction.command
         if isinstance(exception.__cause__, discord.NotFound):
+            # def from a command from some sort, since those are the ones where the interactions expire
             if isinstance(command, discord.app_commands.Command):
                 await interaction.channel.send(
-                    f'Sorry, please rerun your command: </{command.name}:{self.command_ids[command.name]}>')
+                    f'Sorry, please rerun your command: </{command.qualified_name}:{self.command_ids[command.name]}>')
             else:
                 await interaction.channel.send(f'Sorry, please rerun your command.')
             return
         if isinstance(exception.__cause__, asyncpg.PostgresSyntaxError):
             print(exception.__cause__.as_dict())
-        name = (f'</{command.name}:{self.command_ids[command.name]}>'
-                if isinstance(command, discord.app_commands.Command) else f'`{command.name}`')
-        try:
-            await discordutils.interaction_send(
-                interaction,
-                f'Sorry, an exception occurred in the command {name}.')
-        except discord.HTTPException as e:
-            print('Responding failed! Exc Type: ', type(e))
-            await interaction.channel.send(f'Sorry, an exception occurred in the command {name}.')
-        channel: discord.TextChannel
-        await self.log(f'An exception occurred when {interaction.user.mention} was running the command {name} '
-                       f'in {interaction.channel.mention}.')
+        if command is None:
+            # no associated command
+            # likely a button or something
+            try:
+                await discordutils.interaction_send(
+                    interaction,
+                    f'Sorry, an exception occurred.')
+            except discord.HTTPException as e:
+                print('Responding failed! Exc Type: ', type(e))
+                await interaction.channel.send(f'Sorry, an exception occurred.')
+            await self.log(f'An exception occurred when {interaction.user.mention} '
+                           f'did something in {interaction.channel.mention}.')
+        else:
+            name = (f'</{command.qualified_name}:{self.command_ids[command.name]}>'
+                    if isinstance(command, discord.app_commands.Command) else f'`{command.qualified_name}`')
+            try:
+                await discordutils.interaction_send(
+                    interaction,
+                    f'Sorry, an exception occurred in the command {name}.')
+            except discord.HTTPException as e:
+                print('Responding failed! Exc Type: ', type(e))
+                await interaction.channel.send(f'Sorry, an exception occurred in the command {name}.')
+            channel: discord.TextChannel
+            await self.log(f'An exception occurred when {interaction.user.mention} was running the command {name} '
+                           f'in {interaction.channel.mention}.')
+
         await self.log(f'Interaction Data: {interaction.data}')
         s = ''
         for ex in traceback.format_exception(type(exception), exception, exception.__traceback__):
