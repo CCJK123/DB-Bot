@@ -347,6 +347,20 @@ global_trade_prices_query = APIQuery(global_trade_prices_query_text, True)
 # both detector and war.py
 
 nation_war_data_fragment = '''
+fragment war_data on War {
+    id
+    date
+    winner_id
+    turns_left
+    war_type
+    att_id
+    def_id
+    att_resistance
+    def_resistance
+    att_points
+    def_points
+}
+
 fragment nation_data on Nation {
     id
     nation_name
@@ -412,17 +426,7 @@ update_war_query_text = '''
 query update_war($war_id: [Int]) {
     wars(id: $war_id, first: 1) {
         data {
-            id
-            date
-            winner_id
-            turns_left
-            war_type
-            att_id
-            def_id
-            att_resistance
-            def_resistance
-            att_points
-            def_points
+            ...war_data
             attacker {
                 ...nation_data
             }
@@ -443,17 +447,7 @@ individual_war_query_text = '''
 query individual_war($war_id: [Int]) {
     wars(id: $war_id, active: false) {
         data {
-            id
-            date
-            winner_id
-            turns_left
-            war_type
-            att_id
-            def_id
-            att_resistance
-            def_resistance
-            att_points
-            def_points
+            ...war_data
             attacker {
                 ...nation_data
                 population
@@ -476,17 +470,7 @@ nation_active_wars_query_text = '''
 query nation_active_wars($nation_id: [Int]) {
     wars(nation_id: $nation_id) {
         data {
-            id
-            date
-            winner_id
-            turns_left
-            war_type
-            att_id
-            def_id
-            att_resistance
-            def_resistance
-            att_points
-            def_points
+            ...war_data
             attacker {
                 ...nation_data
             }
