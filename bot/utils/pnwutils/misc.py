@@ -57,7 +57,8 @@ def war_description(w: dict[str, Any], end_attack: dict | None | object = sen) -
     end_time = time_after_turns(60, datetime.datetime.fromisoformat(w["date"]))
     if end_attack is sen:
         end_attack = find_end_attack(w)
-    if end_attack is None and w['turns_left'] > 0:
+    left = w['turns_left']
+    if end_attack is None and left > 0:
         # ongoing war
         for k in WarType.ATT, WarType.DEF:
             n = w[k.string]
@@ -71,7 +72,7 @@ def war_description(w: dict[str, Any], end_attack: dict | None | object = sen) -
                   f'War Policy: {n["war_policy"]}\n\n'
                   f'{get_bar(resist)} {resist:3d} Resistance\n\n'
                   f'{mil_text(n, w[f"{k.string_short}_points"])}\n\n')
-        s += f'This war will expire at {discord.utils.format_dt(end_time)} (in {w["turns_left"]} turns)\n\n'
+        s += f'This war will expire at {discord.utils.format_dt(end_time)} (in {left} turn{"s" * (left != 1)})\n\n'
         return s
 
     for k in WarType.ATT, WarType.DEF:
