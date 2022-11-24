@@ -19,15 +19,16 @@ from ..utils.queries import (nation_register_query, alliance_member_res_query, a
                              alliance_tiers_query, nation_info_query, global_trade_prices_query)
 
 
-class ExtraInfoView(discord.ui.View):
-    def __init__(self, orig: discord.Embed, nation_id: int, session: aiohttp.ClientSession, data: dict):
-
-        super().__init__(timeout=config.timeout)
+class ExtraInfoView(discordutils.TimeoutView):
+    def __init__(self, orig: discord.Embed, nation_id: int, session: aiohttp.ClientSession,
+                 data: dict, interaction: discord.Interaction):
+        super().__init__()
         self.add_item(discordutils.LinkButton('Nation Link', pnwutils.link.nation(nation_id)))
         self.orig = orig
         self.nation_id = nation_id
         self.session = session
         self.data = data
+        self.interaction = interaction
 
     async def on_timeout(self) -> None:
         discordutils.disable_all(self)
@@ -321,7 +322,7 @@ class UtilCog(discordutils.CogBase):
                 s += 'Currently under a naval blockade!'
             embed.add_field(name='Current Wars', value=s)
         await interaction.response.send_message(
-            embed=embed, view=ExtraInfoView(embed, nation_id, self.bot.session, data))
+            embed=embed, view=ExtraInfoView(embed, nation_id, self.bot.session, data, interaction))
 
     # note: user command
     async def nation(self, interaction: discord.Interaction, member: discord.Member):

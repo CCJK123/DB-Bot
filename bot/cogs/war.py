@@ -10,15 +10,12 @@ from ..utils.queries import (individual_war_query, nation_active_wars_query,
                              find_slots_query, nation_score_query, spy_sat_query)
 
 
-class OddsInfoView(discord.ui.View):
-    def __init__(self, orig: discord.Embed, data: dict):
-        super().__init__(timeout=config.timeout)
+class OddsInfoView(discordutils.TimeoutView):
+    def __init__(self, orig: discord.Embed, data: dict, interaction: discord.Interaction):
+        super().__init__()
         self.orig = orig
         self.data = data
-
-    async def on_timeout(self) -> None:
-        discordutils.disable_all(self)
-        self.stop()
+        self.interaction = interaction
 
     @discord.ui.button(label='Battle Odds')
     async def odds(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -68,7 +65,7 @@ class WarCog(discordutils.CogBase):
             end_attack = pnwutils.find_end_attack(war_data)
             embed = discord.Embed(description=pnwutils.war_description(war_data, end_attack))
             if end_attack is None and war_data['turns_left'] > 0:
-                await interaction.response.send_message(embed=embed, view=OddsInfoView(embed, war_data))
+                await interaction.response.send_message(embed=embed, view=OddsInfoView(embed, war_data, interaction))
                 return
             await interaction.response.send_message(embed=embed)
             return

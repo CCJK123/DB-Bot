@@ -8,12 +8,13 @@ from typing import Awaitable, Callable, Mapping, TypeVar, Type
 
 import discord
 
-__all__ = ('Choices', 'LinkButton', 'LinkView', 'MultiLinkView', 'PersistentView', 'PersistentButton',
+from .. import config
+
+__all__ = ('Choices', 'LinkButton', 'LinkView', 'MultiLinkView', 'TimeoutView', 'PersistentView', 'PersistentButton',
            'persistent_button', 'single_modal', 'disable_all', 'enable_all')
 
 
 # Setup buttons for user to make choices
-# noinspection PyAttributeOutsideInit
 class Choice(discord.ui.Button['Choices']):
     def __init__(self, label: str, disabled: bool = False):
         super().__init__(label=label, disabled=disabled)
@@ -58,6 +59,23 @@ class MultiLinkView(discord.ui.View):
         super().__init__()
         for label, url in links.items():
             self.add_item(LinkButton(label, url))
+
+
+class TimeoutView(discord.ui.View, abc.ABC):
+    def __init__(self, timeout: float | None = None):
+        super().__init__(timeout=config.timeout if timeout is None else timeout)
+        self.message: discord.Message | None = None
+        self.interaction: discord.Interaction | None = None
+
+    async def on_timeout(self) -> None:
+        disable_all(self)
+        self.stop()
+        if self.interaction is None:
+            if self.message is None:
+                raise RuntimeError('No way to get message to edit!')
+            await self.message.edit(view=self)
+            return
+        await self.interaction.edit_original_response(view=self)
 
 
 class PersistentView(discord.ui.View, abc.ABC):
