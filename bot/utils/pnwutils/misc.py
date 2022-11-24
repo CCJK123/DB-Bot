@@ -54,6 +54,7 @@ sen = object
 
 def war_description(w: dict[str, Any], end_attack: dict | None | object = sen) -> str:
     s = f'[War Page]({link.war(w["id"])})\n{w["war_type"].capitalize()} War\n\n'
+    end_time = time_after_turns(60, datetime.datetime.fromisoformat(w["date"]))
     if end_attack is sen:
         end_attack = find_end_attack(w)
     if end_attack is None and w['turns_left'] > 0:
@@ -70,6 +71,7 @@ def war_description(w: dict[str, Any], end_attack: dict | None | object = sen) -
                   f'War Policy: {n["war_policy"]}\n\n'
                   f'{get_bar(resist)} {resist:3d} Resistance\n\n'
                   f'{mil_text(n, w[f"{k.string_short}_points"])}\n\n')
+        s += f'This war will expire at {discord.utils.format_dt(end_time)} (in {w["turns_left"]} turns)\n\n'
         return s
 
     for k in WarType.ATT, WarType.DEF:
@@ -79,9 +81,7 @@ def war_description(w: dict[str, Any], end_attack: dict | None | object = sen) -
               f'{get_bar(resist)} {resist:3d} Resistance\n\n')
     if end_attack is None:
         # expired war
-        end_time = discord.utils.format_dt(datetime.datetime.fromisoformat(w['date']) +
-                                           datetime.timedelta(days=5))
-        s += f'The conflict expired at {end_time}.'
+        s += f'The conflict expired at {discord.utils.format_dt(end_time)}.'
     else:
         end_time = discord.utils.format_dt(datetime.datetime.fromisoformat(end_attack['date']))
 
@@ -111,11 +111,11 @@ def mil_text(nation: MilDict, action_points: int | None = None) -> str:
         f'{nation["nukes"]}☢️```')
 
 
-def time_after_turns(turns):
-    now = datetime.datetime.now()
-    return discord.utils.format_dt(
-        now.replace(minute=0, second=0, microsecond=0) + datetime.timedelta(hours=turns * 2 - now.hour % 2)
-    )
+def time_after_turns(turns: int, start: datetime.datetime | None = None) -> datetime.datetime:
+    if start is None:
+        start = datetime.datetime.now()
+    return start.replace(minute=0, second=0, microsecond=0) + datetime.timedelta(hours=turns * 2 - start.hour % 2)
+
 
 
 async def get_offshore_id(session: aiohttp.ClientSession):

@@ -160,14 +160,15 @@ class WarCog(discordutils.CogBase):
                     '\n',
                     (f'[{nation_id}]({pnwutils.link.nation(nation_id)})' for nation_id in nations),
                     limit=1024))
+                time = discord.utils.format_dt(pnwutils.time_after_turns(t))
                 if len(blocks) == 1:
                     embed.add_field(
-                        name=f'{t} turn{"s" * (t != 1)} ({pnwutils.time_after_turns(t)})',
+                        name=f'{t} turn{"s" * (t != 1)} ({time})',
                         value=blocks[0])
                 else:
                     for i, block in enumerate(blocks, 1):
                         embed.add_field(
-                            name=f'{t} turn{"s" * (t != 1)} ({pnwutils.time_after_turns(t)}) ({i})',
+                            name=f'{t} turn{"s" * (t != 1)} ({time}) ({i})',
                             value=block)
             await interaction.followup.send(embed=embed)
         else:

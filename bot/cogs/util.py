@@ -419,7 +419,7 @@ class UtilCog(discordutils.CogBase):
     )
     async def time_in(self, interaction: discord.Interaction, turns: discord.app_commands.Range[int, 0, None]):
         """Express the time in n turns"""
-        s = pnwutils.time_after_turns(turns)
+        s = discord.utils.format_dt(pnwutils.time_after_turns(turns))
         await interaction.response.send_message(f'It would be {s} (`{s}`) in {turns} turns.')
 
     @discord.app_commands.command()
