@@ -70,4 +70,4 @@ def odds(a: dict, d: dict) -> tuple[BattleOdds, BattleOdds, BattleOdds, BattleOd
     ag, aa, an = mil_values(a)
     dg, da, dn = mil_values(d)
     return (battle_odds(ag, dg + d['population'] / 400), battle_odds(aa, da), battle_odds(an, dn),
-            battle_odds(dg, ag + a['population'] / 400), battle_odds(da, aa), battle_odds(ag, dg))
+            battle_odds(dg, ag + a['population'] / 400), battle_odds(da, aa), battle_odds(dn, an))
