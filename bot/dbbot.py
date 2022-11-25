@@ -165,11 +165,9 @@ class DBBot(commands.Bot):
         command = interaction.command
         if isinstance(exception.__cause__, discord.NotFound):
             # def from a command from some sort, since those are the ones where the interactions expire
-            if isinstance(command, discord.app_commands.Command):
-                await interaction.channel.send(
-                    f'Sorry, please rerun your command: </{command.qualified_name}:{self.command_ids[command.name]}>')
-            else:
-                await interaction.channel.send(f'Sorry, please rerun your command.')
+            suffix = (f': </{command.qualified_name}:{self.command_ids[command.qualified_name]}>'
+                      if isinstance(command, discord.app_commands.Command) else '.')
+            await interaction.channel.send(f'Sorry, please rerun your command{suffix}')
             return
         if isinstance(exception.__cause__, asyncpg.PostgresSyntaxError):
             print(exception.__cause__.as_dict())
@@ -186,7 +184,7 @@ class DBBot(commands.Bot):
             await self.log(f'An exception occurred when {interaction.user.mention} '
                            f'did something in {interaction.channel.mention}.')
         else:
-            name = (f'</{command.qualified_name}:{self.command_ids[command.name]}>'
+            name = (f'</{command.qualified_name}:{self.command_ids[command.qualified_name]}>'
                     if isinstance(command, discord.app_commands.Command) else f'`{command.qualified_name}`')
             try:
                 await discordutils.interaction_send(
