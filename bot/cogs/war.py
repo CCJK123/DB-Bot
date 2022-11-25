@@ -220,9 +220,10 @@ class WarCog(discordutils.CogBase):
                                                min_score=mi, max_score=ma)
 
         n_ids = ",".join(e['id'] for e in data['data'] if e['num_cities'] >= min_cities)
-        found = await self.bot.database.get_table('users').select(
-            'discord_id', 'nation_id').where(f'nation_id IN ({n_ids})')
-        if found:
+        if n_ids:
+            found = await self.bot.database.get_table('users').select(
+                'discord_id', 'nation_id').where(f'nation_id IN ({n_ids})')
+
             await interaction.response.send_message(embed=discord.Embed(
                 title='Nations found in war range',
                 description='\n'.join(
