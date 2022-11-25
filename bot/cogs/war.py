@@ -119,7 +119,7 @@ class WarCog(discordutils.CogBase):
         """Looks for nations in the given alliances that have empty defensive slots"""
 
         user = user if user else interaction.user
-        if user is self.bot.user:
+        if user == self.bot.user:
             mi, ma = 0, 100000
         else:
             nation_id = await self.bot.database.get_table('users').select_val('nation_id').where(discord_id=user.id)
