@@ -326,7 +326,7 @@ query nation_discord($alliance_ids: [Int]) {
 alliance_tiers_query = APIQuery(alliance_tiers_query_text, alliance_ids=[int])
 
 global_trade_prices_query_text = '''
-query global_trade_prices($page: Int = 1) {
+query global_trade_prices($page: Int) {
     trades(type: GLOBAL, accepted: false, first: 1000, page: $page) {
         data {
             sender_id
@@ -499,7 +499,7 @@ query nation_score_query($nation_id: [Int]) {
 nation_score_query = APIQuery(nation_score_query_text, nation_id=int)
 
 find_slots_query_text = '''
-query find_slots_query($alliance_id: [Int], $min_score: Float, $max_score: Float, $page: Int = 1) {
+query find_slots_query($alliance_id: [Int], $min_score: Float, $max_score: Float, $page: Int) {
     nations(alliance_id: $alliance_id, first: 500,
             min_score: $min_score, max_score: $max_score, page: $page) {
         paginatorInfo {

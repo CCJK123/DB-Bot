@@ -74,6 +74,7 @@ class APIQuery:
         data = await self._query(session, api_key, variables)
 
         if self.check_more:
+            variables.setdefault('page', 1)
             result = data['data']
             while data['paginatorInfo']['hasMorePages']:
                 variables['page'] += 1
