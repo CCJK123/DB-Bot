@@ -7,7 +7,7 @@ import discord
 from ..utils import discordutils, pnwutils, config
 from .. import dbbot
 from ..utils.queries import (individual_war_query, nation_active_wars_query,
-                             find_slots_query, nation_score_query, spy_sat_query)
+                             find_slots_query, nation_score_query, spy_sat_query, find_in_range_query)
 
 
 class OddsInfoView(discordutils.TimeoutView):
@@ -201,6 +201,34 @@ class WarCog(discordutils.CogBase):
         await interaction.response.send_message(embed=discord.Embed(
             title='Nations with spy satellite who can attack:',
             description='\n'.join(map(pnwutils.link.nation, ids))))
+
+    @discord.app_commands.command()
+    async def find_in_war_range(
+            self, interaction: discord.Interaction,
+            score: discord.app_commands.Range[float, 0, None] = None,
+            nation_id: discord.app_commands.Range[int, 1, None] = None):
+        """Find nations in the alliance who are in range of a nation. The score parameter overrides nation_id"""
+        if score is None and nation_id is None:
+            await interaction.response.send_message('At least one of score and nation_id must be provided!')
+            return
+        if score is None:
+            score = (await nation_score_query.query(self.bot.session, nation_id=nation_id))['data'][0]['score']
+        mi, ma = pnwutils.formulas.inverse_war_range(score)
+        data = await find_in_range_query.query(self.bot.session, alliance_id=config.alliance_id,
+                                               min_score=mi, max_score=ma)
+
+        n_ids = ",".join(map(operator.itemgetter('id'), data['data']))
+        found = await self.bot.database.get_table('users').select(
+            'discord_id', 'nation_id').where(f'nation_id IN ({n_ids})')
+        if found:
+            await interaction.response.send_message(embed=discord.Embed(
+                title='Nations found in war range',
+                description='\n'.join(
+                    f'<@{rec["discord_id"]}> - [{rec["nation_id"]}]({pnwutils.link.nation(rec["nation_id"])})'
+                    for rec in found)
+            ))
+            return
+        await interaction.response.send_message('No nations in war range found!')
 
 
 async def setup(bot: dbbot.DBBot) -> None:
