@@ -119,13 +119,16 @@ class WarCog(discordutils.CogBase):
         """Looks for nations in the given alliances that have empty defensive slots"""
 
         user = user if user else interaction.user
-        nation_id = await self.bot.database.get_table('users').select_val('nation_id').where(discord_id=user.id)
-        if nation_id is None:
-            await interaction.response.send_message('This user does not have a nation registered!')
-            return
-        await interaction.response.defer()
-        score_data = await nation_score_query.query(self.bot.session, nation_id=nation_id)
-        mi, ma = pnwutils.formulas.war_range(score_data['data'][0]['score'])
+        if user is self.bot.user:
+            mi, ma = 0, 100000
+        else:
+            nation_id = await self.bot.database.get_table('users').select_val('nation_id').where(discord_id=user.id)
+            if nation_id is None:
+                await interaction.response.send_message('This user does not have a nation registered!')
+                return
+            await interaction.response.defer()
+            score_data = await nation_score_query.query(self.bot.session, nation_id=nation_id)
+            mi, ma = pnwutils.formulas.war_range(score_data['data'][0]['score'])
         try:
             data = await find_slots_query.query(self.bot.session, alliance_id=ids.split(','),
                                                 min_score=mi, max_score=ma)
