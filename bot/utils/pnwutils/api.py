@@ -63,7 +63,7 @@ class APIQuery:
         # Set page to first page if more entries than possible in 1 call wanted
         if not set(variables.keys()) <= set(self.variable_types.keys()):
             raise APIError(f'Key mismatch! Variables: {self.variable_types}, Passed: {variables}')
-
+        variables = {k: v for k, v in variables.items() if v is not None}
         for k in variables:
             ty = self.variable_types[k]
             if isinstance(ty, list):

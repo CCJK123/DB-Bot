@@ -13,7 +13,7 @@ class DebugCog(discordutils.CogBase):
     @discord.app_commands.command()
     @discord.app_commands.default_permissions()
     async def _test(self, interaction: discord.Interaction):
-        await interaction.response.send_message('Command /test, cheese /war, /bank')
+        await interaction.response.send_message(f'{tuple(self.bot.extensions.keys())}')
 
     @discord.app_commands.command()
     @discord.app_commands.default_permissions()

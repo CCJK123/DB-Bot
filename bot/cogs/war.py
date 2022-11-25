@@ -108,28 +108,7 @@ class WarCog(discordutils.CogBase):
         await interaction.response.send_message(
             f'{nation_link if member is None else member.mention} does not have any active wars!',)
 
-    @discord.app_commands.command()
-    @discord.app_commands.describe(
-        ids='Comma separated list of alliance IDs. Pass 0 (the default) for no alliance.',
-        turns='The maximum number of turns for the slot to open up.',
-        user='Run this command as if this user ran it.'
-    )
-    async def find_slots(self, interaction: discord.Interaction,
-                         ids: str = '0', turns: int = 0, user: discord.Member = None):
-        """Looks for nations in the given alliances that have empty defensive slots"""
-
-        user = user if user else interaction.user
-        if user == self.bot.user:
-            mi, ma = 0, 100000
-            await interaction.response.defer()
-        else:
-            nation_id = await self.bot.database.get_table('users').select_val('nation_id').where(discord_id=user.id)
-            if nation_id is None:
-                await interaction.response.send_message('This user does not have a nation registered!')
-                return
-            await interaction.response.defer()
-            score_data = await nation_score_query.query(self.bot.session, nation_id=nation_id)
-            mi, ma = pnwutils.formulas.war_range(score_data['data'][0]['score'])
+    async def _find_slots(self, interaction: discord.Interaction, ids: str, turns: int, mi: float, ma: float):
         try:
             data = await find_slots_query.query(self.bot.session, alliance_id=ids.split(','),
                                                 min_score=mi, max_score=ma)
@@ -176,6 +155,38 @@ class WarCog(discordutils.CogBase):
             await interaction.followup.send(embed=discord.Embed(
                 title='Nations with free slots',
                 description='\n'.join(f'[{nation_id}]({pnwutils.link.nation(nation_id)})' for nation_id in found[0])))
+
+    @discord.app_commands.command()
+    @discord.app_commands.describe(
+        ids='Comma separated list of alliance IDs. Pass 0 (the default) for no alliance.',
+        turns='The maximum number of turns for the slot to open up.',
+        user='Run this command as if this user ran it.'
+    )
+    async def find_slots(self, interaction: discord.Interaction,
+                         ids: str = '0', turns: int = 0, user: discord.Member = None):
+        """Looks for nations in the given alliances that have empty defensive slots"""
+
+        user = user if user else interaction.user
+        if user == self.bot.user:
+            mi, ma = 0, 100000
+            await interaction.response.defer()
+        else:
+            nation_id = await self.bot.database.get_table('users').select_val('nation_id').where(discord_id=user.id)
+            if nation_id is None:
+                await interaction.response.send_message('This user does not have a nation registered!')
+                return
+            await interaction.response.defer()
+            score_data = await nation_score_query.query(self.bot.session, nation_id=nation_id)
+            mi, ma = pnwutils.formulas.war_range(score_data['data'][0]['score'])
+        await self._find_slots(interaction, ids, turns, mi, ma)
+
+    @discord.app_commands.command()
+    async def find_slots_range(self, interaction: discord.Interaction, ids: str = '0', turns: int = 0,
+                               minimum: discord.app_commands.Range[float, 0, None] = None,
+                               maximum: discord.app_commands.Range[float, 0, None] = None):
+        """Like /find_slots, but with a score range. Not filling in a bound means unbounded."""
+        await interaction.response.defer()
+        await self._find_slots(interaction, ids, turns, minimum, maximum)
 
     @discord.app_commands.command()
     async def find_spy_sat(self, interaction: discord.Interaction, target_score: int):
