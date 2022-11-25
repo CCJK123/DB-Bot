@@ -121,6 +121,7 @@ class WarCog(discordutils.CogBase):
         user = user if user else interaction.user
         if user == self.bot.user:
             mi, ma = 0, 100000
+            await interaction.response.defer()
         else:
             nation_id = await self.bot.database.get_table('users').select_val('nation_id').where(discord_id=user.id)
             if nation_id is None:
