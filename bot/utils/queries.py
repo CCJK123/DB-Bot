@@ -499,9 +499,9 @@ query nation_score_query($nation_id: [Int]) {
 nation_score_query = APIQuery(nation_score_query_text, nation_id=int)
 
 find_slots_query_text = '''
-query find_slots_query($alliance_id: [Int], $min_score: Float, $max_score: Float) {
+query find_slots_query($alliance_id: [Int], $min_score: Float, $max_score: Float, $page: Int = 1) {
     nations(alliance_id: $alliance_id, first: 500,
-            min_score: $min_score, max_score: $max_score) {
+            min_score: $min_score, max_score: $max_score, page: $page) {
         paginatorInfo {
             hasMorePages
         }
