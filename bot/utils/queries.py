@@ -266,7 +266,7 @@ query alliance_members_res($alliance_id: [Int], $page: Int) {
     }
 }
 '''
-alliance_member_res_query = APIQuery(alliance_member_res_query_text, alliance_id=int)
+alliance_member_res_query = APIQuery(alliance_member_res_query_text, True, alliance_id=int)
 
 alliance_activity_query_text = '''
 query alliance_activity($alliance_id: [Int], $page: Int) {
@@ -326,8 +326,8 @@ query nation_discord($alliance_ids: [Int]) {
 alliance_tiers_query = APIQuery(alliance_tiers_query_text, alliance_ids=[int])
 
 global_trade_prices_query_text = '''
-query global_trade_prices {
-    trades(type: GLOBAL, accepted: false, first: 1000) {
+query global_trade_prices($page: Int = 1) {
+    trades(type: GLOBAL, accepted: false, first: 1000, page: $page) {
         data {
             sender_id
             receiver_id
