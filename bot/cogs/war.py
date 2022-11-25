@@ -206,7 +206,9 @@ class WarCog(discordutils.CogBase):
     async def find_in_war_range(
             self, interaction: discord.Interaction,
             score: discord.app_commands.Range[float, 0, None] = None,
-            nation_id: discord.app_commands.Range[int, 1, None] = None):
+            nation_id: discord.app_commands.Range[int, 1, None] = None,
+            min_cities: discord.app_commands.Range[int, 0, None] = 0
+        ):
         """Find nations in the alliance who are in range of a nation. The score parameter overrides nation_id"""
         if score is None and nation_id is None:
             await interaction.response.send_message('At least one of score and nation_id must be provided!')
@@ -217,7 +219,7 @@ class WarCog(discordutils.CogBase):
         data = await find_in_range_query.query(self.bot.session, alliance_id=config.alliance_id,
                                                min_score=mi, max_score=ma)
 
-        n_ids = ",".join(map(operator.itemgetter('id'), data['data']))
+        n_ids = ",".join(e['id'] for e in data['data'] if e['num_cities'] >= min_cities)
         found = await self.bot.database.get_table('users').select(
             'discord_id', 'nation_id').where(f'nation_id IN ({n_ids})')
         if found:

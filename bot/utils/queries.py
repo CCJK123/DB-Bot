@@ -527,6 +527,7 @@ query find_slots_query($alliance_id: [Int], $min_score: Float, $max_score: Float
             min_score: $min_score, max_score: $max_score, page: $page) {
         data {
             id
+            num_cities
         }
     }
 }
