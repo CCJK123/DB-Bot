@@ -26,6 +26,7 @@ class SlotOpenDetectorCog(discordutils.CogBase):
     async def cog_load(self) -> None:
         alliances = await self.bot.database.fetch_val(
             'SELECT alliances FROM misc INNER JOIN coalitions ON misc.open_slot_coalition = coalitions.name')
+        # if misc.open_slot_coalition == NULL then no rows returned, we get None
         if alliances is not None:
             asyncio.create_task(self.subscribe(alliances))
 

@@ -252,10 +252,11 @@ class WarCog(discordutils.CogBase):
         name='The name to give the coalition',
         alliance_ids='Comma separated list of alliance IDs. Pass 0 (the default) for no alliance.')
     async def create(self, interaction: discord.Interaction, name: str, alliance_ids: str):
-        """Create a coalition. Please ensure you check your input"""
+        """Create a coalition. If already exists, overrides it"""
         alliances = tuple(map(int, alliance_ids.split(',')))
-        await self.coalitions_table.insert(name=name, alliances=alliances)
-        await interaction.response.send_message(f'Coalition `{name}` has been created!')
+        await self.coalitions_table.insert(name=name, alliances=alliances).on_conflict(
+            '(name)').action_update('alliances = EXCLUDED.alliances')
+        await interaction.response.send_message(f'Coalition `{name}` has been created/updated!')
 
     @coalition.command()
     async def list(self, interaction: discord.Interaction):
