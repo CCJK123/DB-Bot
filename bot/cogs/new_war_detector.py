@@ -30,6 +30,8 @@ class NewWarDetectorCog(discordutils.CogBase):
     async def subscribe(self):
         await self.bot.wait_until_ready()
         if not self.subscribed:
+            self.subscribed = True
+
             # note: filtering by alliance_id does not work
             # as filters only work on models which has them as one of the fields
             # wars do not define an alliance_id field, only att_alliance_id and def_alliance_id
@@ -45,7 +47,6 @@ class NewWarDetectorCog(discordutils.CogBase):
                 {},
                 self.on_war_update
             )
-            self.subscribed = True
             channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get(self.channels[None]))
             await channel.send(f'subscribed!')
 

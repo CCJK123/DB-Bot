@@ -17,23 +17,28 @@ class RecordClass(asyncpg.Record):
         return self['item']
 
 
-class Database(abc.ABC, Generic[R]):
-    __slots__ = ('on_init', 'tables')
+InitFunc = Callable[['Database'], Awaitable[object]]
 
-    def __init__(self):
-        self.on_init: list[Awaitable[object]] = []
+
+class Database(abc.ABC, Generic[R]):
+    __slots__ = ('init_pre', 'init_post', 'tables')
+
+    def __init__(self, init_pre: InitFunc, init_post: InitFunc):
+        self.init_pre = init_pre
+        self.init_post = init_post
         self.tables: dict[str, Table] = {}
 
-    def add_on_init(self, coroutine_func: Callable[['Database'], Awaitable[object]]
-                    ) -> Callable[['Database'], Awaitable[object]]:
-        self.on_init.append(coroutine_func(self))
-        return coroutine_func
-
     async def initialise(self) -> None:
-        await asyncio.gather(*self.on_init)
-        # must be done in order to deal with relations
-        for table in self.tables.values():
-            await table.create()
+        try:
+            await self.init_pre(self)
+            # must be done in order to deal with relations
+            for table in self.tables.values():
+                await table.create()
+            await self.init_post(self)
+        except asyncpg.PostgresSyntaxError as e:
+
+            print(e.as_dict())
+            raise
 
     @abc.abstractmethod
     async def __aenter__(self):
@@ -67,7 +72,7 @@ class Database(abc.ABC, Generic[R]):
     async def acquire(self) -> Any:
         ...
 
-    def new_table(self, name: str, additional: str = '', **cols: str) -> None:
+    def new_table(self, name: str, /, additional: str = '', **cols: str) -> None:
         table = Table(self, name, cols, additional)
         self.tables[name] = table
 
@@ -221,7 +226,7 @@ class KVTable(Table, Generic[T]):
             ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
         ''', key, value)
 
-    def set_many(self, **kv: T):
+    def set_many(self, **kv: T) -> Awaitable[str]:
         values_str = ','.join(f'({k},{v})' for k, v in kv.items())
         return self.database.execute(f'''
             INSERT INTO {self.name}(key, value) VALUES {values_str}

@@ -44,6 +44,8 @@ class WarCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
 
+        self.coalitions_table = self.bot.database.get_table('coalitions')
+
     war = discord.app_commands.Group(name='war', description='War related commands!')
 
     @war.command()
@@ -109,15 +111,20 @@ class WarCog(discordutils.CogBase):
             f'{nation_link if member is None else member.mention} does not have any active wars!',)
 
     async def _find_slots(self, interaction: discord.Interaction, ids: str, turns: int, mi: float, ma: float):
+
         try:
-            data = await find_slots_query.query(self.bot.session, alliance_id=ids.split(','),
-                                                min_score=mi, max_score=ma)
-            # data = await find_slots_query.query(self.bot.session, alliance_id=ids.split(','))
+            alliances = tuple(map(int, ids.split(',')))
         except ValueError:
             # error in converting to int list
-            await interaction.followup.send(
-                'Incorrect format for ids! Please provide a comma separated ID list, like `4221,1224`')
-            return
+            # search for coalition
+            alliances = await self.coalitions_table.select_val('alliances').where(name=ids)
+            if alliances is None:
+                await interaction.followup.send(
+                    'Incorrect format for ids! Please provide a comma separated ID list, like `4221,1224`')
+                return
+
+        data = await find_slots_query.query(
+            self.bot.session, alliance_id=alliances, min_score=mi, max_score=ma)
 
         found = collections.defaultdict(set)
         for n in data:
@@ -165,7 +172,6 @@ class WarCog(discordutils.CogBase):
     async def find_slots(self, interaction: discord.Interaction,
                          ids: str = '0', turns: int = 0, user: discord.Member = None):
         """Looks for nations in the given alliances that have empty defensive slots"""
-
         user = user if user else interaction.user
         if user == self.bot.user:
             mi, ma = 0, 100000
@@ -181,10 +187,16 @@ class WarCog(discordutils.CogBase):
         await self._find_slots(interaction, ids, turns, mi, ma)
 
     @discord.app_commands.command()
+    @discord.app_commands.describe(
+        ids='Comma separated list of alliance IDs. Pass 0 (the default) for no alliance.',
+        turns='The maximum number of turns for the slot to open up.',
+        minimum='Minimum score. If left empty, means unbounded.',
+        maximum='Minimum score. If left empty, means unbounded.'
+    )
     async def find_slots_range(self, interaction: discord.Interaction, ids: str = '0', turns: int = 0,
                                minimum: discord.app_commands.Range[float, 0, None] = None,
                                maximum: discord.app_commands.Range[float, 0, None] = None):
-        """Like /find_slots, but with a score range. Not filling in a bound means unbounded."""
+        """Like /find_slots, but with a score range"""
         await interaction.response.defer()
         await self._find_slots(interaction, ids, turns, minimum, maximum)
 
@@ -232,6 +244,44 @@ class WarCog(discordutils.CogBase):
             ))
             return
         await interaction.response.send_message('No nations in war range found!')
+
+    coalition = discord.app_commands.Group(name='_coalition', description='Coalition Commands')
+
+    @coalition.command()
+    @discord.app_commands.describe(
+        name='The name to give the coalition',
+        alliance_ids='Comma separated list of alliance IDs. Pass 0 (the default) for no alliance.')
+    async def create(self, interaction: discord.Interaction, name: str, alliance_ids: str):
+        """Create a coalition. Please ensure you check your input"""
+        alliances = tuple(map(int, alliance_ids.split(',')))
+        await self.coalitions_table.insert(name=name, alliances=alliances)
+        await interaction.response.send_message(f'Coalition `{name}` has been created!')
+
+    @coalition.command()
+    async def list(self, interaction: discord.Interaction):
+        """List all saved coalitions"""
+        coalition_pages = []
+        async with self.bot.database.acquire() as conn:
+            async with conn.transaction():
+                coalitions_cursor = await self.coalitions_table.select('name', 'alliances').cursor(conn)
+                while chunk := await coalitions_cursor.fetch(25):
+                    embed = discord.Embed()
+                    for rec in chunk:
+                        embed.add_field(name=rec['name'], value=rec['alliances'])
+                    coalition_pages.append(embed)
+        if coalition_pages:
+            await discordutils.Pager(coalition_pages).respond(interaction)
+            return
+        await interaction.followup.send('There are no coalitions!')
+
+    @coalition.command()
+    async def delete(self, interaction: discord.Interaction, name: str):
+        """Delete a coalition. This is irreversible!"""
+        await interaction.response.send_message(
+            f'Coalition `{name}` successfully deleted!'
+            if await self.coalitions_table.delete().where(name=name) == 'DELETE 1'
+            else f'There is no coalition named `{name}`!'
+        )
 
 
 async def setup(bot: dbbot.DBBot) -> None:

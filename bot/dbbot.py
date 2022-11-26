@@ -15,7 +15,8 @@ from discord.ext import tasks, commands
 from .utils import discordutils, databases, config
 
 
-async def database_initialisation(database):
+async def database_init_pre(database: databases.Database):
+    # define type `resources` and define addition and subtraction for it
     await database.execute('''
         DO $$ BEGIN PERFORM 'resources'::regtype; EXCEPTION WHEN undefined_object THEN CREATE TYPE resources AS (
             money BIGINT, food BIGINT, coal BIGINT, oil BIGINT, uranium BIGINT, lead BIGINT, iron BIGINT,
@@ -43,31 +44,38 @@ async def database_initialisation(database):
         ''')
 
 
+async def database_init_post(database: databases.Database):
+    # ensure misc table is populated with its single row
+    await database.execute('INSERT INTO misc DEFAULT VALUES ON CONFLICT DO NOTHING')
+
+
 class DBBot(commands.Bot):
     def __init__(self, session: aiohttp.ClientSession, db_url: str,
                  possible_statuses: Sequence[discord.Activity] | None = None):
         intents = discord.Intents(guilds=True, messages=True, message_content=True, members=True)
         super().__init__(intents=intents, command_prefix='`!', allowed_mentions=discord.AllowedMentions.none())
         self.session = session
-        self.excluded = {'debug', 'open_slots_detector', 'applications'}
+        self.excluded = {'debug', 'reminder', 'applications'}
         self.kit = pnwkit.QueryKit(config.api_key)
 
-        self.database: databases.Database = databases.PGDatabase(db_url)
-        # define type `resources` and define addition and subtraction for it
-        self.database.add_on_init(database_initialisation)
+        self.database: databases.Database = databases.PGDatabase(database_init_pre, database_init_post, dsn=db_url)
 
         self.database.new_table('users', discord_id='BIGINT PRIMARY KEY', nation_id='INT UNIQUE NOT NULL',
                                 balance='resources DEFAULT ROW(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) NOT NULL')
         self.database.new_table('loans', ',FOREIGN KEY(discord_id) REFERENCES users(discord_id)',
                                 discord_id='BIGINT PRIMARY KEY', loaned='resources NOT NULL',
-                                due_date='timestamp(0) with time zone NOT NULL')
+                                due_date='TIMESTAMP(0) WITH TIME ZONE NOT NULL')
         self.database.new_table(
-            'applications', ',FOREIGN KEY(discord_id) REFERENCES users(discord_id)',
+            'applications',
             application_id='SMALLINT GENERATED ALWAYS AS IDENTITY (MINVALUE 0 MAXVALUE 99 CYCLE)',
-            discord_id='BIGINT UNIQUE NOT NULL', channel_id='INT PRIMARY KEY', status='BOOL DEFAULT NULL')
+            discord_id='BIGINT UNIQUE NOT NULL REFERENCES users(discord_id)', channel_id='INT PRIMARY KEY',
+            status='BOOL DEFAULT NULL')
         self.database.new_table('market', resource='TEXT PRIMARY KEY', ordering='SMALLINT UNIQUE NOT NULL',
                                 buy_price='INT DEFAULT NULL', sell_price='INT DEFAULT NULL',
                                 stock='BIGINT DEFAULT 0 NOT NULL')
+        self.database.new_table('coalitions', name='TEXT PRIMARY KEY', alliances='INT[] NOT NULL')
+        self.database.new_table('misc', one='BOOLEAN GENERATED ALWAYS AS (TRUE) STORED UNIQUE',
+                                open_slot_coalition='TEXT REFERENCES coalitions(name) DEFAULT NULL')
 
         self.database.new_kv('channel_ids', 'BIGINT')
         self.database.new_kv('kv_bools', 'BOOL')

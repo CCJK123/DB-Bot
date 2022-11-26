@@ -16,8 +16,8 @@ class PGDatabase(classes.Database[R]):
     __slots__ = ('pool', 'coro')
 
     def __init__(self, *args, **kwargs):
-        super().__init__()
-        self.pool = asyncpg.create_pool(*args, **kwargs)
+        super().__init__(*args)
+        self.pool = asyncpg.create_pool(**kwargs)
 
     async def __aenter__(self):
         await self.pool.__aenter__()

@@ -46,7 +46,7 @@ class OptionsCog(commands.GroupCog, discordutils.CogBase, group_name='_options')
     )
     async def channel_new_war(
             self, interaction: discord.Interaction,
-            kind: typing.Literal['offensive', 'defensive', 'updates']
+            kind: typing.Literal['offensive', 'defensive', 'updates', 'slot open']
     ) -> None:
         """Sets the attack, defend and update channels"""
         if kind == 'offensive':
@@ -55,9 +55,13 @@ class OptionsCog(commands.GroupCog, discordutils.CogBase, group_name='_options')
         elif kind == 'defensive':
             key = 'defensive_channel'
             kind_text = 'Defensive wars'
-        else:
+        elif kind == 'updates':
             key = 'updates_channel'
             kind_text = 'Updates'
+        else:
+            key = 'slot_open_channel'
+            kind_text = 'Slot Open'
+
         await self.channel_ids.set(key, interaction.channel_id)
         await interaction.response.send_message(f'{kind_text} channel set!')
 
