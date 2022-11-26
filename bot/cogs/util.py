@@ -452,7 +452,7 @@ class UtilCog(discordutils.CogBase):
     async def reload(self, interaction: discord.Interaction, extension: str) -> None:
         """Reload the given cog"""
         try:
-            await self.bot.reload_extension(f'cogs.{extension}')
+            await self.bot.reload_extension(f'bot.cogs.{extension}')
         except commands.ExtensionNotLoaded:
             await interaction.response.send_message(f'The extension `{extension}` was not previously loaded!')
             return
