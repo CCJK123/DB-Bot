@@ -344,7 +344,7 @@ query global_trade_prices($page: Int) {
 global_trade_prices_query = APIQuery(global_trade_prices_query_text, True)
 
 # war related queries
-# both detector and war.py
+# both detectors and war.py
 
 nation_war_data_fragment = '''
 fragment war_data on War {
@@ -499,8 +499,8 @@ query nation_score_query($nation_id: [Int]) {
 nation_score_query = APIQuery(nation_score_query_text, nation_id=int)
 
 find_slots_query_text = '''
-query find_slots_query($alliance_id: [Int], $min_score: Float, $max_score: Float, $page: Int) {
-    nations(alliance_id: $alliance_id, first: 500,
+query find_slots_query($alliance_ids: [Int], $min_score: Float, $max_score: Float, $page: Int) {
+    nations(alliance_id: $alliance_ids, first: 500,
             min_score: $min_score, max_score: $max_score, page: $page) {
         paginatorInfo {
             hasMorePages
@@ -519,7 +519,7 @@ query find_slots_query($alliance_id: [Int], $min_score: Float, $max_score: Float
     }
 }
 '''
-find_slots_query = APIQuery(find_slots_query_text, True, alliance_id=[int], min_score=float, max_score=float)
+find_slots_query = APIQuery(find_slots_query_text, True, alliance_ids=[int], min_score=float, max_score=float)
 
 find_in_range_query_text = '''
 query find_slots_query($alliance_id: [Int], $min_score: Float, $max_score: Float, $page: Int) {

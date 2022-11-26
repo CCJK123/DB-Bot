@@ -124,7 +124,7 @@ class WarCog(discordutils.CogBase):
                 return
 
         data = await find_slots_query.query(
-            self.bot.session, alliance_id=alliances, min_score=mi, max_score=ma)
+            self.bot.session, alliance_ids=alliances, min_score=mi, max_score=ma)
 
         found = collections.defaultdict(set)
         for n in data:
