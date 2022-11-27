@@ -9,6 +9,7 @@ import pnwkit
 
 from ..utils import discordutils
 from .. import dbbot
+from ..utils.queries import find_slots_query
 
 
 class SlotOpenDetectorCog(discordutils.CogBase):
@@ -20,14 +21,14 @@ class SlotOpenDetectorCog(discordutils.CogBase):
         self.alliance_ids = []
         self.subscribed = False
         self.nation_subscription: pnwkit.Subscription | None = None
-
+        self.info = None
         self.misc_table = bot.database.get_table('misc')
 
     async def cog_load(self) -> None:
         alliances = await self.bot.database.fetch_val(
             'SELECT alliances FROM misc INNER JOIN coalitions ON misc.open_slot_coalition = coalitions.name')
         # if misc.open_slot_coalition == NULL then no rows returned, we get None
-        if alliances is not None:
+        if alliances is not None and not self.subscribed:
             asyncio.create_task(self.subscribe(alliances))
 
     async def subscribe(self, coalition: tuple[int]):
@@ -40,6 +41,11 @@ class SlotOpenDetectorCog(discordutils.CogBase):
             self.on_nation_update
         )
         channel = self.bot.get_channel(await self.bot.database.get_kv('channel_ids').get('slot_open_channel'))
+
+        # initial populate
+        # find_slots query with unbounded score works
+        self.info = await find_slots_query.query(self.bot.session, alliance_ids=coalition,
+                                                 min_score=None, max_score=None)
         await channel.send(f'subscribed!')
 
     async def unsubscribe(self):
