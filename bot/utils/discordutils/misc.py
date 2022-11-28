@@ -2,14 +2,15 @@ from __future__ import annotations
 
 import functools
 import itertools
+import re
 import typing
 from collections.abc import Awaitable, Callable, Iterable, Sequence
 
 import discord
 
 # Setup what is exported by default
-__all__ = ('blank_colour', 'create_embed', 'get_msg_chk', 'get_dm_msg_chk',
-           'split_blocks', 'respond_to_interaction', 'make_choices', 'interaction_send', 'max_one')
+__all__ = ('blank_colour', 'create_embed', 'get_msg_chk', 'get_dm_msg_chk', 'split_blocks', 'respond_to_interaction',
+           'make_choices', 'interaction_send', 'max_one', 'fix_mentions')
 
 from discord.ext import commands
 
@@ -131,3 +132,13 @@ def max_one(func: Command) -> Command:
 
     inner.using = set()
     return inner  # type: ignore
+
+
+mention_pattern = re.compile(r'@(.+)#(\d{4})')
+
+
+def fix_mentions(string: str, members: Iterable[discord.Member]) -> str:
+    """Replaces instances of '@bread#1234' with actual mentions"""
+    def fix_mention(match: re.Match) -> str:
+        return discord.utils.get(members, name=match[1], discriminator=match[2]).mention
+    return mention_pattern.sub(fix_mention, string)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import datetime
+import re
 
 import discord
 
@@ -41,7 +42,7 @@ class ResendCog(discordutils.CogBase):
             message = await channel.fetch_message(next_resend['message_id'])
             content = message.content
             if content[:3] == '```' == content[-3:]:
-                content = content[3:-3]
+                content = discordutils.fix_mentions(content[3:-3], channel.members)
             await channel.send(content, reference=message,
                                allowed_mentions=discord.AllowedMentions.all(), mention_author=False)
             # time and message_id should be enough to uniquely identify
