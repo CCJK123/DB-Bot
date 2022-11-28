@@ -99,6 +99,7 @@ async def interaction_send(
         allowed_mentions: discord.AllowedMentions = discord.utils.MISSING,
         suppress_embeds: bool = False
 ) -> None:
+    """Sends a message with this interaction. Responds if that is not done, otherwise use followup webhook"""
     if interaction.response.is_done():
         await interaction.followup.send(
             content, embed=embed, embeds=embeds, file=file, files=files, view=view, tts=tts,
