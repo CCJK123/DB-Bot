@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import datetime
-import re
 
 import discord
 
@@ -52,11 +51,12 @@ class ResendCog(discordutils.CogBase):
     @discord.app_commands.describe(
         time='When this should be resent, should be as `5t -15m` or `2h 1m`, t - turns, h - hours, m - minutes',
         message_id='Message to resend. If not specified, takes your last message in this channel.')
-    async def resend(self, interaction: discord.Interaction, time: str, message_id: int = 0):
+    async def resend(self, interaction: discord.Interaction, time: str, message_id: str = ''):
         """Resends a message. If message is wrapped in ``` it will remove it"""
         # get message
         if message_id:
-            message = await interaction.channel.fetch_message(message_id)
+            message_id_int = int(message_id)
+            message = await interaction.channel.fetch_message(message_id_int)
             if message is None:
                 await interaction.response.send_message('That message id is not valid!')
                 return
@@ -66,7 +66,7 @@ class ResendCog(discordutils.CogBase):
             if message is None:
                 await interaction.response.send_message('A message from you in this channel was not found!')
                 return
-            message_id = message.id
+            message_id_int = message.id
 
         # parse time
         resend_time = datetime.datetime.now(tz=datetime.timezone.utc).replace(second=0, microsecond=0)
@@ -95,7 +95,7 @@ class ResendCog(discordutils.CogBase):
             return
 
         # add to_resend
-        await self.resend_table.insert(time=resend_time, channel_id=interaction.channel_id, message_id=message_id)
+        await self.resend_table.insert(time=resend_time, channel_id=interaction.channel_id, message_id=message_id_int)
         # reset sleep task
         if self.sleep_task is not None:
             self.sleep_task.cancel('new resend')
