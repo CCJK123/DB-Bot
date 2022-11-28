@@ -42,7 +42,8 @@ class ResendCog(discordutils.CogBase):
             content = message.content
             if content[:3] == '```' == content[-3:]:
                 content = content[3:-3]
-            await channel.send(content, reference=message)
+            await channel.send(content, reference=message,
+                               allowed_mentions=discord.AllowedMentions.all(), mention_author=False)
             # time and message_id should be enough to uniquely identify
             await self.resend_table.delete().where(time=next_resend['time'], message_id=next_resend['message_id'])
 
