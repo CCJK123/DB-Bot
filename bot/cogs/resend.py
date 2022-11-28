@@ -24,7 +24,7 @@ class ResendCog(discordutils.CogBase):
             next_resend = await self.bot.database.fetch_row(
                 'SELECT time, channel_id, message_id FROM to_resend ORDER BY time ASC LIMIT 1')
             if next_resend is None:
-
+                self.sleep_task = None
                 return
             now = datetime.datetime.now(tz=datetime.timezone.utc)
             self.sleep_task = asyncio.create_task(
