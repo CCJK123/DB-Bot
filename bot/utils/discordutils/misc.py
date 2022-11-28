@@ -134,11 +134,11 @@ def max_one(func: Command) -> Command:
     return inner  # type: ignore
 
 
-mention_pattern = re.compile(r'@(.+)#(\d{4})')
+user_mention_pattern = re.compile(r'@(.+)#(\d{4})')
 
 
 def fix_mentions(string: str, members: Iterable[discord.Member]) -> str:
     """Replaces instances of '@bread#1234' with actual mentions"""
     def fix_mention(match: re.Match) -> str:
         return discord.utils.get(members, name=match[1], discriminator=match[2]).mention
-    return mention_pattern.sub(fix_mention, string)
+    return user_mention_pattern.sub(fix_mention, string)

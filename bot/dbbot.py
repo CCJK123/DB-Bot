@@ -76,7 +76,7 @@ class DBBot(commands.Bot):
         self.database.new_table('coalitions', name='TEXT PRIMARY KEY', alliances='INT[] NOT NULL')
         self.database.new_table('misc', one='BOOLEAN GENERATED ALWAYS AS (TRUE) STORED UNIQUE',
                                 open_slot_coalition='TEXT REFERENCES coalitions(name) DEFAULT NULL')
-        self.database.new_table('to_resend', time='TIMESTAMP(0) WITH TIME ZONE NOT NULL',
+        self.database.new_table('to_resend', time='TIMESTAMP(0) WITH TIME ZONE NOT NULL', send_id='BIGINT',
                                 channel_id='BIGINT NOT NULL', message_id='BIGINT NOT NULL')
 
         self.database.new_kv('channel_ids', 'BIGINT')

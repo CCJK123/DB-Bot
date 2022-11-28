@@ -22,7 +22,7 @@ class ResendCog(discordutils.CogBase):
         await self.bot.wait_until_ready()
         while True:
             next_resend = await self.bot.database.fetch_row(
-                'SELECT time, channel_id, message_id FROM to_resend ORDER BY time ASC LIMIT 1')
+                'SELECT time, send_id, channel_id, message_id FROM to_resend ORDER BY time ASC LIMIT 1')
             if next_resend is None:
                 self.sleep_task = None
                 return
@@ -37,13 +37,11 @@ class ResendCog(discordutils.CogBase):
                 continue
 
             # resend message
-            channel = self.bot.get_channel(next_resend['channel_id'])
-            message = await channel.fetch_message(next_resend['message_id'])
-            content = message.content
-            if content[:3] == '```' == content[-3:]:
-                content = discordutils.fix_mentions(content[3:-3], channel.members)
-            await channel.send(content, reference=message,
-                               allowed_mentions=discord.AllowedMentions.all(), mention_author=False)
+            msg_channel = self.bot.get_channel(next_resend['channel_id'])
+            message = await msg_channel.fetch_message(next_resend['message_id'])
+            send_id = next_resend['send_id']
+            await (msg_channel if send_id is None else self.bot.get_channel(send_id)).send(
+                message.content, allowed_mentions=discord.AllowedMentions.all())
             # time and message_id should be enough to uniquely identify
             await self.resend_table.delete().where(time=next_resend['time'], message_id=next_resend['message_id'])
 
@@ -51,7 +49,8 @@ class ResendCog(discordutils.CogBase):
     @discord.app_commands.describe(
         time='When this should be resent, should be as `5t -15m` or `2h 1m`, t - turns, h - hours, m - minutes',
         message_id='Message to resend. If not specified, takes your last message in this channel.')
-    async def resend(self, interaction: discord.Interaction, time: str, message_id: str = ''):
+    async def resend(self, interaction: discord.Interaction, time: str, channel: discord.TextChannel | None,
+                     message_id: str = ''):
         """Resends a message. If message is wrapped in ``` it will remove it"""
         # get message
         if message_id:
@@ -95,7 +94,8 @@ class ResendCog(discordutils.CogBase):
             return
 
         # add to_resend
-        await self.resend_table.insert(time=resend_time, channel_id=interaction.channel_id, message_id=message_id_int)
+        await self.resend_table.insert(time=resend_time, send_id=None if channel is None else channel.id,
+                                       channel_id=interaction.channel_id, message_id=message_id_int)
         # reset sleep task
         if self.sleep_task is not None:
             self.sleep_task.cancel('new resend')
