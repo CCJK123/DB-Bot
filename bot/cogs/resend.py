@@ -49,7 +49,7 @@ class ResendCog(discordutils.CogBase):
     @discord.app_commands.describe(
         time='When this should be resent, should be as `5t -15m` or `2h 1m`, t - turns, h - hours, m - minutes',
         message_id='Message to resend. If not specified, takes your last message in this channel.')
-    async def resend(self, interaction: discord.Interaction, time: str, channel: discord.TextChannel | None,
+    async def resend(self, interaction: discord.Interaction, time: str, channel: discord.TextChannel = None,
                      message_id: str = ''):
         """Resends a message. If message is wrapped in ``` it will remove it"""
         # get message
