@@ -51,7 +51,7 @@ class ResendCog(discordutils.CogBase):
         message_id='Message to resend. If not specified, takes your last message in this channel.')
     async def resend(self, interaction: discord.Interaction, time: str, channel: discord.TextChannel = None,
                      message_id: str = ''):
-        """Resends a message. If message is wrapped in ``` it will remove it"""
+        """Resends a message at the specified time"""
         # get message
         if message_id:
             message_id_int = int(message_id)
