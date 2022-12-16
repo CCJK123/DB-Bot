@@ -285,7 +285,7 @@ class FinanceCog(discordutils.CogBase):
                     aluminum=5 * needed_units['aircraft']
                 )
                 req_data.reason = 'Buy up to Max Military Units'
-                req_data.note = f'War Aid to {req_data.reason}'
+                req_data.note = f'War Aid'
                 await self.on_request_fixed(req_data)
                 return
 
@@ -315,7 +315,7 @@ class FinanceCog(discordutils.CogBase):
                     aluminum=5 * needed_improvements['factory'] + 20 * needed_improvements['drydock'])
 
                 req_data.reason = 'Rebuild to Max Military Improvements'
-                req_data.note = f'War Aid to {req_data.reason}'
+                req_data.note = f'War Aid'
                 await self.on_request_fixed(req_data)
                 return
 
@@ -359,7 +359,7 @@ class FinanceCog(discordutils.CogBase):
                     return
 
                 req_data.reason = f'Rebuild Infrastructure up to {infra_level}'
-                req_data.note = f'War Aid to {req_data.reason}'
+                req_data.note = f'War Aid'
                 req_data.additional_info['Domestic Policy'] = data['domestic_policy']
                 await self.on_request_fixed(req_data)
                 return
@@ -404,7 +404,7 @@ class FinanceCog(discordutils.CogBase):
 
                 # Ensure that user didn't request for nothing
                 if req_data.resources:
-                    req_data.note = f'War Aid to {req_data.reason}'
+                    req_data.note = f'War Aid'
                     await self.on_request_fixed(req_data)
                     return
                 else:
