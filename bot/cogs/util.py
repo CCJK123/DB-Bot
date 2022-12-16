@@ -309,7 +309,7 @@ class UtilCog(discordutils.CogBase):
         embed.add_field(name='Score', value=data['score'])
         embed.add_field(name='Domestic Policy', value=data['domestic_policy'])
         embed.add_field(name='War Policy', value=data['war_policy'])
-        wars = [w for w in data['wars'] if w['turns_left'] > 0]
+        wars = data['wars']
         if wars:
             offensive = sum(int(w['att_id']) == nation_id for w in wars)
             block = any(int(w['naval_blockade']) not in (nation_id, 0) for w in wars)

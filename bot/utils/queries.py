@@ -69,7 +69,7 @@ query finance_nation_info($nation_id: [Int]) {
             aircraft
             ships
             beige_turns
-            wars {
+            wars (active: true) {
                 att_id
                 turns_left
             }
@@ -86,7 +86,6 @@ query finance_nation_info($nation_id: [Int]) {
         }
     }
 }
-
 '''
 finance_nation_info_query = APIQuery(finance_nation_info_query_text, nation_id=int)
 
@@ -299,7 +298,7 @@ query nation_info_query($nation_id: [Int]) {
             ships
             missiles
             nukes
-            wars {
+            wars (active: true) {
                 att_id
                 naval_blockade  
                 turns_left

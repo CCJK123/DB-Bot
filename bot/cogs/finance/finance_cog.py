@@ -251,7 +251,7 @@ class FinanceCog(discordutils.CogBase):
                 await user.send('You took too long to respond! Exiting...')
                 return
             wars = data['wars']
-            num_off = sum(war['att_id'] == nation_id for war in wars if war['turns_left'] > 0)
+            num_off = sum(war['att_id'] == nation_id for war in wars)
             req_data.additional_info = {
                 'Beige Turns': data['beige_turns'],
                 'Active Wars': f'''
