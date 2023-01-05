@@ -221,6 +221,7 @@ class UtilCog(discordutils.CogBase):
     @_check.command(name='resources')
     async def check_resources(self, interaction: discord.Interaction):
         """List all nations that have run out of food or uranium in the alliance."""
+        await interaction.response.defer()
         data = await alliance_member_res_query.query(self.bot.session, alliance_id=config.alliance_id)
         data = data['data']
         result = {'Food': [], 'Food And Uranium': [], 'Uranium': []}
@@ -253,9 +254,9 @@ class UtilCog(discordutils.CogBase):
                                     f'[{na[1]}/{na[0]}]({pnwutils.link.nation(na[0])})') for na in ns)
                 if string:
                     embed.add_field(name=k, value=string)
-            await interaction.response.send_message(embed=embed)
+            await interaction.followup.send(embed=embed)
             return
-        await interaction.response.send_message('No one has ran out of food or uranium!')
+        await interaction.followup.send('No one has ran out of food or uranium!')
 
     @_check.command(name='activity')
     @discord.app_commands.describe(
