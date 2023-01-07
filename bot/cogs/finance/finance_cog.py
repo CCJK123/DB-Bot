@@ -359,7 +359,7 @@ class FinanceCog(discordutils.CogBase):
                     return
 
                 req_data.reason = f'Rebuild Infrastructure up to {infra_level}'
-                req_data.note = f'Rebuild War'
+                req_data.note = f'Rebuild Aid'
                 req_data.additional_info['Domestic Policy'] = data['domestic_policy']
                 await self.on_request_fixed(req_data)
                 return
