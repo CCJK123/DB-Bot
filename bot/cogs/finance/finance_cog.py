@@ -58,7 +58,7 @@ class FinanceCog(discordutils.CogBase):
             return
 
         # Get Request Type
-        req_types = ['Grant', 'Loan', 'Various Resources']
+        req_types = ['Grant', 'Loan']
         if await self.bot.database.get_kv('kv_bools').get('has_war_aid'):
             req_types.append('War Aid')
 
@@ -72,7 +72,7 @@ class FinanceCog(discordutils.CogBase):
 
         # Redirect Accordingly
         if req_data.kind == 'Grant':
-            grant_type_choice = discordutils.Choices('City', 'Project', 'Other')
+            grant_type_choice = discordutils.Choices('City', 'Project', 'Various Resources', 'Other')
             await user.send('What type of grant do you want?',
                             view=grant_type_choice)
             try:
