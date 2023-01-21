@@ -58,7 +58,7 @@ class FinanceCog(discordutils.CogBase):
             return
 
         # Get Request Type
-        req_types = ['Grant', 'Loan']
+        req_types = ['Grant', 'Loan', 'Various Resources']
         if await self.bot.database.get_kv('kv_bools').get('has_war_aid'):
             req_types.append('War Aid')
 
@@ -125,6 +125,11 @@ class FinanceCog(discordutils.CogBase):
                     'Urban Planning': 'urban_planning',
                     'Advanced Urban Planning': 'advanced_urban_planning',
                     'Metropolitan Planning': 'metropolitan_planning',
+                    'Missile Launch Pad': 'missile_launch_pad',
+                    'Iron Dome': 'iron_dome',
+                    'Vital Defense System': 'vital_defense_system',
+                    'Research and Development Center': 'research_and_development_center',
+                    'Space Program': 'space_program',
                     'Other': 'other'
                 }
                 data['other'] = None
@@ -139,7 +144,10 @@ class FinanceCog(discordutils.CogBase):
                 if data['num_cities'] < 21 or not data['advanced_urban_planning']:
                     disabled.add('Metropolitan Planning')
                 project_choice = discordutils.Choices(*project_field_names.keys(), disabled=disabled)
-                await user.send('Which project do you want?', view=project_choice)
+                await user.send(
+                    'Which project are you requesting a grant for? '
+                    'Note that for many of these projects, we will require 100/100 or only do up to partial grants.',
+                    view=project_choice)
 
                 try:
                     project = await project_choice.result()
@@ -181,6 +189,56 @@ class FinanceCog(discordutils.CogBase):
                 req_data.note = f'{project} Project Grant'
                 await self.on_request_fixed(req_data)
                 return
+            elif grant_type == 'Various Resources':
+                await user.send('Why are you requesting these various resources?')
+                try:
+                    # Wait for user to input loan request
+                    req_data.reason = (await self.bot.wait_for(
+                        'message',
+                        check=msg_chk,
+                        timeout=config.timeout)).content
+                except asyncio.TimeoutError:
+                    await user.send('You took too long to reply. Aborting request!')
+                    return
+
+                res_select_view = finance_views.ResourceSelectView()
+                await user.send('What resources are you requesting?', view=res_select_view)
+                try:
+                    selected_res = await res_select_view.result()
+                except asyncio.TimeoutError:
+                    await user.send('You took too long to respond! Exiting...')
+                    return
+                for res_name in selected_res:
+                    await user.send(f'How much {res_name} are you requesting?')
+                    while True:
+                        try:
+                            # Wait for user to input how much of each res they want
+                            res_amt = int((await self.bot.wait_for(
+                                'message',
+                                check=msg_chk,
+                                timeout=config.timeout)).content)
+                            if res_amt > 0:
+                                req_data.resources[res_name] = res_amt
+                            break
+                        except ValueError:
+                            await user.send('Kindly input a whole number.')
+                            continue
+                        except asyncio.TimeoutError:
+                            await user.send(
+                                'You took too long to reply. Aborting request!')
+                            return
+
+                # Ensure that user didn't request for nothing
+                if req_data.resources:
+                    req_data.note = 'Misc'
+                    await self.on_request_fixed(req_data)
+                    return
+                else:
+                    # No resources requested
+                    await user.send(
+                        "You didn't request for any resources. Please run the command again and redo your request."
+                    )
+                    return
             else:
                 await user.send('Other Grants have not been implemented! Please try again next time.')
                 return
@@ -285,7 +343,7 @@ class FinanceCog(discordutils.CogBase):
                     aluminum=5 * needed_units['aircraft']
                 )
                 req_data.reason = 'Buy up to Max Military Units'
-                req_data.note = f'War Aid'
+                req_data.note = 'War Aid'
                 await self.on_request_fixed(req_data)
                 return
 
@@ -315,7 +373,7 @@ class FinanceCog(discordutils.CogBase):
                     aluminum=5 * needed_improvements['factory'] + 20 * needed_improvements['drydock'])
 
                 req_data.reason = 'Rebuild to Max Military Improvements'
-                req_data.note = f'War Aid'
+                req_data.note = 'War Aid'
                 await self.on_request_fixed(req_data)
                 return
 
@@ -404,7 +462,7 @@ class FinanceCog(discordutils.CogBase):
 
                 # Ensure that user didn't request for nothing
                 if req_data.resources:
-                    req_data.note = f'War Aid'
+                    req_data.note = 'War Aid'
                     await self.on_request_fixed(req_data)
                     return
                 else:
