@@ -34,7 +34,7 @@ query offshore_info {
 '''
 offshore_info_query = APIQuery(offshore_info_query_text)
 
-# finance.py
+# finance_cog.py
 
 finance_nation_info_query_text = '''
 query finance_nation_info($nation_id: [Int]) {
@@ -58,6 +58,11 @@ query finance_nation_info($nation_id: [Int]) {
             # Project Grants
             central_intelligence_agency
             propaganda_bureau
+            missile_launch_pad
+            iron_dome
+            vital_defense_system
+            research_and_development_center
+            space_program
 
             # Project Grants & War Aid
             center_for_civil_engineering
@@ -89,7 +94,7 @@ query finance_nation_info($nation_id: [Int]) {
 '''
 finance_nation_info_query = APIQuery(finance_nation_info_query_text, nation_id=int)
 
-# bank.py
+# bank_cog.py
 resources_fragment = '''
 fragment resources on Bankrec {
     money
@@ -230,6 +235,22 @@ query nation_resources($nation_id: [Int]) {
 }
 '''
 nation_resources_query = APIQuery(nation_resources_query_text, nation_id=int)
+
+
+tax_bracket_query_text = '''
+query tax_rates($alliance_id: [Int]) {
+    alliances(id: $alliance_id) {
+        data {
+            tax_brackets {
+                id
+                tax_rate
+                resource_tax_rate
+            }
+        }
+    }
+}
+'''
+tax_bracket_query = APIQuery(tax_bracket_query_text, alliance_id=int)
 
 # util.py
 
