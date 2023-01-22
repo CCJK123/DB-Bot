@@ -149,7 +149,6 @@ query bank_revenue_query($alliance_id: [Int], $after: DateTime) {
     alliances(id: $alliance_id) {
         data {
             taxrecs(after: $after) {
-                date
                 ...resources
             }
         }
