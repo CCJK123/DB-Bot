@@ -114,7 +114,7 @@ def mil_text(nation: MilDict, action_points: int | None = None) -> str:
 
 def time_after_turns(turns: int, start: datetime.datetime | None = None) -> datetime.datetime:
     if start is None:
-        start = datetime.datetime.now()
+        start = datetime.datetime.utcnow()
     return start.replace(minute=0, second=0, microsecond=0) + datetime.timedelta(hours=turns * 2 - start.hour % 2)
 
 

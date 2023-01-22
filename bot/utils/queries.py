@@ -145,10 +145,10 @@ bank_transactions_query = APIQuery(bank_transactions_query_text, alliance_id=int
 # if stype/rtype is 2 then sid/rid is definitely the alliance id unless both stype/rtype is 2
 
 bank_revenue_query_text = '''
-query bank_revenue_query($alliance_id: [Int]) {
+query bank_revenue_query($alliance_id: [Int], $after: DateTime) {
     alliances(id: $alliance_id) {
         data {
-            taxrecs(orderBy: {column: DATE, order: DESC}) {
+            taxrecs(after: $after) {
                 date
                 ...resources
             }
@@ -156,7 +156,7 @@ query bank_revenue_query($alliance_id: [Int]) {
     }
 }
 ''' + resources_fragment
-bank_revenue_query = APIQuery(bank_revenue_query_text, alliance_id=int)
+bank_revenue_query = APIQuery(bank_revenue_query_text, alliance_id=int, after=str)
 
 nation_name_query_text = '''
 query nation_name($nation_id: [Int]) {

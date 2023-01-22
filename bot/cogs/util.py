@@ -451,7 +451,7 @@ class UtilCog(discordutils.CogBase):
     @discord.app_commands.command(name='_reload')
     @discord.app_commands.default_permissions(manage_guild=True)
     async def reload(self, interaction: discord.Interaction, extension: str) -> None:
-        """Reload the given cog"""
+        """Reload the given extension"""
         try:
             await self.bot.reload_extension(f'bot.cogs.{extension}')
         except commands.ExtensionNotLoaded:
