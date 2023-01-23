@@ -213,7 +213,7 @@ class WarCog(discordutils.CogBase):
                     ids.append(n['id'])
             await interaction.response.send_message(embed=discord.Embed(
                 title='Nations with spy satellite who can attack:',
-                description='\n'.join(map(pnwutils.link.nation, ids))))
+                description='\n'.join(f'[{pnwutils.link.nation(n_id)}]({n_id})' for n_id in ids)))
         else:
             ids = []
             data = await spy_sat_query.query(self.bot.session, alliance_id=config.alliance_id)
@@ -222,7 +222,7 @@ class WarCog(discordutils.CogBase):
                     ids.append(n['id'])
             await interaction.response.send_message(embed=discord.Embed(
                 title='Nations with spy satellite:',
-                description='\n'.join(map(pnwutils.link.nation, ids))))
+                description='\n'.join(f'[{pnwutils.link.nation(n_id)}]({n_id})' for n_id in ids)))
 
     @discord.app_commands.command()
     async def find_in_war_range(
