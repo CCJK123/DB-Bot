@@ -170,9 +170,6 @@ class FinanceCog(discordutils.CogBase):
                     req_data.resources *= 19
                 half = req_data.resources // 2
                 presets = {
-                    'center_for_civil_engineering': {},
-                    'central_intelligence_agency': {},
-                    'propaganda_bureau': {},
                     'urban_planning': {
                         'Half Everything': half
                     },
@@ -184,7 +181,7 @@ class FinanceCog(discordutils.CogBase):
                     }
                 }
 
-                req_data.presets = presets[project_field_name]
+                req_data.presets = presets.get(project_field_name) or {}
                 req_data.reason = project
                 req_data.note = f'{project} Project Grant'
                 await self.on_request_fixed(req_data)
