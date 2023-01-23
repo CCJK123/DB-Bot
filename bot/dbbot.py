@@ -93,7 +93,7 @@ class DBBot(commands.Bot):
         discordutils.PersistentView.bot = self
 
         self.tree.error(self.on_app_command_error)
-        self.command_ids: dict[str, int] = {}
+        self.command_ids: dict[int, dict[str, int]] = {}
 
     async def setup_hook(self) -> None:
         print('Loading Cogs')
@@ -101,7 +101,7 @@ class DBBot(commands.Bot):
         for guild in map(discord.Object, config.guild_ids):
             self.tree.copy_global_to(guild=guild)
             try:
-                self.command_ids = {c.name: c.id for c in await self.tree.sync(guild=guild)}
+                self.command_ids[guild.id] = {c.name: c.id for c in await self.tree.sync(guild=guild)}
             except discord.Forbidden as e:
                 print(f'Failed to sync to guild with id {guild.id}: {e.text}')
 
@@ -175,7 +175,7 @@ class DBBot(commands.Bot):
         command = interaction.command
         if isinstance(exception.__cause__, discord.NotFound):
             # def from a command from some sort, since those are the ones where the interactions expire
-            suffix = (f': </{command.qualified_name}:{self.command_ids[command.qualified_name]}>'
+            suffix = (f': </{command.qualified_name}:{self.command_ids[interaction.guild_id][command.qualified_name]}>'
                       if isinstance(command, discord.app_commands.Command) else '.')
             await interaction.channel.send(f'Sorry, please rerun your command{suffix}')
             return
@@ -194,7 +194,7 @@ class DBBot(commands.Bot):
             await self.log(f'An exception occurred when {interaction.user.mention} '
                            f'did something in {interaction.channel.mention}.')
         else:
-            name = (f'</{command.qualified_name}:{self.command_ids[command.qualified_name]}>'
+            name = (f'</{command.qualified_name}:{self.command_ids[interaction.guild_id][command.qualified_name]}>'
                     if isinstance(command, discord.app_commands.Command) else f'`{command.qualified_name}`')
             try:
                 await discordutils.interaction_send(

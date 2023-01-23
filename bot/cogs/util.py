@@ -16,7 +16,7 @@ from .war import WarCog
 from ..utils import discordutils, pnwutils, config
 from .. import dbbot
 from ..utils.queries import (nation_register_query, alliance_member_res_query, alliance_activity_query,
-                             alliance_tiers_query, nation_info_query, global_trade_prices_query)
+                             alliance_tiers_query, nation_info_query, global_trade_prices_query, nation_revenue_query)
 
 
 class ExtraInfoView(discordutils.TimeoutView):
@@ -447,6 +447,25 @@ class UtilCog(discordutils.CogBase):
             name=f'{config.resource_emojis["credits"]} Credits',
             value=f'Buying: {buy_max["credits"]}\nSelling: {sell_min["credits"]}')
         await interaction.response.send_message(embed=embed)
+
+    @discord.app_commands.command()
+    async def revenue(self, interaction: discord.Interaction, member: discord.Member = None, nation_id: int = None):
+        """Finds the revenue (per day) of the given member or nation."""
+        if nation_id is None:
+            if member is None:
+                await interaction.response.send_message(
+                    'At least one of member and nation_id must be provided!', ephemeral=True)
+                return
+            nation_id = await self.users_table.select_val('nation_id').where(discord_id=member.id)
+            if nation_id is None:
+                await interaction.response.send_message('This user does not have their nation registered!')
+                return
+        await interaction.response.defer()
+        data = (await nation_revenue_query.query(self.bot.session, nation_ids=[nation_id]))['data'][0]
+        n = pnwutils.models.Nation(data)
+        print(n.population())
+        await interaction.followup.send(embed=n.revenue().create_embed(
+            title=f"{data['nation_name']}'s Revenue"))
 
     @discord.app_commands.command(name='_reload')
     @discord.app_commands.default_permissions(manage_guild=True)

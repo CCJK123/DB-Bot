@@ -7,8 +7,9 @@ from discord.ext import commands
 from bot.utils import discordutils, pnwutils, config
 from bot import dbbot
 from bot.cogs.finance import finance_views
-from bot.utils.queries import (bank_transactions_query, bank_info_query, nation_name_query,
-                               nation_resources_query, bank_revenue_query, leader_name_query)
+from bot.utils.queries import (
+    bank_transactions_query, bank_info_query, nation_name_query, nation_resources_query, bank_revenue_query,
+    leader_name_query, tax_bracket_query, nation_revenue_query)
 
 
 class BankCog(discordutils.CogBase):
@@ -571,6 +572,19 @@ class BankCog(discordutils.CogBase):
             'Restock Link',
             pnwutils.link.bank('wa', total, config.alliance_name,
                                alliance_id=await pnwutils.get_offshore_id(self.bot.session))))
+
+    @_bank.command()
+    async def total_taxed_prod(self, interaction: discord.Interaction):
+        """Total revenue for nations with 75/75 or higher tax"""
+        await interaction.response.defer()
+        # lookup tax bracket ids
+        tax_bracket_data = await tax_bracket_query.query(self.bot.session, alliance_id=config.alliance_id)
+        tax_brackets = [b['id'] for b in tax_bracket_data['data'][0]['tax_brackets']
+                        if b['tax_rate'] >= 75 and b['resource_tax_rate'] >= 75]
+        data = await nation_revenue_query.query(self.bot.session, tax_ids=tax_brackets)
+        total = sum((pnwutils.models.Nation(nation).revenue() for nation in data['data']), pnwutils.Resources())
+        await interaction.followup.send(embed=total.create_embed(
+            title='Total revenue for nations with 75/75 or higher tax'))
 
     @_bank.command()
     @discord.app_commands.describe(

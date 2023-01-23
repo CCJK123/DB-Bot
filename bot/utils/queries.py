@@ -235,13 +235,12 @@ query nation_resources($nation_id: [Int]) {
 '''
 nation_resources_query = APIQuery(nation_resources_query_text, nation_id=int)
 
-
 tax_bracket_query_text = '''
 query tax_rates($alliance_id: [Int]) {
     alliances(id: $alliance_id) {
         data {
             tax_brackets {
-                id
+                id  
                 tax_rate
                 resource_tax_rate
             }
@@ -250,6 +249,79 @@ query tax_rates($alliance_id: [Int]) {
 }
 '''
 tax_bracket_query = APIQuery(tax_bracket_query_text, alliance_id=int)
+
+nation_revenue_query_text = '''query revenue_query($nation_ids: [Int], $tax_ids: [Int]) {
+    nations(id: $nation_ids, tax_id: $tax_ids) {
+        data {
+            id
+            nation_name
+            domestic_policy
+            
+            soldiers
+            tanks
+            aircraft
+            ships
+            spies
+            missiles
+            nukes
+            
+            wars(active: true) {
+                id
+            }
+            
+            mass_irrigation
+            emergency_gasoline_reserve
+            arms_stockpile
+            iron_works
+            bauxite_works
+            uranium_enrichment_program
+            international_trade_center
+            telecommunications_satellite
+            
+            recycling_initiative
+            clinical_research_center
+            specialized_police_training_program
+            government_support_agency
+            green_technologies
+            
+            cities {
+                infrastructure
+                land
+                date
+                powered
+                coal_power
+                oil_power
+                nuclear_power
+                wind_power
+                farm
+                coal_mine
+                oil_well	
+                uranium_mine
+                lead_mine
+                iron_mine
+                bauxite_mine
+                oil_refinery
+                munitions_factory
+                steel_mill
+                aluminum_refinery
+                police_station
+                hospital
+                recycling_center
+                subway
+                supermarket
+                bank
+                shopping_mall
+                stadium
+                barracks
+                factory
+                hangar
+                drydock
+            }
+        }
+    }
+}
+'''
+nation_revenue_query = APIQuery(nation_revenue_query_text, nation_ids=[int], tax_ids=[int])
 
 # util.py
 
