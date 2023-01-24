@@ -250,12 +250,37 @@ query tax_rates($alliance_id: [Int]) {
 '''
 tax_bracket_query = APIQuery(tax_bracket_query_text, alliance_id=int)
 
+treasures_query_text = '''
+query treasures_query {
+    treasures {
+        bonus
+        nation {
+            id
+            alliance_id
+        }
+    }
+}
+'''
+treasures_query = APIQuery(treasures_query_text)
+
+colours_query_text = '''
+query colour_query {
+    colors {
+        color
+        turn_bonus
+    }
+}
+'''
+colours_query = APIQuery(colours_query_text)
+
 nation_revenue_query_text = '''query revenue_query($nation_ids: [Int], $tax_ids: [Int]) {
     nations(id: $nation_ids, tax_id: $tax_ids) {
         data {
             id
+            alliance_id
             nation_name
             domestic_policy
+            color
             
             soldiers
             tanks

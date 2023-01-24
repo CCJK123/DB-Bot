@@ -1,5 +1,11 @@
 __all__ = ('war_range', 'inverse_war_range', 'spy_range', 'inverse_spy_range', 'infra_value', 'infra_price',
-           'mil_values', 'round_odds', 'battle_odds', 'odds')
+           'mil_values', 'round_odds', 'battle_odds', 'odds', 'treasure_bonus')
+
+from typing import Any
+
+import aiohttp
+
+from bot.utils.queries import treasures_query
 
 
 def war_range(score: float) -> tuple[float, float]:
@@ -71,3 +77,14 @@ def odds(a: dict, d: dict) -> tuple[BattleOdds, BattleOdds, BattleOdds, BattleOd
     dg, da, dn = mil_values(d)
     return (battle_odds(ag, dg + d['population'] / 400), battle_odds(aa, da), battle_odds(an, dn),
             battle_odds(dg, ag + a['population'] / 400), battle_odds(da, aa), battle_odds(dn, an))
+
+
+def treasure_bonus(treasure_data: list[dict[str, Any]], nation_id: str, alliance_id: str):
+    bonus = 0
+    aa_total = 0
+    for treasure in treasure_data:
+        if treasure['nation']['id'] == nation_id:
+            bonus += treasure['bonus']
+        elif treasure['nation']['alliance_id'] == alliance_id:
+            aa_total += 4
+    return 1 + (bonus + aa_total ** 0.5) * 0.01

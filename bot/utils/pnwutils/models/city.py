@@ -16,10 +16,9 @@ def mul_bonus(amt, maxi):
 
 
 class City:
-    def __init__(self, data: dict[str, Any], projects: dict[str, bool], open_markets: bool):
+    def __init__(self, data: dict[str, Any], projects: dict[str, bool]):
         self.data = data
         self.projects = projects
-        self.open_markets = open_markets
         self._population = 0
         self._disease = 0
         self._crime = 0
@@ -106,12 +105,11 @@ class City:
                     self._commerce = 100 if self._commerce >= 100 else self._commerce
         return self._commerce
 
-    def revenue(self):
+    def revenue(self, cash_bonus: float):
         """Money production seems off"""
         if not self._revenue:
             self._revenue = Resources(money=(
-                (self.commerce / 50 + 1) * 0.725 * self.population *
-                (1 if self.open_markets else 1.01 + 0.005 * self.projects['government_support_agency'])
+                (self.commerce / 50 + 1) * 0.725 * self.population * cash_bonus
             ) if self.data['powered'] else 0.725 * self.population)
             self._revenue.money -= (
                 self.data['coal_power'] * 1200

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Any
 
 from .city import City
@@ -6,9 +8,8 @@ from .. import Resources
 
 class Nation:
     def __init__(self, data: dict[str, Any]):
-        open_markets = data['domestic_policy'] == 'OPEN_MARKETS'
         self.data = data
-        self.cities = [City(city_data, data, open_markets) for city_data in data['cities']]
+        self.cities = [City(city_data, data) for city_data in data['cities']]
         self._population = 0
         self._revenue: 'Resources | None' = None
 
@@ -17,7 +18,7 @@ class Nation:
             self._population = sum(city.population for city in self.cities)
         return self._population
 
-    def revenue(self):
+    def revenue(self, colour_data: list[dict[str, Any]] | None = None, cash_bonus: float = 1):
         """It does not take into account the turn bonus, and does not include spies if they are not accessible"""
         if not self._revenue:
             print(f'calculating revenue for {self.data["nation_name"]}')
@@ -43,7 +44,17 @@ class Nation:
             self._revenue.food -= self.data['soldiers'] / (500 if self.data['wars'] else 750)
             if self.data['domestic_policy'] == 'IMPERIALISM':
                 self._revenue *= 0.95 - 0.025 * self.data['government_support_agency']
-            print('expenses: ', self._revenue)
-            self._revenue = sum((city.revenue() for city in self.cities), self._revenue)
-            print(self._revenue)
+            elif self.data['domestic_policy'] == 'OPEN_MARKETS':
+                cash_bonus += 0.01 + 0.005 * self.data['government_support_agency']
+            print(cash_bonus)
+            self._revenue = sum((city.revenue(cash_bonus) for city in self.cities), self._revenue)
+            if colour_data:
+                for colour in colour_data:
+                    if colour['color'] == self.data['color']:
+                        colour_bonus = colour['turn_bonus']
+                        break
+                else:
+                    raise ValueError('Colour not found!')
+                print(colour_bonus * 12)
+                self._revenue.money += colour_bonus * 12
         return self._revenue

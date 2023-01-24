@@ -9,7 +9,7 @@ from bot import dbbot
 from bot.cogs.finance import finance_views
 from bot.utils.queries import (
     bank_transactions_query, bank_info_query, nation_name_query, nation_resources_query, bank_revenue_query,
-    leader_name_query, tax_bracket_query, nation_revenue_query)
+    leader_name_query, tax_bracket_query, nation_revenue_query, treasures_query, colours_query)
 
 
 class BankCog(discordutils.CogBase):
@@ -581,8 +581,13 @@ class BankCog(discordutils.CogBase):
         tax_bracket_data = await tax_bracket_query.query(self.bot.session, alliance_id=config.alliance_id)
         tax_brackets = [b['id'] for b in tax_bracket_data['data'][0]['tax_brackets']
                         if b['tax_rate'] >= 75 and b['resource_tax_rate'] >= 75]
-        data = await nation_revenue_query.query(self.bot.session, tax_ids=tax_brackets)
-        total = sum((pnwutils.models.Nation(nation).revenue() for nation in data['data']), pnwutils.Resources())
+        nation_q = asyncio.create_task(nation_revenue_query.query(self.bot.session, tax_ids=tax_brackets))
+        treasure_q = asyncio.create_task(treasures_query.query(self.bot.session))
+        colour_data = await colours_query.query(self.bot.session)
+        treasure_data = await treasure_q
+        total = sum((pnwutils.models.Nation(nation).revenue(
+            colour_data, pnwutils.formulas.treasure_bonus(treasure_data, nation['id'], nation['alliance_id'])
+        ) for nation in (await nation_q)['data']), pnwutils.Resources())
         await interaction.followup.send(embed=total.create_embed(
             title='Total revenue for nations with 75/75 or higher tax'))
 

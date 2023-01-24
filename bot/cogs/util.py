@@ -1,3 +1,4 @@
+import asyncio
 import collections
 import datetime
 import io
@@ -16,7 +17,8 @@ from .war import WarCog
 from ..utils import discordutils, pnwutils, config
 from .. import dbbot
 from ..utils.queries import (nation_register_query, alliance_member_res_query, alliance_activity_query,
-                             alliance_tiers_query, nation_info_query, global_trade_prices_query, nation_revenue_query)
+                             alliance_tiers_query, nation_info_query, global_trade_prices_query, nation_revenue_query,
+                             treasures_query, colours_query)
 
 
 class ExtraInfoView(discordutils.TimeoutView):
@@ -461,11 +463,14 @@ class UtilCog(discordutils.CogBase):
                 await interaction.response.send_message('This user does not have their nation registered!')
                 return
         await interaction.response.defer()
-        data = (await nation_revenue_query.query(self.bot.session, nation_ids=[nation_id]))['data'][0]
+        nation_q = asyncio.create_task(nation_revenue_query.query(self.bot.session, nation_ids=[nation_id]))
+        treasure_q = asyncio.create_task(treasures_query.query(self.bot.session))
+        colour_q = asyncio.create_task(colours_query.query(self.bot.session))
+        data = (await nation_q)['data'][0]
         n = pnwutils.models.Nation(data)
-        print(n.population())
-        await interaction.followup.send(embed=n.revenue().create_embed(
-            title=f"{data['nation_name']}'s Revenue"))
+        await interaction.followup.send(embed=n.revenue(
+            await colour_q, pnwutils.formulas.treasure_bonus(await treasure_q, data['id'], data['alliance_id'])
+        ).create_embed(title=f"{data['nation_name']}'s Revenue"))
 
     @discord.app_commands.command(name='_reload')
     @discord.app_commands.default_permissions(manage_guild=True)
