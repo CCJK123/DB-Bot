@@ -330,43 +330,46 @@ class RequestButtonsView(discordutils.PersistentView):
             user.send('How would you like to modify this grant request?', view=preset_view))
 
         try:
-            reason = await preset_view.future
+            reason, reset = await preset_view.future, False
         except (asyncio.TimeoutError, asyncio.CancelledError) as e:
             await user.send('You took too long to respond! Aborting...'
                             if isinstance(e, asyncio.TimeoutError) else
                             'Cancelling modification...')
+        else:
+            discordutils.disable_all(self)
+            self.stop()
+            await self.bot.remove_view(self)
 
-            discordutils.enable_all(self)
-            button.style = discord.ButtonStyle.secondary
-            embed.description = ''
-            embed.colour = discord.Colour.blue()
-            await interaction.edit_original_response(view=self, embed=embed)
-            return
-        discordutils.disable_all(self)
-        self.stop()
-        await self.bot.remove_view(self)
-        custom_id = await self.bot.get_custom_id()
-        content = f'Modified {self.data.kind} Request from {self.data.requester.mention}'
-        response_view = ModificationResponseView(self.data, user.id, reason, content, interaction, custom_id)
-        updated_res_embed = self.data.resources.create_embed(title='Updated Resources')
-        embed.description = f'Modified by {user.mention}'
-        embed.colour = discord.Colour.orange()
-        embed.add_field(name='Updated Resources', value=self.data.resources.to_display_string())
-        embed.add_field(name='Modification Reason', value=reason)
+            custom_id = await self.bot.get_custom_id()
+            content = f'Modified {self.data.kind} Request from {self.data.requester.mention}'
 
-        await asyncio.gather(
-            interaction.edit_original_response(content=content, embed=embed, view=self),
-            self.bot.log(embeds=(
-                discordutils.create_embed(
-                    user=self.data.requester,
-                    description=f"{self.data.requester.mention}'s {self.data.kind} Request for `{self.data.reason}` "
-                                f'modified by {user.mention} for the reason of `{reason}`'),
-                old_res.create_embed(title='Previous Resources'),
-                updated_res_embed
-            )),
-            user.send('Request Modification Complete!', embed=updated_res_embed),
-            response_view.send_response()
-        )
+            updated_res_embed = self.data.resources.create_embed(title='Updated Resources')
+            embed.description = f'Modified by {user.mention}'
+            embed.colour = discord.Colour.orange()
+            embed.add_field(name='Updated Resources', value=self.data.resources.to_display_string())
+            embed.add_field(name='Modification Reason', value=reason)
+
+            await asyncio.gather(
+                interaction.edit_original_response(content=content, embed=embed, view=self),
+                self.bot.log(embeds=(
+                    discordutils.create_embed(
+                        user=self.data.requester,
+                        description=f"{self.data.requester.mention}'s {self.data.kind} Request for `{self.data.reason}`"
+                                    f' was modified and accepted by {user.mention} for the reason of `{reason}`'),
+                    old_res.create_embed(title='Previous Resources'),
+                    updated_res_embed
+                )),
+                user.send('Request Modification Complete!', embed=updated_res_embed),
+                self.withdraw_for_request(self.data, interaction.user)
+            )
+        finally:
+            if self.is_finished():
+                discordutils.enable_all(self)
+                button.style = discord.ButtonStyle.secondary
+                embed.description = ''
+                embed.colour = discord.Colour.blue()
+                await interaction.edit_original_response(view=self, embed=embed)
+                return
 
 
 class PresetView(discord.ui.View):
@@ -461,76 +464,10 @@ class CustomModificationModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         for res_name, input_text in zip(self.view.data.resources.keys_nonzero(), self.res_input):
-            if input_text.value is not None:
+            if input_text.value:
                 self.view.data.resources[res_name] = int(input_text.value)
         self.future.set_result(self.reason_input.value)
         await interaction.response.send_message('The request has been updated!', embed=self.view.data.create_embed())
-
-
-class ModificationResponseView(discordutils.PersistentView):
-    def __init__(self, data: RequestData, processor_id: int, reason: str,
-                 header: str, interaction: discord.Interaction, custom_id: int):
-        super().__init__(custom_id=custom_id)
-        self.data = data
-        self.processor_id = processor_id
-        self.reason = reason
-        self.header = header
-        self.m_interaction = interaction
-
-    async def send_response(self):
-        await self.data.requester.send(
-            f'Your request has been modified for the reason of `{self.reason}`. Is this modified request acceptable, '
-            'or should the request be cancelled?', embed=self.data.create_withdrawal_embed(), view=self)
-
-    def get_state(self) -> tuple:
-        return {}, self.data, self.processor_id
-
-    @discordutils.persistent_button(label='Accept')
-    async def accept(self, button: discord.ui.Button, interaction: discord.Interaction):
-        button.style = discord.ButtonStyle.success
-        discordutils.disable_all(self)
-        self.stop()
-
-        embed = self.data.resources.create_embed(title='Accepted Modified Request Resources')
-
-        m_embed = self.m_interaction.message.embeds[0]
-        m_embed.colour = discord.Colour.green()
-        await asyncio.gather(
-            self.m_interaction.edit_original_response(content=f'Accepted {self.header}', embed=m_embed,
-                                                      allowed_mentions=discord.AllowedMentions.none()),
-            interaction.response.edit_message(content=f'Accepted modified request for `{self.data.reason}`',
-                                              view=self, embed=embed),
-            self.bot.log(embeds=(
-                discordutils.create_embed(
-                    user=self.data.requester,
-                    description=f'{self.data.requester.mention} accepted their modified {self.data.kind} request '
-                                f'for `{self.data.reason}`'),
-                self.data.resources.create_embed(title='Request Resources')
-            )),
-            RequestButtonsView.withdraw_for_request(self.data, self.bot.get_user(self.processor_id))
-        )
-
-    @discordutils.persistent_button(label='Reject')
-    async def reject(self, button: discord.ui.Button, interaction: discord.Interaction):
-        button.style = discord.ButtonStyle.success
-        discordutils.disable_all(self)
-        self.stop()
-
-        embed = self.data.resources.create_embed(title='Cancelled Modified Request Resources')
-
-        m_embed = self.m_interaction.message.embeds[0]
-        m_embed.colour = discord.Colour.red()
-        await asyncio.gather(
-            self.m_interaction.edit_original_response(content=f'Rejected {self.header}', embed=m_embed),
-            interaction.response.edit_message(content=f'Cancelled modified request for `{self.data.reason}`',
-                                              view=self, embed=embed),
-            self.bot.log(embeds=(
-                discordutils.create_embed(
-                    user=self.data.requester,
-                    description=f'{self.data.requester.mention} rejected their modified {self.data.kind} request '
-                                f'for `{self.data.reason}`'),
-                embed
-            )))
 
 
 class DepositView(discordutils.Choices):
