@@ -177,7 +177,7 @@ class RequestButtonsView(discordutils.PersistentView):
         return {}, self.data
 
     @classmethod
-    async def withdraw_for_request(cls, data: RequestData, processor: discord.User):
+    async def withdraw_for_request(cls, data: RequestData, processor: discord.User, embed, modified: bool = False):
         result = await data.create_withdrawal().withdraw(cls.bot.session)
         messages = {
             pnwutils.WithdrawalResult.SUCCESS: (
@@ -193,9 +193,9 @@ class RequestButtonsView(discordutils.PersistentView):
         }
         await asyncio.gather(
             data.requester.send(
-                f'Your {data.kind} request for `{data.reason}` '
-                'has been accepted! ' +
-                messages[result][0]
+                f'Your {data.kind} request for `{data.reason}` has been {"modified and " * modified}accepted! ' +
+                messages[result][0],
+                embed=embed
             ),
             cls.bot.log(embeds=(
                 discordutils.create_embed(
@@ -279,7 +279,7 @@ class RequestButtonsView(discordutils.PersistentView):
             interaction.edit_original_response(
                 content=f'Accepted {self.data.kind} Request from {self.data.requester.mention}',
                 allowed_mentions=discord.AllowedMentions.none()),
-            self.withdraw_for_request(self.data, interaction.user))
+            self.withdraw_for_request(self.data, interaction.user, embed))
 
     @discordutils.persistent_button(label='Reject')
     async def reject(self, button: discord.ui.Button, interaction: discord.Interaction):
@@ -330,7 +330,7 @@ class RequestButtonsView(discordutils.PersistentView):
             user.send('How would you like to modify this grant request?', view=preset_view))
 
         try:
-            reason, reset = await preset_view.future, False
+            reason, new_interaction = await preset_view.future
         except (asyncio.TimeoutError, asyncio.CancelledError) as e:
             await user.send('You took too long to respond! Aborting...'
                             if isinstance(e, asyncio.TimeoutError) else
@@ -340,16 +340,17 @@ class RequestButtonsView(discordutils.PersistentView):
             self.stop()
             await self.bot.remove_view(self)
 
-            custom_id = await self.bot.get_custom_id()
             content = f'Modified {self.data.kind} Request from {self.data.requester.mention}'
 
             updated_res_embed = self.data.resources.create_embed(title='Updated Resources')
             embed.description = f'Modified by {user.mention}'
-            embed.colour = discord.Colour.orange()
+            embed.colour = discord.Colour.green()
             embed.add_field(name='Updated Resources', value=self.data.resources.to_display_string())
             embed.add_field(name='Modification Reason', value=reason)
 
+            print('gather up')
             await asyncio.gather(
+                new_interaction.response.send_message('The request has been modified!', embed=embed),
                 interaction.edit_original_response(content=content, embed=embed, view=self),
                 self.bot.log(embeds=(
                     discordutils.create_embed(
@@ -359,11 +360,10 @@ class RequestButtonsView(discordutils.PersistentView):
                     old_res.create_embed(title='Previous Resources'),
                     updated_res_embed
                 )),
-                user.send('Request Modification Complete!', embed=updated_res_embed),
-                self.withdraw_for_request(self.data, interaction.user)
+                self.withdraw_for_request(self.data, interaction.user, embed, True)
             )
         finally:
-            if self.is_finished():
+            if not self.is_finished():
                 discordutils.enable_all(self)
                 button.style = discord.ButtonStyle.secondary
                 embed.description = ''
@@ -381,10 +381,7 @@ class PresetView(discord.ui.View):
             self.add_item(b)
         self.add_item(CancelButton())
         self.reason: str | None = None
-        self.future: asyncio.Future[str] = asyncio.get_event_loop().create_future()
-
-    def result(self) -> Awaitable[str]:
-        return self.future
+        self.future: asyncio.Future[tuple[str, discord.Interaction]] = asyncio.get_event_loop().create_future()
 
     async def on_timeout(self) -> None:
         self.future.set_exception(asyncio.TimeoutError())
@@ -422,10 +419,8 @@ class PresetButton(discord.ui.Button[PresetView]):
         result = await reason_modal.result()
         self.view.stop()
         self.view.parent_view.data.resources = self.resources
-        await asyncio.gather(
-            interaction.edit_original_response(view=self.view),
-            discordutils.respond_to_interaction(reason_modal.interaction))
-        self.view.future.set_result(result)
+        await interaction.edit_original_response(view=self.view)
+        self.view.future.set_result((result, reason_modal.interaction))
 
 
 class CustomPresetButton(discord.ui.Button[PresetView]):
@@ -433,28 +428,29 @@ class CustomPresetButton(discord.ui.Button[PresetView]):
         super().__init__(label='Custom Modification')
 
     async def callback(self, interaction: discord.Interaction):
-        modal = CustomModificationModal(self.view.parent_view)
+        modal = CustomModificationModal(self.view.future, self.view.parent_view.data)
         await interaction.response.send_modal(modal)
-        result = await modal.future
+
+        # wait for modal return success
+        await self.view.future
         self.style = discord.ButtonStyle.success
         discordutils.disable_all(self.view)
         self.view.stop()
         await interaction.edit_original_response(view=self.view)
-        self.view.future.set_result(result)
 
 
 class CustomModificationModal(discord.ui.Modal):
-    def __init__(self, view: RequestButtonsView):
+    def __init__(self, future: asyncio.Future[tuple[str, discord.Interaction]], data: RequestData):
         super().__init__(title='How would you like to modify this request?', timeout=config.timeout)
-        self.view = view
-        self.future: asyncio.Future[str] = asyncio.get_event_loop().create_future()
+        self.future = future
+        self.data = data
         self.res_input = []
 
         self.reason_input = discord.ui.TextInput(
             label='What is the reason for this modification?',
             style=discord.TextStyle.paragraph)
         self.add_item(self.reason_input)
-        for res_name, amt in view.data.resources.items_nonzero():
+        for res_name, amt in data.resources.items_nonzero():
             text_input = discord.ui.TextInput(
                 label=f'How much {res_name} should the request be for?',
                 placeholder=str(amt),
@@ -463,11 +459,10 @@ class CustomModificationModal(discord.ui.Modal):
             self.res_input.append(text_input)
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
-        for res_name, input_text in zip(self.view.data.resources.keys_nonzero(), self.res_input):
+        for res_name, input_text in zip(self.data.resources.keys_nonzero(), self.res_input):
             if input_text.value:
-                self.view.data.resources[res_name] = int(input_text.value)
-        self.future.set_result(self.reason_input.value)
-        await interaction.response.send_message('The request has been updated!', embed=self.view.data.create_embed())
+                self.data.resources[res_name] = int(input_text.value)
+        self.future.set_result((self.reason_input.value, interaction))
 
 
 class DepositView(discordutils.Choices):
