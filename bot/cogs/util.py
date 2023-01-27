@@ -451,7 +451,8 @@ class UtilCog(discordutils.CogBase):
         await interaction.response.send_message(embed=embed)
 
     @discord.app_commands.command()
-    async def revenue(self, interaction: discord.Interaction, member: discord.Member = None, nation_id: int = None):
+    async def revenue(self, interaction: discord.Interaction, member: discord.Member = None, nation_id: int = None,
+                      days: int = 1):
         """Finds the revenue (per day) of the given member or nation."""
         if nation_id is None:
             if member is None:
@@ -468,9 +469,10 @@ class UtilCog(discordutils.CogBase):
         colour_q = asyncio.create_task(colours_query.query(self.bot.session))
         data = (await nation_q)['data'][0]
         n = pnwutils.models.Nation(data)
-        await interaction.followup.send(embed=n.revenue(
+        await interaction.followup.send(embed=(n.revenue(
             await colour_q, pnwutils.formulas.treasure_bonus(await treasure_q, data['id'], data['alliance_id'])
-        ).create_embed(title=f"{data['nation_name']}'s Revenue"))
+        ) * days).create_embed(
+            title=f"{data['nation_name']}'s Revenue {'Per Day' if days == 1 else f'Every {days} days'}"))
 
     @discord.app_commands.command(name='_reload')
     @discord.app_commands.default_permissions(manage_guild=True)
