@@ -102,15 +102,20 @@ class FinanceCog(discordutils.CogBase):
                     req_data.resources *= 19
                 # Create embed
 
-                project_string = ', '.join(
-                    k for k, v in {
-                        'Urban Planning': has_up,
-                        'Advanced Urban Planning': has_aup,
-                        'Metropolitan Planning': has_mp
-                    }.items() if v) or 'None'
                 req_data.reason = f'City {data["num_cities"] + 1}'
                 req_data.note = f'{req_data.reason} Grant'
-                req_data.additional_info = {'Projects': project_string, 'Domestic Policy': data['domestic_policy']}
+                remaining = 60 - data['turns_since_last_city']
+                req_data.additional_info = {
+                    'Projects': ', '.join(
+                        k for k, v in {
+                            'Urban Planning': has_up,
+                            'Advanced Urban Planning': has_aup,
+                            'Metropolitan Planning': has_mp
+                        }.items() if v) or 'None',
+                    'Domestic Policy': data['domestic_policy'],
+                    'City Timer': 'Ready' if remaining <= 0
+                    else f'Ready at {discord.utils.format_dt(pnwutils.time_after_turns(remaining))}'
+                }
                 req_data.presets = {
                     'Half Amount': req_data.resources // 2
                 }
@@ -183,6 +188,12 @@ class FinanceCog(discordutils.CogBase):
 
                 req_data.presets = presets.get(project_field_name) or {}
                 req_data.reason = project
+                remaining = 60 - data['turns_since_last_project']
+                req_data.additional_info = {
+                    'Domestic Policy': data['domestic_policy'],
+                    'Project Timer': 'Ready' if remaining <= 0
+                    else f'Ready at {discord.utils.format_dt(pnwutils.time_after_turns(remaining))}'
+                }
                 req_data.note = f'{project} Project Grant'
                 await self.on_request_fixed(req_data)
                 return

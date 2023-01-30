@@ -45,17 +45,18 @@ query finance_nation_info($nation_id: [Int]) {
 
             # Alliance Check
             alliance_id
-
-            # City Grants, Project Grants & War Aid
+            
+            # General Info
             num_cities
+            turns_since_last_city
+            turns_since_last_project
 
-            # City Grants & Project Grants 
+            # Project Bits
             urban_planning
             advanced_urban_planning
             metropolitan_planning
             government_support_agency
 
-            # Project Grants
             central_intelligence_agency
             propaganda_bureau
             missile_launch_pad
