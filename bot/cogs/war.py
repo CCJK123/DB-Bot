@@ -108,7 +108,9 @@ class WarCog(discordutils.CogBase):
             )
             return
         await interaction.response.send_message(
-            f'{nation_link if member is None else member.mention} does not have any active wars!',)
+            f'{nation_link if member is None else member.mention} does not have any active wars!', )
+
+    find = discord.app_commands.Group(name='find', description='Commands for finding certain nations!')
 
     async def _find_slots(self, interaction: discord.Interaction, ids: str, turns: int, mi: float, ma: float):
 
@@ -163,8 +165,6 @@ class WarCog(discordutils.CogBase):
                 title='Nations with free slots',
                 description='\n'.join(f'[{nation_id}]({pnwutils.link.nation(nation_id)})' for nation_id in found[0])))
 
-    find = discord.app_commands.Group(name='find', description='Commands for finding certain nations!')
-
     @find.command()
     @discord.app_commands.describe(
         ids='Comma separated list of alliance IDs. Pass 0 (the default) for no alliance.',
@@ -172,7 +172,7 @@ class WarCog(discordutils.CogBase):
         user='Run this command as if this user ran it.'
     )
     async def slots(self, interaction: discord.Interaction,
-                         ids: str = '0', turns: int = 0, user: discord.Member = None):
+                    ids: str = '0', turns: int = 0, user: discord.Member = None):
         """Looks for nations in the given alliances that have empty defensive slots"""
         user = user if user else interaction.user
         if user == self.bot.user:
@@ -196,8 +196,8 @@ class WarCog(discordutils.CogBase):
         maximum='Minimum score. If left empty, means unbounded.'
     )
     async def slots_range(self, interaction: discord.Interaction, ids: str = '0', turns: int = 0,
-                               minimum: discord.app_commands.Range[float, 0, None] = None,
-                               maximum: discord.app_commands.Range[float, 0, None] = None):
+                          minimum: discord.app_commands.Range[float, 0, None] = None,
+                          maximum: discord.app_commands.Range[float, 0, None] = None):
         """Like /find_slots, but with a score range"""
         await interaction.response.defer()
         await self._find_slots(interaction, ids, turns, minimum, maximum)
