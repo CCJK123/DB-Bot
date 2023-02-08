@@ -427,6 +427,21 @@ query nation_info_query($nation_id: [Int]) {
 '''
 nation_info_query = APIQuery(nation_info_query_text, nation_id=int)
 
+military_query_text = '''
+query nation_military_query($nation_id: [Int]) {
+    nations(id: $nation_id) {
+        data {
+            soldiers
+            tanks
+            aircraft
+            ships
+            population
+        }
+    }
+}
+'''
+military_query = APIQuery(military_query_text, nation_id=int)
+
 alliance_tiers_query_text = '''
 query nation_discord($alliance_ids: [Int]) {
     alliances(id: $alliance_ids) {

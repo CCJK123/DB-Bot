@@ -7,7 +7,7 @@ import discord
 from ..utils import discordutils, pnwutils, config
 from .. import dbbot
 from ..utils.queries import (individual_war_query, nation_active_wars_query,
-                             find_slots_query, nation_score_query, spy_sat_query, find_in_range_query)
+                             find_slots_query, nation_score_query, spy_sat_query, find_in_range_query, military_query)
 
 
 class OddsInfoView(discordutils.TimeoutView):
@@ -109,6 +109,18 @@ class WarCog(discordutils.CogBase):
             return
         await interaction.response.send_message(
             f'{nation_link if member is None else member.mention} does not have any active wars!', )
+
+    @war.command()
+    async def minimal_immense(self, interaction: discord.Interaction, nation_id: int):
+        data = (await military_query.query(self.bot.session, nation_id=nation_id))[0]['data']
+        embed = discord.Embed(title='Minimal Army Value')
+        g = int(data['soldiers'] * 4.375 + data['tanks'] * 100 + data['population'] * 0.00625 + 1.5)
+        embed.add_field(name='Ground Battle', value=f'{g}\n{g} Unarmed Soldiers / {g * 4 / 7} Armed Soldiers')
+        p = int(data["planes"] * 7.5 + 1.5)
+        embed.add_field(name='Airstrike', value=f'{p}\n{(p - 1) // 3 + 1} Planes')
+        s = int(data['ships'] * 10 + 1.5)
+        embed.add_field(name='Naval Battle', value=f'{s}\n{(s - 1) // 4 + 1} Ships')
+        await interaction.response.send_message(embed=embed)
 
     find = discord.app_commands.Group(name='find', description='Commands for finding certain nations!')
 
