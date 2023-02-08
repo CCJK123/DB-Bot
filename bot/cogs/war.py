@@ -163,13 +163,15 @@ class WarCog(discordutils.CogBase):
                 title='Nations with free slots',
                 description='\n'.join(f'[{nation_id}]({pnwutils.link.nation(nation_id)})' for nation_id in found[0])))
 
-    @discord.app_commands.command()
+    find = discord.app_commands.Group(name='find', description='Commands for finding certain nations!')
+
+    @find.command()
     @discord.app_commands.describe(
         ids='Comma separated list of alliance IDs. Pass 0 (the default) for no alliance.',
         turns='The maximum number of turns for the slot to open up.',
         user='Run this command as if this user ran it.'
     )
-    async def find_slots(self, interaction: discord.Interaction,
+    async def slots(self, interaction: discord.Interaction,
                          ids: str = '0', turns: int = 0, user: discord.Member = None):
         """Looks for nations in the given alliances that have empty defensive slots"""
         user = user if user else interaction.user
@@ -186,21 +188,21 @@ class WarCog(discordutils.CogBase):
             mi, ma = pnwutils.formulas.war_range(score_data['data'][0]['score'])
         await self._find_slots(interaction, ids, turns, mi, ma)
 
-    @discord.app_commands.command()
+    @find.command()
     @discord.app_commands.describe(
         ids='Comma separated list of alliance IDs. Pass 0 (the default) for no alliance.',
         turns='The maximum number of turns for the slot to open up.',
         minimum='Minimum score. If left empty, means unbounded.',
         maximum='Minimum score. If left empty, means unbounded.'
     )
-    async def find_slots_range(self, interaction: discord.Interaction, ids: str = '0', turns: int = 0,
+    async def slots_range(self, interaction: discord.Interaction, ids: str = '0', turns: int = 0,
                                minimum: discord.app_commands.Range[float, 0, None] = None,
                                maximum: discord.app_commands.Range[float, 0, None] = None):
         """Like /find_slots, but with a score range"""
         await interaction.response.defer()
         await self._find_slots(interaction, ids, turns, minimum, maximum)
 
-    @discord.app_commands.command()
+    @find.command()
     async def find_spy_sat(self, interaction: discord.Interaction, target_score: int = 0):
         """Looks for nations in the alliance with Spy Satellite who can spy on targets with the given score"""
         if target_score:
@@ -224,13 +226,12 @@ class WarCog(discordutils.CogBase):
                 title='Nations with spy satellite:',
                 description='\n'.join(f'[{pnwutils.link.nation(n_id)}]({n_id})' for n_id in ids)))
 
-    @discord.app_commands.command()
-    async def find_in_war_range(
+    @find.command()
+    async def in_war_range(
             self, interaction: discord.Interaction,
             score: discord.app_commands.Range[float, 0, None] = None,
             nation_id: discord.app_commands.Range[int, 1, None] = None,
-            min_cities: discord.app_commands.Range[int, 0, None] = 0
-        ):
+            min_cities: discord.app_commands.Range[int, 0, None] = 0):
         """Find nations in the alliance who are in range of a nation. The score parameter overrides nation_id"""
         if score is None and nation_id is None:
             await interaction.response.send_message('At least one of score and nation_id must be provided!')
