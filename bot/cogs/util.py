@@ -456,12 +456,15 @@ class UtilCog(discordutils.CogBase):
         """Finds the revenue (per day) of the given member or nation."""
         if nation_id is None:
             if member is None:
-                await interaction.response.send_message(
-                    'At least one of member and nation_id must be provided!', ephemeral=True)
-                return
+                member = interaction.user
             nation_id = await self.users_table.select_val('nation_id').where(discord_id=member.id)
             if nation_id is None:
-                await interaction.response.send_message('This user does not have their nation registered!')
+
+                await interaction.response.send_message(
+                    'Your nation has not been registered!'
+                    if member == interaction.user else
+                    'This user does not have their nation registered!'
+                )
                 return
         await interaction.response.defer()
         nation_q = asyncio.create_task(nation_revenue_query.query(self.bot.session, nation_ids=[nation_id]))
