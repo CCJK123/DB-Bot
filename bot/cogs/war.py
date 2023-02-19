@@ -112,6 +112,7 @@ class WarCog(discordutils.CogBase):
 
     @war.command()
     async def minimal_immense(self, interaction: discord.Interaction, nation_id: int):
+        """Find the minimal army value needed to always achieve an Immense Triumph"""
         data = (await military_query.query(self.bot.session, nation_id=nation_id))[0]['data']
         embed = discord.Embed(title='Minimal Army Value')
         g = int(data['soldiers'] * 4.375 + data['tanks'] * 100 + data['population'] * 0.00625 + 1.5)

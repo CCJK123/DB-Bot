@@ -5,8 +5,8 @@ from typing import Any
 
 from bot.utils.pnwutils.resources import Resources
 
-
 __all__ = ('City',)
+
 
 # thanks to rift (https://github.com/mrvillage/rift)
 
@@ -32,19 +32,19 @@ class City:
             age = (datetime.datetime.now(datetime.timezone.utc) -
                    datetime.datetime.fromisoformat(self.data["date"]).replace(tzinfo=datetime.timezone.utc)).days
             self._population = (
-                self.data['infrastructure'] * (100 - self.disease)
-                - max(10 * self.crime * self.data['infrastructure'] - 25, 0)
-            ) * (1 + (math.log(age) if age else 0) / 15)
+                                       self.data['infrastructure'] * (100 - self.disease)
+                                       - max(10 * self.crime * self.data['infrastructure'] - 25, 0)
+                               ) * (1 + (math.log(age) if age else 0) / 15)
         return self._population
 
     @property
     def disease(self) -> float:
         if not self._disease:
             self._disease = (
-                (self.data['infrastructure'] / self.data['land']) ** 2 - 0.25
-                + self.data['infrastructure'] / 1000
-                + self.pollution * 0.05
-                - self.data['hospital'] * (2.5 + self.projects['clinical_research_center'])
+                    (self.data['infrastructure'] / self.data['land']) ** 2 - 0.25
+                    + self.data['infrastructure'] / 1000
+                    + self.pollution * 0.05
+                    - self.data['hospital'] * (2.5 + self.projects['clinical_research_center'])
             )
         if self._disease < 0:
             return 0
@@ -56,8 +56,8 @@ class City:
     def crime(self) -> float:
         if not self._crime:
             self._crime = (
-                ((103 - self.commerce) ** 2 + (self.data['infrastructure'] * 100)) / 111111
-                - self.data['police_station'] * (2.5 + self.projects['specialized_police_training_program'])
+                    ((103 - self.commerce) ** 2 + (self.data['infrastructure'] * 100)) / 111111
+                    - self.data['police_station'] * (2.5 + self.projects['specialized_police_training_program'])
             )
         if self._crime < 0:
             return 0
@@ -70,20 +70,20 @@ class City:
         if not self._pollution:
             green = self.projects['green_technologies']
             self._pollution = (
-                self.data['coal_power'] * 8
-                + self.data['oil_power'] * 6
-                + (self.data['coal_mine'] + self.data['oil_well'] + self.data['lead_mine'] +
-                   self.data['iron_mine'] + self.data['bauxite_mine']) * 12
-                + self.data['uranium_mine'] * 20
-                + self.data['farm'] * 2 * (1 - green * 0.5)
-                + (self.data['oil_refinery'] + self.data['munitions_factory']) * 32 * (1 - green * 0.25)
-                + (self.data['steel_mill'] + self.data['aluminum_refinery']) * 40 * (1 - green * 0.25)
-                + self.data['police_station']
-                + self.data['hospital'] * 4
-                - self.data['recycling_center'] * (70 + 5 * self.projects['recycling_initiative'])
-                - self.data['subway'] * (45 + 25 * green)
-                + self.data['shopping_mall'] * 2
-                + self.data['stadium'] * 5
+                    self.data['coal_power'] * 8
+                    + self.data['oil_power'] * 6
+                    + (self.data['coal_mine'] + self.data['oil_well'] + self.data['lead_mine'] +
+                       self.data['iron_mine'] + self.data['bauxite_mine']) * 12
+                    + self.data['uranium_mine'] * 20
+                    + self.data['farm'] * 2 * (1 - green * 0.5)
+                    + (self.data['oil_refinery'] + self.data['munitions_factory']) * 32 * (1 - green * 0.25)
+                    + (self.data['steel_mill'] + self.data['aluminum_refinery']) * 40 * (1 - green * 0.25)
+                    + self.data['police_station']
+                    + self.data['hospital'] * 4
+                    - self.data['recycling_center'] * (70 + 5 * self.projects['recycling_initiative'])
+                    - self.data['subway'] * (45 + 25 * green)
+                    + self.data['shopping_mall'] * 2
+                    + self.data['stadium'] * 5
             )
         return self._pollution
 
@@ -91,12 +91,12 @@ class City:
     def commerce(self) -> float:
         if not self._commerce:
             self._commerce = (
-                self.data['supermarket'] * 3
-                + self.data['bank'] * 5
-                + self.data['shopping_mall'] * 9
-                + self.data['stadium'] * 12
-                + self.data['subway'] * 8
-                + self.projects['telecommunications_satellite'] * 2
+                    self.data['supermarket'] * 3
+                    + self.data['bank'] * 5
+                    + self.data['shopping_mall'] * 9
+                    + self.data['stadium'] * 12
+                    + self.data['subway'] * 8
+                    + self.projects['telecommunications_satellite'] * 2
             )
             if not self.projects['telecommunications_satellite']:
                 if self.projects['international_trade_center']:
@@ -109,32 +109,47 @@ class City:
         """Money production seems off"""
         if not self._revenue:
             self._revenue = Resources(money=(
-                (self.commerce / 50 + 1) * 0.725 * self.population * cash_bonus
+                    (self.commerce / 50 + 1) * 0.725 * self.population * cash_bonus
             ) if self.data['powered'] else 0.725 * self.population)
             self._revenue.money -= (
-                self.data['coal_power'] * 1200
-                + self.data['oil_power'] * 1800
-                + self.data['nuclear_power'] * 10500
-                + self.data['wind_power'] * 500
-                + self.data['coal_mine'] * 400
-                + self.data['oil_well'] * 600
-                + (self.data['iron_mine'] + self.data['bauxite_mine']) * 1600
-                + self.data['lead_mine'] * 1500
-                + self.data['uranium_mine'] * 5000
-                + self.data['farm'] * 300
+                    self.data['coal_power'] * 1200
+                    + self.data['oil_power'] * 1800
+                    + self.data['nuclear_power'] * 10500
+                    + self.data['wind_power'] * 500
+                    + self.data['coal_mine'] * 400
+                    + self.data['oil_well'] * 600
+                    + (self.data['iron_mine'] + self.data['bauxite_mine']) * 1600
+                    + self.data['lead_mine'] * 1500
+                    + self.data['uranium_mine'] * 5000
+                    + self.data['farm'] * 300
             )
             if self.data['farm']:
                 self._revenue.food = (
-                    (self.data['land'] / (500 - self.projects['mass_irrigation'] * 100)) * 12
-                    * mul_bonus(self.data['farm'], 20)
+                        (self.data['land'] / (500 - self.projects['mass_irrigation'] * 100)) * 12
+                        * mul_bonus(self.data['farm'], 20)
                 )
             self._revenue.food -= self.population / 1000
-            # for coal and oil power, assumes that the power plant is needed
-            self._revenue.coal = 3 * mul_bonus(self.data['coal_mine'], 10) - 1.2 * self.data['coal_power']
-            self._revenue.oil = 3 * mul_bonus(self.data['oil_well'], 10) - 1.2 * self.data['oil_power']
+
+            unpowered_infra = self.data['infrastructure'] - self.data['wind_power'] * 250
+            nuclear_levels = min((unpowered_infra + 999.99) // 1000, 2 * self.data['nuclear_power'])
+            unpowered_infra -= 1000 * nuclear_levels
+            coal_levels = 0
+            if unpowered_infra > 0:
+                oil_levels = min((unpowered_infra + 99.9) // 100, self.data['oil_power'] * 5)
+                unpowered_infra -= 100 * oil_levels
+                if unpowered_infra > 0:
+                    coal_levels = min((unpowered_infra + 99.9) // 100, self.data['coal_power'] * 5)
+                    unpowered_infra -= 100 * coal_levels
+                    if unpowered_infra > 0:
+                        # not enough, power plants do not run
+                        nuclear_levels = oil_levels = coal_levels = 0
+            else:
+                oil_levels = 0
             self._revenue.uranium = (
                     3 * (1 + self.projects['uranium_enrichment_program']) * mul_bonus(self.data['uranium_mine'], 5) -
-                    min((self.data['infrastructure'] + 999.99) // 1000, 2 * self.data['nuclear_power']) * 1.2)
+                    nuclear_levels * 1.2)
+            self._revenue.oil = 3 * mul_bonus(self.data['oil_well'], 10) - 1.2 * oil_levels
+            self._revenue.coal = 3 * mul_bonus(self.data['coal_mine'], 10) - 1.2 * coal_levels
 
             self._revenue.lead = 3 * mul_bonus(self.data['lead_mine'], 10)
             self._revenue.iron = 3 * mul_bonus(self.data['iron_mine'], 10)
@@ -159,16 +174,16 @@ class City:
                     self._revenue.bauxite -= eff * 3
                     self._revenue.aluminum = eff * 9
                 self._revenue.money -= (
-                    (self.data['oil_refinery'] + self.data['steel_mill']) * 4000
-                    + self.data['munitions_factory'] * 3500
-                    + self.data['aluminum_refinery'] * 2500
-                    + self.data['police_station'] * 750
-                    + self.data['hospital'] * 1000
-                    + self.data['recycling_center'] * 2500
-                    + self.data['subway'] * 3250
-                    + self.data['supermarket'] * 600
-                    + self.data['bank'] * 1800
-                    + self.data['shopping_mall'] * 5400
-                    + self.data['stadium'] * 12150
+                        (self.data['oil_refinery'] + self.data['steel_mill']) * 4000
+                        + self.data['munitions_factory'] * 3500
+                        + self.data['aluminum_refinery'] * 2500
+                        + self.data['police_station'] * 750
+                        + self.data['hospital'] * 1000
+                        + self.data['recycling_center'] * 2500
+                        + self.data['subway'] * 3250
+                        + self.data['supermarket'] * 600
+                        + self.data['bank'] * 1800
+                        + self.data['shopping_mall'] * 5400
+                        + self.data['stadium'] * 12150
                 )
         return self._revenue
