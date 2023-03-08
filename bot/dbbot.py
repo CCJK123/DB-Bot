@@ -55,7 +55,7 @@ class DBBot(commands.Bot):
         intents = discord.Intents(guilds=True, messages=True, message_content=True, members=True)
         super().__init__(intents=intents, command_prefix='`!', allowed_mentions=discord.AllowedMentions.none())
         self.session = session
-        self.excluded = {'debug', 'reminder', 'applications'}
+        self.excluded = {'debug', 'applications_old'}
         self.kit = pnwkit.QueryKit(config.api_key)
 
         self.database: databases.Database = databases.PGDatabase(database_init_pre, database_init_post, dsn=db_url)
@@ -68,7 +68,7 @@ class DBBot(commands.Bot):
         self.database.new_table(
             'applications',
             application_id='SMALLINT GENERATED ALWAYS AS IDENTITY (MINVALUE 0 MAXVALUE 99 CYCLE)',
-            discord_id='BIGINT UNIQUE NOT NULL REFERENCES users(discord_id)', channel_id='INT PRIMARY KEY',
+            discord_id='BIGINT UNIQUE NOT NULL REFERENCES users(discord_id)', channel_id='BIGINT PRIMARY KEY',
             status='BOOL DEFAULT NULL')
         self.database.new_table('market', resource='TEXT PRIMARY KEY', ordering='SMALLINT UNIQUE NOT NULL',
                                 buy_price='INT DEFAULT NULL', sell_price='INT DEFAULT NULL',
@@ -80,6 +80,7 @@ class DBBot(commands.Bot):
                                 channel_id='BIGINT NOT NULL', message_id='BIGINT NOT NULL')
 
         self.database.new_kv('channel_ids', 'BIGINT')
+        self.database.new_kv('kv_ints', 'INT')
         self.database.new_kv('kv_bools', 'BOOL')
         self.view_table = databases.ViewTable(self.database, 'views')
         self.database.add_table(self.view_table)
@@ -191,11 +192,16 @@ class DBBot(commands.Bot):
             except discord.HTTPException as e:
                 print('Responding failed! Exc Type: ', type(e))
                 await interaction.channel.send(f'Sorry, an exception occurred.')
-            await self.log(f'An exception occurred when {interaction.user.mention} '
-                           f'did something in {interaction.channel.mention}.')
+            finally:
+                await self.log(f'An exception occurred when {interaction.user.mention} '
+                               f'did something in {interaction.channel.mention}.')
         else:
-            name = (f'</{command.qualified_name}:{self.command_ids[interaction.guild_id][command.qualified_name]}>'
-                    if isinstance(command, discord.app_commands.Command) else f'`{command.qualified_name}`')
+            try:
+                name = (f'</{command.qualified_name}:{self.command_ids[interaction.guild_id][command.qualified_name]}>'
+                        if isinstance(command, discord.app_commands.Command) else f'`{command.qualified_name}`')
+            except KeyError:
+                name = f'`{command.qualified_name}`'
+
             try:
                 await discordutils.interaction_send(
                     interaction,
@@ -203,9 +209,9 @@ class DBBot(commands.Bot):
             except discord.HTTPException as e:
                 print('Responding failed! Exc Type: ', type(e))
                 await interaction.channel.send(f'Sorry, an exception occurred in the command {name}.')
-            channel: discord.TextChannel
-            await self.log(f'An exception occurred when {interaction.user.mention} was running the command {name} '
-                           f'in {interaction.channel.mention}.')
+            finally:
+                await self.log(f'An exception occurred when {interaction.user.mention} was running the command {name} '
+                               f'in {interaction.channel.mention}.')
 
         await self.log(f'Interaction Data: {interaction.data}')
         s = ''

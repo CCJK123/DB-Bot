@@ -26,7 +26,7 @@ class OptionsCog(commands.GroupCog, discordutils.CogBase, group_name='_options')
                               ) -> None:
         """Set this channel to either the finance process or the withdrawal channel"""
         await self.channel_ids.set(f'{kind}_channel', interaction.channel_id)
-        await interaction.response.send_message(f'{kind.capitalize()} channel set!')
+        await interaction.response.send_message(f'`{kind.capitalize()}` channel set!')
 
     @request_options.command()
     @discord.app_commands.default_permissions()
@@ -63,7 +63,7 @@ class OptionsCog(commands.GroupCog, discordutils.CogBase, group_name='_options')
             kind_text = 'Slot Open'
 
         await self.channel_ids.set(key, interaction.channel_id)
-        await interaction.response.send_message(f'{kind_text} channel set!')
+        await interaction.response.send_message(f'`{kind_text}` channel set!')
 
     market_options = discord.app_commands.Group(name='market', description='Options for the market system!')
     market_options.guild_ids = config.guild_ids
@@ -82,10 +82,10 @@ class OptionsCog(commands.GroupCog, discordutils.CogBase, group_name='_options')
         """Set the buying/selling price of a resource"""
         market_table = self.bot.database.get_table('market')
         if price:
-            r = f'The {action} price of {res_name} has been set to {price} ppu.'
+            r = f'The {action} price of `{res_name}` has been set to `{price}` ppu.'
         else:
             price = 'null'
-            r = f'{action} {res_name} is now disabled!'
+            r = f'{action} `{res_name}` is now disabled!'
 
         await market_table.update(f'{action.removesuffix("ing")}_price = {price}').where(resource=res_name)
         await interaction.response.send_message(r)
@@ -102,7 +102,7 @@ class OptionsCog(commands.GroupCog, discordutils.CogBase, group_name='_options')
         """Set the stocks of a resource"""
         market_table = self.bot.database.get_table('market')
         await market_table.update(f'stock = {stock}').where(resource=res_name)
-        await interaction.response.send_message(f'The stock of {res_name} has been set to {stock} tons.')
+        await interaction.response.send_message(f'The stock of `{res_name}` has been set to `{stock}` tons.')
 
     # bank_options = options.create_subgroup('bank', 'Options for the bank system!')
     # bank_options.guild_ids = config.guild_ids
@@ -122,7 +122,7 @@ class OptionsCog(commands.GroupCog, discordutils.CogBase, group_name='_options')
             await interaction.response.send_message('This channel is not in a category! Aborting...')
             return
         await self.channel_ids.set('application_category', interaction.channel.category.id)
-        await interaction.response.send_message(f'Application category set to {interaction.channel.category.name}!')
+        await interaction.response.send_message(f'Application category set to `{interaction.channel.category.name}`!')
 
     logging_options = discord.app_commands.Group(name='logging', description='Options for the logging system!')
     logging_options.guild_ids = config.guild_ids

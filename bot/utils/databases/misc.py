@@ -14,15 +14,18 @@ class ViewTable(classes.Table):
     def __init__(self, database: classes.Database, name: str):
         super().__init__(database, name, {'id': 'INT PRIMARY KEY', 'data': 'BYTEA NOT NULL'})
 
+    async def create(self) -> str:
+        return (await super().create() + '\n' +
+                await self.database.execute(f'CREATE SEQUENCE IF NOT EXISTS view_id_seq OWNED BY {self.name}.id'))
+
+    async def get(self, view_id: int) -> discordutils.PersistentView:
+        return pickle.loads(await self.database.fetch_val(f'SELECT data FROM {self.name} WHERE id = $1', view_id))
+
     async def get_all(self) -> AsyncIterable[discordutils.PersistentView]:
         async with self.database.acquire() as conn:
             async with conn.transaction():
                 async for record in conn.cursor(f'SELECT data FROM {self.name}'):
                     yield pickle.loads(record['data'])
-
-    async def create(self) -> str:
-        return await super().create() + '\n' + \
-               await self.database.execute(f'CREATE SEQUENCE IF NOT EXISTS view_id_seq OWNED BY {self.name}.id')
 
     def add(self, view: discordutils.PersistentView) -> Awaitable[object]:
         data = pickle.dumps(view)
