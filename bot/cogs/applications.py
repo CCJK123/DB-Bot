@@ -21,8 +21,8 @@ class ApplyView(discordutils.PersistentView):
     def get_state(self) -> tuple:
         return {}, self.channel_id, self.message_id
 
-    @discordutils.persistent_button(label='Test', emoji='🕳️')
-    async def apply_button(self, button: discordutils.PersistentButton, interaction: discord.Interaction):
+    @discordutils.persistent_button(label='Test', style=discord.ButtonStyle.blurple, emoji='🕳️')
+    async def apply_button(self, _button: discordutils.PersistentButton, interaction: discord.Interaction):
         """Apply to our alliance!"""
         nation_id = await self.users_table.select_val('nation_id').where(discord_id=interaction.user.id)
         if nation_id is None:
@@ -52,7 +52,9 @@ class ApplyView(discordutils.PersistentView):
         overwrites = {
             interaction.guild.default_role: discord.PermissionOverwrite(read_messages=False),
             interaction.guild.me: discord.PermissionOverwrite(read_messages=True),
-            interaction.user: discord.PermissionOverwrite(read_messages=True),
+            interaction.user: discord.PermissionOverwrite(
+                view_channel=True, read_messages=True, read_message_history=True, send_messages=True,
+                manage_channels=True),
             interaction.guild.get_role(config.interviewer_role_id): discord.PermissionOverwrite(read_messages=True)
         }
         if None in overwrites:
@@ -64,7 +66,7 @@ class ApplyView(discordutils.PersistentView):
             # otherwise it does not work for some reason
             channel = await category.create_text_channel(
                 f'application-{nation_id}',
-                reason=f'Application from {interaction.user.mention}',
+                reason=f'Application from {interaction.user.display_name}',
                 topic=f"{interaction.user.display_name}'s Application to {config.alliance_name}",
                 overwrites=overwrites)
             await channel.move(end=True)
@@ -268,7 +270,7 @@ class ApplicationCog(discordutils.CogBase):
             paginator = discordutils.Pager(paginator_pages)
             await paginator.respond(interaction, ephemeral=ephemeral)
             return
-        await interaction.response.send_message('There are no active loans!', ephemeral=ephemeral)
+        await interaction.response.send_message('There are no active applications!', ephemeral=ephemeral)
 
 
 async def setup(bot: dbbot.DBBot) -> None:
