@@ -174,6 +174,7 @@ class DBBot(commands.Bot):
 
     async def default_on_error(self, interaction: discord.Interaction, exception: discord.app_commands.AppCommandError):
         command = interaction.command
+        print(self.command_ids)
         if isinstance(exception.__cause__, discord.NotFound):
             # def from a command from some sort, since those are the ones where the interactions expire
             suffix = (f': </{command.qualified_name}:{self.command_ids[interaction.guild_id][command.qualified_name]}>'

@@ -55,7 +55,8 @@ class ApplyView(discordutils.PersistentView):
             interaction.user: discord.PermissionOverwrite(read_messages=True),
             interaction.guild.get_role(config.interviewer_role_id): discord.PermissionOverwrite(read_messages=True)
         }
-        del overwrites[None]
+        if None in overwrites:
+            del overwrites[None]
 
         try:
             category: discord.CategoryChannel = self.bot.get_channel(cat_id)  # type: ignore
