@@ -114,11 +114,11 @@ class ApplicationCog(discordutils.CogBase):
             self.bot.add_view(apply_view, message_id=msg.id),
             kv.set('apply_view_id', apply_view.custom_id))
 
-    @discord.app_commands.command()
+    @discord.app_commands.command(name='_new_start_interview')
     @discord.app_commands.default_permissions()
     @commands.max_concurrency(1, commands.BucketType.channel)
     @discord.app_commands.describe(question_number='What question number to start from. Leave blank.')
-    async def _new_start_interview(
+    async def start_interview(
             self, interaction: discord.Interaction,
             question_number: discord.app_commands.Range[int, 1, len(config.interview_questions)] = 1) -> None:
         """Gives you interview questions for you to respond to"""
