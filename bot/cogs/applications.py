@@ -118,7 +118,7 @@ class ApplicationCog(discordutils.CogBase):
     @discord.app_commands.default_permissions()
     @commands.max_concurrency(1, commands.BucketType.channel)
     @discord.app_commands.describe(question_number='What question number to start from. Leave blank.')
-    async def start_interview(
+    async def _new_start_interview(
             self, interaction: discord.Interaction,
             question_number: discord.app_commands.Range[int, 1, len(config.interview_questions)] = 1) -> None:
         """Gives you interview questions for you to respond to"""
