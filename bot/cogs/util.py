@@ -225,24 +225,25 @@ class UtilCog(discordutils.CogBase):
         """List all nations that have run out of food or uranium in the alliance."""
         await interaction.response.defer()
         data = await alliance_member_res_query.query(self.bot.session, alliance_id=config.alliance_id)
-        data = data['data']
         result = {'Food': [], 'Food And Uranium': [], 'Uranium': []}
         ids = set()
         for nation in data:
             if nation['alliance_position'] == 'APPLICANT' or nation['vacation_mode_turns'] > 0:
                 continue
-            has_food = not nation['food']
+            needs_food = not nation['food']
             # check for nuclear power and uranium amounts
-            has_ura = not nation['uranium'] and any(map(operator.itemgetter('nuclear_power'), nation['cities']))
+            needs_ura = not nation['uranium'] and any(map(operator.itemgetter('nuclear_power'), nation['cities']))
 
-            if has_food and has_ura:
+            if needs_food and needs_ura:
                 result['Food And Uranium'].append((nation['id'], nation['nation_name']))
-            elif has_food:
+            elif needs_food:
                 result['Food'].append((nation['id'], nation['nation_name']))
-            elif has_ura:
+            elif needs_ura:
                 result['Uranium'].append((nation['id'], nation['nation_name']))
+            else:
+                continue
             ids.add(nation['id'])
-
+        print(ids, result)
         if ids:
             async with self.bot.database.acquire() as conn:
                 async with conn.transaction():
