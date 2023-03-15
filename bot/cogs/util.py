@@ -243,7 +243,6 @@ class UtilCog(discordutils.CogBase):
             else:
                 continue
             ids.add(nation['id'])
-        print(ids, result)
         if ids:
             async with self.bot.database.acquire() as conn:
                 async with conn.transaction():

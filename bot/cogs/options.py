@@ -133,6 +133,11 @@ class OptionsCog(commands.GroupCog, discordutils.CogBase, group_name='_options')
         await self.channel_ids.set('logging_channel', interaction.channel_id)
         await interaction.response.send_message('Logging channel set!')
 
+    @discord.app_commands.command()
+    async def res_check_channel(self, interaction: discord.Interaction):
+        await self.channel_ids.set('res_check_channel', interaction.channel_id)
+        await interaction.response.send_message('Resource check channel set!')
+
 
 async def setup(bot: dbbot.DBBot) -> None:
     await bot.add_cog(OptionsCog(bot))

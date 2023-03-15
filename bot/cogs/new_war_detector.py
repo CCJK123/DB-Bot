@@ -7,8 +7,8 @@ from typing import Any
 import discord
 import pnwkit
 
-from ..utils import discordutils, pnwutils, config
 from .. import dbbot
+from ..utils import discordutils, pnwutils, config
 from ..utils.queries import new_war_query, update_war_query
 
 
@@ -16,8 +16,11 @@ class NewWarDetectorCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
         self.last_monitoring: list[tuple[dict[str, Any], pnwutils.WarType]] | None = None
-        self.channels = {pnwutils.WarType.ATT: 'offensive_channel', pnwutils.WarType.DEF: 'defensive_channel',
-                         None: 'updates_channel'}
+        self.channels = {
+            pnwutils.WarType.ATT: 'offensive_channel',
+            pnwutils.WarType.DEF: 'defensive_channel',
+            None: 'updates_channel'
+        }
 
         self.new_war_subscription: pnwkit.Subscription | None = None
         self.update_war_subscription: pnwkit.Subscription | None = None
