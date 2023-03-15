@@ -11,6 +11,7 @@ from ..utils.queries import alliance_member_res_query
 class ResourceCheckCog(discordutils.CogBase):
     def __init__(self, bot: dbbot.DBBot):
         super().__init__(bot, __name__)
+        self.task.start()
 
     @tasks.loop(hours=2)
     async def task(self):
@@ -53,3 +54,7 @@ class ResourceCheckCog(discordutils.CogBase):
                     embed.add_field(name=k, value=string)
             channel = self.bot.get_channel(await self.bot.database.get_kv("channel_ids").get("res_check_channel"))
             await channel.send(embed=embed)
+
+
+async def setup(bot: dbbot.DBBot) -> None:
+    await bot.add_cog(ResourceCheckCog(bot))
