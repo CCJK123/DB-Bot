@@ -21,11 +21,6 @@ class DebugCog(discordutils.CogBase):
         await asyncio.sleep(4)
         await interaction.response.send_message('oh no!')
 
-    @discord.app_commands.command()
-    @discord.app_commands.default_permissions()
-    async def _error(self, interaction: discord.Interaction):
-        raise ZeroDivisionError
-
 
 async def setup(bot: dbbot.DBBot):
     await bot.add_cog(DebugCog(bot))
