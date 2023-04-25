@@ -1,3 +1,3 @@
-[submodule "discord.py"]
-	path = discord.py
-	url = https://github.com/Rapptz/discord.py
+[submodule "pycord"]
+	path = pycord
+	url = https://github.com/Pycord-Development/pycord

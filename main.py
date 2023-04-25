@@ -1,53 +1,26 @@
 import asyncio
-import atexit
 import logging
-import os  # For env variables
-from threading import Thread
 
-from flask import Flask
-from replit import db
+import aiohttp
+import discord.utils
 
-import dbbot
-from utils import discordutils
+from bot import dbbot
+from bot.utils import config
 
 cog_logger = logging.getLogger('cogs')
 cog_logger.addHandler(logging.FileHandler('logs.txt'))
 
+
+async def main():
+    async with aiohttp.ClientSession() as session:
+        discord.utils.setup_logging(root=False)
+        bot = dbbot.DBBot(session, config.database_url)
+
+        async with bot.database:
+            async with bot:
+                print('Starting Bot')
+                await bot.start(config.token)
+
+
 if __name__ == '__main__':
-    # Flask server setup (for 24/7 functionality)
-    app = Flask(__name__)
-
-
-    @app.route("/")
-    def main():
-        return os.environ['online_msg']
-
-
-    def run():
-        app.run(host="0.0.0.0")
-
-
-    def keep_alive():
-        server = Thread(target=run)
-        server.start()
-
-
-    bot = dbbot.DBBot(db.db_url, keep_alive)
-
-    # Load cogs
-    cogs = (file.split('.')[0] for file in os.listdir('cogs') if file.endswith('.py') and not file.startswith('_'))
-    for ext in cogs:
-        bot.load_extension(f'cogs.{ext}')
-
-    bot.help_command.cog = bot.get_cog('UtilCog')
-
-
-    def on_stop():
-        # When bot stops
-        print('cleaning up')
-        asyncio.run(bot.cleanup())
-
-
-    atexit.register(on_stop)
-
-    bot.run(discordutils.Config.token)
+    asyncio.run(main())

@@ -8,6 +8,30 @@
 ### Commands
 
 
+### Directory
+<ul>
+    <li>cogs<ul>
+       Contains discord.py extensions, each with a Cog that implements some of the bot's functionality
+    </ul></li>
+    <li>convert<ul>
+        One time use files for migrating data from earlier versions
+    </ul></li>
+    <li>loopedfunctions<ul>
+        to be run locally, it runs some function periodically
+    </ul></li>
+    <li>utils<ul>
+        Various functions that are used throughout the bot's code
+    </ul></li>
+    <li>main.py<ul>
+        The entry point to the bot. Run it to start the bot up!
+    </ul></li>
+    <li>data.db<ul>
+        Stores the data (as of current version)
+    </ul></li>
+    <li>logs.txt<ul>
+        From the start of a logging project that never took off. Does not do anything as of now.
+    </ul></li>
+</ul>
 
 ### Formatting
 
@@ -89,6 +113,9 @@
     </ul></details>
 
 
+### Migration of data
+To migrate data from earlier versions, use the convert directory. Instructions can be found in instructions.txt there.
+
 
 ### Links to relevant resources
 
@@ -104,3 +131,5 @@
 - repl.it
     - [Configure repl.it Run Button](https://docs.replit.com/programming-ide/configuring-run-button)
     - [Store Keys / Tokens Privately](https://docs.replit.com/programming-ide/storing-sensitive-information-environment-variables)
+
+- [Invite Link](https://discord.com/api/oauth2/authorize?client_id=720910939381170177&permissions=268814368&scope=bot%20applications.commands)
